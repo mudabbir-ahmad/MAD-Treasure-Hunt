@@ -3,6 +3,10 @@
 # dependencies
 node_modules/
 
+# IDE Files
+.vscode/
+.idea/
+
 # Expo
 .expo/
 dist/
