@@ -1,21 +1,34 @@
-import { useCallback, useEffect, useState } from 'react';
-import { createSubgroup, getSubgroups, updateSubgroupCache } from '../API/API';
-import { getSession } from '../Model/SessionStore';
+import {useCallback, useEffect, useMemo, useState} from 'react';
+import {createSubgroup, getVisibleSubgroups, updateSubgroupCache} from '../API/API';
+import {getSession} from '../Model/SessionStore';
 
 const useSubgroupAdminViewModel = () => {
   const [subgroups, setSubgroups] = useState([]);
   const [subgroupName, setSubgroupName] = useState('');
   const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const { currentGid } = getSession();
 
   const loadSubgroups = useCallback(async () => {
     if (!currentGid) {
       return;
     }
-    const rows = await getSubgroups(currentGid);
+    const rows = await getVisibleSubgroups(currentGid);
     setSubgroups(rows);
   }, [currentGid]);
+
+  const filteredSubgroups = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return subgroups;
+    }
+    const q = searchQuery.trim().toLowerCase();
+    return subgroups.filter((sg) => {
+      const nameMatch = sg.SubGroupName.toLowerCase().includes(q);
+      const idMatch = String(sg.SGid) === q;
+      return nameMatch || idMatch;
+    });
+  }, [subgroups, searchQuery]);
 
   useEffect(() => {
     loadSubgroups();
@@ -52,9 +65,12 @@ const useSubgroupAdminViewModel = () => {
 
   return {
     subgroups,
+    filteredSubgroups,
+    searchQuery,
     subgroupName,
     cacheTriggerMeters,
     error,
+    setSearchQuery,
     setSubgroupName,
     setCacheTriggerMeters,
     addSubgroup,

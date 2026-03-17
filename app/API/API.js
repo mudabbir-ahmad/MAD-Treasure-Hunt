@@ -58,6 +58,9 @@ const localPost = (endpoint, payload) => {
   if (resource === 'groups' && payload.action === 'approveAdmin') {
     return dbController.approveAdmin(payload.data);
   }
+  if (resource === 'groups' && payload.action === 'createdByUser') {
+    return dbController.getCreatedPrivateGameByUser(payload.data.userId);
+  }
   if (resource === 'subgroups' && payload.action === 'create') {
     return dbController.createSubgroup(payload.data);
   }
@@ -167,6 +170,7 @@ const getGameTypes = async () => {
 const joinPrivateGame = async (payload) => APIPost('groups', { action: 'joinPrivate', data: payload });
 const joinAsAdmin = async (payload) => APIPost('groups', { action: 'joinAsAdmin', data: payload });
 const createPrivateGame = async (payload) => APIPost('groups', { action: 'createPrivate', data: payload });
+const getCreatedPrivateGame = async (userId) => APIPost('groups', { action: 'createdByUser', data: { userId } });
 const requestAdminAccess = async (payload) => APIPost('groups', { action: 'requestAdmin', data: payload });
 const approveAdminAccess = async (payload) => APIPost('groups', { action: 'approveAdmin', data: payload });
 const createSubgroup = async (payload) => APIPost('subgroups', { action: 'create', data: payload });
@@ -175,6 +179,12 @@ const getSubgroups = async (gid) => {
     return dbController.getSubgroups(gid);
   }
   return APIFetch(`groups/${gid}/subgroups`);
+};
+const getVisibleSubgroups = async (gid) => {
+  if (apiConfig.useLocalDb) {
+    return dbController.getVisibleSubgroups(gid);
+  }
+  return APIFetch(`groups/${gid}/subgroups?visibleOnly=true`);
 };
 const updateSubgroupCache = async (payload) => APIPut('subgroups/cache', payload);
 const updateGroupSettings = async (payload) => APIPut('groups/settings', payload);
@@ -215,10 +225,12 @@ export {
   joinPrivateGame,
   joinAsAdmin,
   createPrivateGame,
+  getCreatedPrivateGame,
   requestAdminAccess,
   approveAdminAccess,
   createSubgroup,
   getSubgroups,
+  getVisibleSubgroups,
   updateSubgroupCache,
   updateGroupSettings,
   createTeam,
@@ -227,3 +239,11 @@ export {
   getTeam,
   getMapPoints,
 };
+
+// Default export to satisfy Expo Router route file requirement when the folder is scanned.
+// This module primarily provides named exports; returning null as a component is safe
+// and prevents the router warning about missing default export.
+export default function APIPlaceholder() {
+  return null;
+}
+
