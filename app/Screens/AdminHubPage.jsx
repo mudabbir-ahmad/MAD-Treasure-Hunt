@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import AdminFooterNavbar from '../components/AdminFooterNavbar';
 import useAdminViewModel from '../ViewModel/useAdminViewModel';
+import ScreenHeader from '../components/ScreenHeader';
 
 const AdminHubPage = () => {
   const navigation = useNavigation();
@@ -20,8 +21,8 @@ const AdminHubPage = () => {
 
   return (
     <View style={styles.wrapper}>
+      <ScreenHeader title="Admin Hub" />
       <View style={styles.container}>
-        <Text style={styles.title}>Admin Hub</Text>
         <Pressable style={styles.button} onPress={handleCreateGame}>
           <Text style={styles.buttonText}>Create a Game</Text>
         </Pressable>
@@ -47,12 +48,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
     gap: 12,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
   },
   button: {
     backgroundColor: '#2563eb',

@@ -3,6 +3,7 @@ import { View, Text, Pressable, TextInput, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import MemberFooterNavbar from '../components/MemberFooterNavbar';
 import useLobbyViewModel from '../ViewModel/useLobbyViewModel';
+import ScreenHeader from '../components/ScreenHeader';
 
 const GameLobbyPage = () => {
   const navigation = useNavigation();
@@ -31,8 +32,8 @@ const GameLobbyPage = () => {
 
   return (
     <View style={styles.wrapper}>
+      <ScreenHeader title="Game Lobby" />
       <View style={styles.container}>
-        <Text style={styles.title}>Game Lobby</Text>
         <TextInput
           style={styles.input}
           placeholder="Join Team Code"
@@ -67,12 +68,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
     gap: 12,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
   },
   input: {
     borderWidth: 1,

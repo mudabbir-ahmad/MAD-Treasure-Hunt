@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useManagePrivateSubtaskViewModel from '../ViewModel/useManagePrivateSubtaskViewModel';
+import ScreenHeader from '../components/ScreenHeader';
 
 const ManagePrivateSubtaskPage = () => {
   const navigation = useNavigation();
@@ -35,38 +36,48 @@ const ManagePrivateSubtaskPage = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Manage Private Game</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Business/School Name"
-        value={businessOrSchoolName}
-        onChangeText={setBusinessOrSchoolName}
-      />
-      <Pressable style={styles.primaryButton} onPress={handleCreate}>
-        <Text style={styles.buttonText}>{submitting ? 'Please wait...' : 'Create New Private Game'}</Text>
-      </Pressable>
-      <Pressable style={styles.secondaryButton} onPress={handleJoinAdmin}>
-        <Text style={styles.buttonText}>Join as Admin for Private Game</Text>
-      </Pressable>
-      {!!error && <Text style={styles.errorText}>{error}</Text>}
+    <View style={styles.wrapper}>
+      <ScreenHeader title="Manage Private Game" />
+      <View style={styles.container}>
+        <Pressable style={styles.primaryButton} onPress={handleCreate}>
+          <Text style={styles.buttonText}>{submitting ? 'Please wait...' : 'Create New Private Game'}</Text>
+        </Pressable>
+        <View style={styles.adminJoinSection}>
+          <Text style={styles.helperText}>Business/School Name is only required for admin join.</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Business/School Name"
+            value={businessOrSchoolName}
+            onChangeText={setBusinessOrSchoolName}
+          />
+          <Pressable style={styles.secondaryButton} onPress={handleJoinAdmin}>
+            <Text style={styles.buttonText}>Join as Admin for Private Game</Text>
+          </Pressable>
+        </View>
+        {!!error && <Text style={styles.errorText}>{error}</Text>}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     gap: 12,
     padding: 20,
-    backgroundColor: '#ffffff',
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
+  adminJoinSection: {
+    marginTop: 14,
+    gap: 12,
+  },
+  helperText: {
+    color: '#4b5563',
+    fontSize: 13,
   },
   input: {
     borderWidth: 1,

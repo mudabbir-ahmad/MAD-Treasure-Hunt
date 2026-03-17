@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useGameTypeViewModel from '../ViewModel/useGameTypeViewModel';
+import ScreenHeader from '../components/ScreenHeader';
 
 const GameTypePage = () => {
   const navigation = useNavigation();
@@ -20,30 +21,29 @@ const GameTypePage = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Select Game Type</Text>
-      {gameTypes.map((label) => (
-        <Pressable key={label} style={styles.button} onPress={() => navigateByType(label)}>
-          <Text style={styles.buttonText}>{label}</Text>
-        </Pressable>
-      ))}
+    <View style={styles.wrapper}>
+      <ScreenHeader title="Select Game Type" />
+      <View style={styles.container}>
+        {gameTypes.map((label) => (
+          <Pressable key={label} style={styles.button} onPress={() => navigateByType(label)}>
+            <Text style={styles.buttonText}>{label}</Text>
+          </Pressable>
+        ))}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     padding: 20,
     gap: 12,
-    backgroundColor: '#ffffff',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
   },
   button: {
     backgroundColor: '#2563eb',

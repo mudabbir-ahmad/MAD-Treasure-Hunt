@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import useAuthViewModel from '../ViewModel/useAuthViewModel';
+import ScreenHeader from '../components/ScreenHeader';
 
 const LoginPage = () => {
   const navigation = useNavigation();
@@ -30,49 +31,48 @@ const LoginPage = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        autoCapitalize="none"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <View style={styles.row}>
-        <Pressable style={styles.leftButton} onPress={() => navigation.navigate('(routes)/register')}>
-          <Text style={styles.buttonText}>Register</Text>
-        </Pressable>
-        <Pressable style={styles.rightButton} onPress={handleLogin}>
-          <Text style={styles.buttonText}>{submitting ? 'Logging in...' : 'Login'}</Text>
-        </Pressable>
+    <View style={styles.wrapper}>
+      <ScreenHeader title="Login" />
+      <View style={styles.container}>
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          autoCapitalize="none"
+          keyboardType="email-address"
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+        <View style={styles.row}>
+          <Pressable style={styles.leftButton} onPress={() => navigation.navigate('(routes)/register')}>
+            <Text style={styles.buttonText}>Register</Text>
+          </Pressable>
+          <Pressable style={styles.rightButton} onPress={handleLogin}>
+            <Text style={styles.buttonText}>{submitting ? 'Logging in...' : 'Login'}</Text>
+          </Pressable>
+        </View>
+        {!!error && <Text style={styles.errorText}>{error}</Text>}
       </View>
-      {!!error && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   container: {
     flex: 1,
     padding: 20,
     justifyContent: 'center',
     gap: 12,
-    backgroundColor: '#ffffff',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 8,
-    color: '#111827',
   },
   input: {
     borderWidth: 1,

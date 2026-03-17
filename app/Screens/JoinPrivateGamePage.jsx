@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import usePrivateGameViewModel from '../ViewModel/usePrivateGameViewModel';
+import ScreenHeader from '../components/ScreenHeader';
 
 const JoinPrivateGamePage = () => {
   const navigation = useNavigation();
@@ -19,37 +20,36 @@ const JoinPrivateGamePage = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Join Private Game</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Join Code"
-        autoCapitalize="characters"
-        maxLength={6}
-        value={joinCode}
-        onChangeText={setJoinCode}
-      />
-      <Pressable style={styles.button} onPress={handleJoinGame}>
-        <Text style={styles.buttonText}>{submitting ? 'Joining...' : 'Join Game'}</Text>
-      </Pressable>
-      {!!error && <Text style={styles.errorText}>{error}</Text>}
+    <View style={styles.wrapper}>
+      <ScreenHeader title="Join Private Game" />
+      <View style={styles.container}>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Join Code"
+          autoCapitalize="characters"
+          maxLength={6}
+          value={joinCode}
+          onChangeText={setJoinCode}
+        />
+        <Pressable style={styles.button} onPress={handleJoinGame}>
+          <Text style={styles.buttonText}>{submitting ? 'Joining...' : 'Join Game'}</Text>
+        </Pressable>
+        {!!error && <Text style={styles.errorText}>{error}</Text>}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     padding: 20,
     gap: 12,
-    backgroundColor: '#ffffff',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 8,
   },
   input: {
     borderWidth: 1,

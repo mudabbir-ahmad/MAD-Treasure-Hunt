@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import useSubgroupAdminViewModel from '../ViewModel/useSubgroupAdminViewModel';
 import AdminFooterNavbar from '../components/AdminFooterNavbar';
+import ScreenHeader from '../components/ScreenHeader';
 
 const ManageSubgroupsPage = () => {
   const {
@@ -17,8 +18,8 @@ const ManageSubgroupsPage = () => {
 
   return (
     <View style={styles.wrapper}>
+      <ScreenHeader title="Manage Subgroups" />
       <View style={styles.container}>
-        <Text style={styles.title}>Manage Subgroups</Text>
         {subgroups.map((subgroup) => (
           <View key={`${subgroup.Gid}_${subgroup.SGid}`} style={styles.row}>
             <Text style={styles.rowText}>
@@ -64,11 +65,6 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 10,
     padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
   },
   row: {
     borderWidth: 1,
