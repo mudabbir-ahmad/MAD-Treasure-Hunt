@@ -8,6 +8,7 @@ class GroupModel {
     this.CreatedByUid = payload.CreatedByUid;
     this.MaxMemberSubgroups = payload.MaxMemberSubgroups;
     this.TeamsEnabled = Boolean(payload.TeamsEnabled);
+    this.IsBusinessGroup = payload.IsBusinessGroup !== undefined ? Boolean(payload.IsBusinessGroup) : true;
     this.ApprovedAdmins = payload.ApprovedAdmins || [];
     this.CreatedAt = payload.CreatedAt;
   }
@@ -22,6 +23,7 @@ class GroupModel {
       CreatedByUid: this.CreatedByUid,
       MaxMemberSubgroups: this.MaxMemberSubgroups,
       TeamsEnabled: this.TeamsEnabled,
+      IsBusinessGroup: this.IsBusinessGroup,
       ApprovedAdmins: this.ApprovedAdmins,
       CreatedAt: this.CreatedAt,
     };

@@ -96,6 +96,12 @@ class DbController {
     return this.db.groups.find((group) => group.Gid === Number(gid)) || null;
   }
 
+  getCreatedPrivateGameByUser(uid) {
+    return this.db.groups.find(
+      (group) => group.CreatedByUid === Number(uid) && group.GameType === 'private',
+    ) || null;
+  }
+
   register({ username, email, password, confirmPassword, accountType }) {
     if (!username || !email || !password || !confirmPassword) {
       throw new Error('Missing required registration fields');
@@ -213,7 +219,13 @@ class DbController {
       throw new Error('User not found');
     }
 
+    const existing = this.getCreatedPrivateGameByUser(user.Uid);
+    if (existing) {
+      return existing;
+    }
+
     const gid = this.nextId('group');
+    const isBusinessGroup = Boolean(isBusiness);
     const group = new GroupModel({
       Gid: gid,
       GroupName: groupName,
@@ -221,9 +233,10 @@ class DbController {
       GameType: gameType,
       AdminJoinCode: this.generateUniqueJoinCode(this.db.groups, 'AdminJoinCode'),
       CreatedByUid: user.Uid,
-      MaxMemberSubgroups: isBusiness ? 999 : 1,
+      MaxMemberSubgroups: isBusinessGroup ? 999 : 1,
       TeamsEnabled: true,
-      ApprovedAdmins: [user.Uid],
+      IsBusinessGroup: isBusinessGroup,
+      ApprovedAdmins: isBusinessGroup ? [user.Uid] : [],
       CreatedAt: this.toMinuteIso(),
     });
 
@@ -236,15 +249,21 @@ class DbController {
       Gid: group.Gid,
       JoinCode: null,
       IsAdminGroup: true,
+      IsGameStarted: false,
       CacheTriggerMeters: 20,
     });
 
-    this.createSubgroup({ gid: group.Gid, subgroupName: 'Members', cacheTriggerMeters: 20 });
+    if (!isBusinessGroup) {
+      this.createSubgroup({ gid: group.Gid, subgroupName: 'Members', cacheTriggerMeters: 20 });
+    }
 
-    this.ensureMembership(user.Uid, group.Gid, 0, true);
+    const ownerSgid = isBusinessGroup ? 0 : 1;
+    const ownerIsAcceptedAdmin = isBusinessGroup;
+
+    this.ensureMembership(user.Uid, group.Gid, ownerSgid, ownerIsAcceptedAdmin);
     user.Gid = group.Gid;
-    user.SGid = 0;
-    user.IsAcceptedAdmin = true;
+    user.SGid = ownerSgid;
+    user.IsAcceptedAdmin = ownerIsAcceptedAdmin;
 
     return group.toJSON();
   }
@@ -356,6 +375,7 @@ class DbController {
       Gid: group.Gid,
       JoinCode: this.generateUniqueJoinCode(this.db.subgroups.filter((entry) => !entry.IsAdminGroup), 'JoinCode'),
       IsAdminGroup: false,
+      IsGameStarted: false,
       CacheTriggerMeters: cacheTriggerMeters,
     };
 
@@ -365,6 +385,10 @@ class DbController {
 
   getSubgroups(gid) {
     return this.db.subgroups.filter((subgroup) => subgroup.Gid === Number(gid));
+  }
+
+  getVisibleSubgroups(gid) {
+    return this.getSubgroups(gid).filter((subgroup) => Number(subgroup.SGid) > 0);
   }
 
   updateSubgroupCacheSettings({ gid, sgid, triggerMeters }) {

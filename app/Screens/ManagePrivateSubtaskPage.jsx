@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, {useState} from 'react';
+import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import useManagePrivateSubtaskViewModel from '../ViewModel/useManagePrivateSubtaskViewModel';
 import ScreenHeader from '../components/ScreenHeader';
 
@@ -9,14 +9,25 @@ const ManagePrivateSubtaskPage = () => {
   const {
     businessOrSchoolName,
     error,
+    isBusinessUser,
     setBusinessOrSchoolName,
     createNewPrivateGame,
+    resolveIndividualPrivateRoute,
     joinAdminForPrivate,
   } = useManagePrivateSubtaskViewModel();
   const [submitting, setSubmitting] = useState(false);
 
   const handleCreate = async () => {
     setSubmitting(true);
+    if (!isBusinessUser) {
+      const nextRoute = await resolveIndividualPrivateRoute();
+      setSubmitting(false);
+      if (nextRoute) {
+        navigation.navigate(nextRoute);
+      }
+      return;
+    }
+
     const group = await createNewPrivateGame();
     setSubmitting(false);
     if (!group) {
@@ -40,20 +51,22 @@ const ManagePrivateSubtaskPage = () => {
       <ScreenHeader title="Manage Private Game" />
       <View style={styles.container}>
         <Pressable style={styles.primaryButton} onPress={handleCreate}>
-          <Text style={styles.buttonText}>{submitting ? 'Please wait...' : 'Create New Private Game'}</Text>
+          <Text style={styles.buttonText}>{submitting ? 'Please wait...' : isBusinessUser ? 'Create New Private Game' : 'Create or Manage My Game'}</Text>
         </Pressable>
-        <View style={styles.adminJoinSection}>
-          <Text style={styles.helperText}>Business/School Name is only required for admin join.</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Business/School Name"
-            value={businessOrSchoolName}
-            onChangeText={setBusinessOrSchoolName}
-          />
-          <Pressable style={styles.secondaryButton} onPress={handleJoinAdmin}>
-            <Text style={styles.buttonText}>Join as Admin for Private Game</Text>
-          </Pressable>
-        </View>
+        {isBusinessUser && (
+          <View style={styles.adminJoinSection}>
+            <Text style={styles.helperText}>Business/School Name is only required for admin join.</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Business/School Name"
+              value={businessOrSchoolName}
+              onChangeText={setBusinessOrSchoolName}
+            />
+            <Pressable style={styles.secondaryButton} onPress={handleJoinAdmin}>
+              <Text style={styles.buttonText}>Join as Admin for Private Game</Text>
+            </Pressable>
+          </View>
+        )}
         {!!error && <Text style={styles.errorText}>{error}</Text>}
       </View>
     </View>
