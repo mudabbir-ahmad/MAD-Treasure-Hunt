@@ -1,0 +1,15 @@
+[
+  {
+    "Uid": 1,
+    "Gid": 1,
+    "SGid": 0,
+    "IsAcceptedAdmin": true
+  },
+  {
+    "Uid": 2,
+    "Gid": 1,
+    "SGid": 1,
+    "IsAcceptedAdmin": false
+  }
+]
+

@@ -1,0 +1,19 @@
+[
+  {
+    "SGid": 0,
+    "SubGroupName": "Admins",
+    "Gid": 1,
+    "JoinCode": null,
+    "IsAdminGroup": true,
+    "CacheTriggerMeters": 20
+  },
+  {
+    "SGid": 1,
+    "SubGroupName": "Members",
+    "Gid": 1,
+    "JoinCode": "M4P8R",
+    "IsAdminGroup": false,
+    "CacheTriggerMeters": 20
+  }
+]
+
