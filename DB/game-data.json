@@ -1,0 +1,16 @@
+[
+  {
+    "Gid": 1,
+    "GeoCaches": [
+      {
+        "CacheId": "C1",
+        "Title": "Main Entrance",
+        "Latitude": 0,
+        "Longitude": 0,
+        "TriggerMeters": 20,
+        "SGid": 1
+      }
+    ]
+  }
+]
+

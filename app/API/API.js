@@ -1,48 +1,229 @@
-// This file contains functions to interact with the API or local database.
+import dbController from '../Model/DbController';
 
-const API_BASE_URL = 'http://localhost:3000'; // Change this to the actual API endpoint when needed
+const apiConfig = {
+  useLocalDb: true,
+  baseUrl: 'http://localhost:3000',
+};
 
-// Generic fetch function
-const APIFetch = async (endpoint, options = {}) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
-      ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
+const setApiConfig = (nextConfig = {}) => {
+  Object.assign(apiConfig, nextConfig);
+};
 
-    if (!response.ok) {
-      throw new Error(`API error: ${response.statusText}`);
-    }
+const isSameId = (item, id) =>
+  item.id?.toString() === id
+  || item.Uid?.toString() === id
+  || item.Gid?.toString() === id
+  || item.SGid?.toString() === id
+  || item.Tid?.toString() === id;
 
-    return await response.json();
-  } catch (error) {
-    console.error('Fetch error:', error);
-    throw error;
+const normalize = (endpoint) => endpoint.replace(/^\/+/, '').split('/');
+
+const localGet = (endpoint) => {
+  const [resource, id] = normalize(endpoint);
+  const state = dbController.getState();
+
+  if (!resource) {
+    return state;
   }
+  if (!state[resource]) {
+    throw new Error(`Resource not found: ${resource}`);
+  }
+  if (!id) {
+    return state[resource];
+  }
+  return state[resource].find((item) => isSameId(item, id)) || null;
 };
 
-// Example function to fetch a user by username
-const fetchUserByUsername = async (username) => {
-  return await APIFetch(`users?username=${username}`);
+const localPost = (endpoint, payload) => {
+  const [resource] = normalize(endpoint);
+
+  if (resource === 'auth' && payload.action === 'login') {
+    return dbController.login(payload.data);
+  }
+  if (resource === 'auth' && payload.action === 'register') {
+    return dbController.register(payload.data);
+  }
+  if (resource === 'groups' && payload.action === 'joinPrivate') {
+    return dbController.joinPrivateGame(payload.data);
+  }
+  if (resource === 'groups' && payload.action === 'joinAsAdmin') {
+    return dbController.joinAsAdmin(payload.data);
+  }
+  if (resource === 'groups' && payload.action === 'createPrivate') {
+    return dbController.createPrivateGame(payload.data);
+  }
+  if (resource === 'groups' && payload.action === 'requestAdmin') {
+    return dbController.requestAdminApproval(payload.data);
+  }
+  if (resource === 'groups' && payload.action === 'approveAdmin') {
+    return dbController.approveAdmin(payload.data);
+  }
+  if (resource === 'subgroups' && payload.action === 'create') {
+    return dbController.createSubgroup(payload.data);
+  }
+  if (resource === 'teams' && payload.action === 'create') {
+    return dbController.createTeam(payload.data);
+  }
+  if (resource === 'teams' && payload.action === 'join') {
+    return dbController.joinTeamByCode(payload.data);
+  }
+
+  const state = dbController.getState();
+  if (!state[resource]) {
+    throw new Error(`Resource not found: ${resource}`);
+  }
+  state[resource].push(payload);
+  return payload;
 };
 
-// Example function to fetch all groups
-const fetchGroups = async () => {
-  return await APIFetch('groups');
+const localPut = (endpoint, payload) => {
+  const [resource, id] = normalize(endpoint);
+  const state = dbController.getState();
+  if (!state[resource]) {
+    throw new Error(`Resource not found: ${resource}`);
+  }
+  const index = state[resource].findIndex((item) =>
+    isSameId(item, id),
+  );
+  if (index < 0) {
+    throw new Error('Record not found');
+  }
+  state[resource][index] = { ...state[resource][index], ...payload };
+  return state[resource][index];
 };
 
-// Example function to fetch subgroups by group ID
-const fetchSubgroupsByGroupId = async (groupId) => {
-  return await APIFetch(`groups/${groupId}/subgroups`);
+const localDelete = (endpoint) => {
+  const [resource, id] = normalize(endpoint);
+  const state = dbController.getState();
+  if (!state[resource]) {
+    throw new Error(`Resource not found: ${resource}`);
+  }
+  const index = state[resource].findIndex((item) =>
+    isSameId(item, id),
+  );
+  if (index < 0) {
+    return { deleted: false };
+  }
+  state[resource].splice(index, 1);
+  return { deleted: true };
 };
 
-// RESTful API functions
-const fetchItems = async (endpoint) => await APIFetch(endpoint);
-const createItem = async (endpoint, data) => await APIFetch(endpoint, { method: 'POST', body: JSON.stringify(data) });
-const updateItem = async (endpoint, data) => await APIFetch(endpoint, { method: 'PUT', body: JSON.stringify(data) });
-const deleteItem = async (endpoint) => await APIFetch(endpoint, { method: 'DELETE' });
+const remoteRequest = async (endpoint, options = {}) => {
+  const response = await fetch(`${apiConfig.baseUrl}/${endpoint.replace(/^\/+/, '')}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`);
+  }
+  return response.json();
+};
 
-export { APIFetch, fetchUserByUsername, fetchGroups, fetchSubgroupsByGroupId, fetchItems, createItem, updateItem, deleteItem };
+const APIFetch = async (endpoint) => {
+  if (apiConfig.useLocalDb) {
+    return localGet(endpoint);
+  }
+  return remoteRequest(endpoint, { method: 'GET' });
+};
+
+const APIPost = async (endpoint, data) => {
+  if (apiConfig.useLocalDb) {
+    return localPost(endpoint, data);
+  }
+  return remoteRequest(endpoint, { method: 'POST', body: JSON.stringify(data) });
+};
+
+const APIPut = async (endpoint, data) => {
+  if (apiConfig.useLocalDb) {
+    if (endpoint === 'groups/settings') {
+      return dbController.updateGroupSettings(data);
+    }
+    if (endpoint === 'subgroups/cache') {
+      return dbController.updateSubgroupCacheSettings(data);
+    }
+    return localPut(endpoint, data);
+  }
+  return remoteRequest(endpoint, { method: 'PUT', body: JSON.stringify(data) });
+};
+
+const APIDelete = async (endpoint) => {
+  if (apiConfig.useLocalDb) {
+    return localDelete(endpoint);
+  }
+  return remoteRequest(endpoint, { method: 'DELETE' });
+};
+
+const loginUser = async (email, password) => APIPost('auth', { action: 'login', data: { email, password } });
+const registerUser = async (payload) => APIPost('auth', { action: 'register', data: payload });
+const getGameTypes = async () => {
+  if (apiConfig.useLocalDb) {
+    return dbController.getGameTypes();
+  }
+  return APIFetch('game_types');
+};
+const joinPrivateGame = async (payload) => APIPost('groups', { action: 'joinPrivate', data: payload });
+const joinAsAdmin = async (payload) => APIPost('groups', { action: 'joinAsAdmin', data: payload });
+const createPrivateGame = async (payload) => APIPost('groups', { action: 'createPrivate', data: payload });
+const requestAdminAccess = async (payload) => APIPost('groups', { action: 'requestAdmin', data: payload });
+const approveAdminAccess = async (payload) => APIPost('groups', { action: 'approveAdmin', data: payload });
+const createSubgroup = async (payload) => APIPost('subgroups', { action: 'create', data: payload });
+const getSubgroups = async (gid) => {
+  if (apiConfig.useLocalDb) {
+    return dbController.getSubgroups(gid);
+  }
+  return APIFetch(`groups/${gid}/subgroups`);
+};
+const updateSubgroupCache = async (payload) => APIPut('subgroups/cache', payload);
+const updateGroupSettings = async (payload) => APIPut('groups/settings', payload);
+const createTeam = async (payload) => APIPost('teams', { action: 'create', data: payload });
+const joinTeam = async (payload) => APIPost('teams', { action: 'join', data: payload });
+const getLobby = async (gid) => {
+  if (apiConfig.useLocalDb) {
+    return dbController.getLobby(gid);
+  }
+  return APIFetch(`groups/${gid}/lobby`);
+};
+const getTeam = async (tid) => {
+  if (apiConfig.useLocalDb) {
+    return dbController.getTeam(tid);
+  }
+  return APIFetch(`teams/${tid}`);
+};
+const getMapPoints = async (gid, sgid = null) => {
+  if (apiConfig.useLocalDb) {
+    return dbController.getMapPoints(gid, sgid);
+  }
+  if (sgid === null || sgid === undefined) {
+    return APIFetch(`groups/${gid}/map`);
+  }
+  return APIFetch(`groups/${gid}/map/${sgid}`);
+};
+
+export {
+  apiConfig,
+  setApiConfig,
+  APIFetch,
+  APIPost,
+  APIPut,
+  APIDelete,
+  loginUser,
+  registerUser,
+  getGameTypes,
+  joinPrivateGame,
+  joinAsAdmin,
+  createPrivateGame,
+  requestAdminAccess,
+  approveAdminAccess,
+  createSubgroup,
+  getSubgroups,
+  updateSubgroupCache,
+  updateGroupSettings,
+  createTeam,
+  joinTeam,
+  getLobby,
+  getTeam,
+  getMapPoints,
+};

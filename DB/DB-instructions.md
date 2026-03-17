@@ -1,21 +1,3 @@
-# Welcome to the mobile application development repository for our Treasure Hunt Game! This project is built using React Native and Expo.
-
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-
-
 # Database Structure
 
 This project uses split JSON files in `DB/` so each collection behaves like its own REST endpoint.
@@ -28,7 +10,6 @@ This project uses split JSON files in `DB/` so each collection behaves like its 
 
 ## Files
 
-- `meta.json`: global version and numeric ID counters.
 - `users.json`: user accounts and role state (`Uid`, `Gid`, `SGid`, `TGid`, `IsAcceptedAdmin`).
 - `groups.json`: top-level game groups (`Gid`), admin approvals, and group settings.
 - `subgroups.json`: subgroup definitions within each group (`SGid` scoped by `Gid`), join codes, cache trigger defaults.
@@ -46,6 +27,7 @@ This project uses split JSON files in `DB/` so each collection behaves like its 
 - `Gid`: unique group/game ID.
 - `SGid`: subgroup ID within a group (`0` is admin subgroup).
 - `Tid`: unique team ID.
+- New IDs are generated from the max existing value in each endpoint collection (`users`, `groups`, `teams`) so no separate counter file is required.
 
 ## Admin Logic
 
