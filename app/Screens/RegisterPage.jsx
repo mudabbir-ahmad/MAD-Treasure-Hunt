@@ -28,7 +28,7 @@ const RegisterPage = () => {
     if (!user) {
       return;
     }
-    navigation.navigate(user.SGid === 0 ? 'admin-hub' : 'game-type');
+    navigation.navigate(user.SGid === 0 ? '(routes)/admin-hub' : '(routes)/game-type');
   };
 
   return (
@@ -68,7 +68,7 @@ const RegisterPage = () => {
       <Pressable style={styles.submitButton} onPress={handleRegister}>
         <Text style={styles.submitText}>{submitting ? 'Creating...' : 'Create Account'}</Text>
       </Pressable>
-      <Pressable onPress={() => navigation.navigate('login')}>
+      <Pressable onPress={() => navigation.navigate('(routes)/login')}>
         <Text style={styles.backText}>Back to Login</Text>
       </Pressable>
       {!!error && <Text style={styles.errorText}>{error}</Text>}

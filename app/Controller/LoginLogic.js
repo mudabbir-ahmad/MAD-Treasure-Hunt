@@ -12,11 +12,11 @@ const useLoginLogic = () => {
     }
 
     if (email.trim().toLowerCase().includes('admin')) {
-      navigation.navigate('admin-hub');
+      navigation.navigate('(routes)/admin-hub');
       return true;
     }
 
-    navigation.navigate('game-type');
+    navigation.navigate('(routes)/game-type');
     return true;
   };
 

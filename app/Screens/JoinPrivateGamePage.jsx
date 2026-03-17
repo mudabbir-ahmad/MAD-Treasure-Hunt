@@ -15,7 +15,7 @@ const JoinPrivateGamePage = () => {
     if (!group) {
       return;
     }
-    navigation.navigate('game-lobby');
+    navigation.navigate('(routes)/game-lobby');
   };
 
   return (

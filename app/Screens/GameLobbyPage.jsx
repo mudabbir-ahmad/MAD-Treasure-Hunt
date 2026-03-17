@@ -17,7 +17,7 @@ const GameLobbyPage = () => {
       return;
     }
     setHasTeam(true);
-    navigation.navigate('team');
+    navigation.navigate('(routes)/team');
   };
 
   const handleJoinTeam = async () => {
@@ -26,7 +26,7 @@ const GameLobbyPage = () => {
       return;
     }
     setHasTeam(true);
-    navigation.navigate('team');
+    navigation.navigate('(routes)/team');
   };
 
   return (
@@ -47,7 +47,7 @@ const GameLobbyPage = () => {
         <Pressable style={styles.primaryButton} onPress={handleCreateTeam}>
           <Text style={styles.buttonText}>Create Team</Text>
         </Pressable>
-        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('map')}>
+        <Pressable style={styles.secondaryButton} onPress={() => navigation.navigate('(routes)/map')}>
           <Text style={styles.buttonText}>Open Map</Text>
         </Pressable>
         {!!error && <Text style={styles.errorText}>{error}</Text>}

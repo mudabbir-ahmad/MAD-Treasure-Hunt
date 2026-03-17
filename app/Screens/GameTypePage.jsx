@@ -9,14 +9,14 @@ const GameTypePage = () => {
 
   const navigateByType = (label) => {
     if (label === 'Join Global Game') {
-      navigation.navigate('game-lobby');
+      navigation.navigate('(routes)/game-lobby');
       return;
     }
     if (label === 'Join Private Game') {
-      navigation.navigate('join-private-game');
+      navigation.navigate('(routes)/join-private-game');
       return;
     }
-    navigation.navigate('manage-private-subtask');
+    navigation.navigate('(routes)/manage-private-subtask');
   };
 
   return (

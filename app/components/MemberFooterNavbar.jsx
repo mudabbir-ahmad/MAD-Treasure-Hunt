@@ -11,13 +11,13 @@ const MemberFooterNavbar = ({ visible = false }) => {
 
   return (
     <View style={styles.container}>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('game-lobby')}>
+      <Pressable style={styles.button} onPress={() => navigation.navigate('(routes)/game-lobby')}>
         <Text style={styles.text}>Lobby</Text>
       </Pressable>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('team')}>
+      <Pressable style={styles.button} onPress={() => navigation.navigate('(routes)/team')}>
         <Text style={styles.text}>Team</Text>
       </Pressable>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('map')}>
+      <Pressable style={styles.button} onPress={() => navigation.navigate('(routes)/map')}>
         <Text style={styles.text}>Map</Text>
       </Pressable>
     </View>

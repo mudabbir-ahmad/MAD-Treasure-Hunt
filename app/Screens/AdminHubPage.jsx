@@ -15,7 +15,7 @@ const AdminHubPage = () => {
       gameType: 'private',
       isBusiness: true,
     });
-    navigation.navigate('game-lobby');
+    navigation.navigate('(routes)/game-lobby');
   };
 
   return (
@@ -25,10 +25,10 @@ const AdminHubPage = () => {
         <Pressable style={styles.button} onPress={handleCreateGame}>
           <Text style={styles.buttonText}>Create a Game</Text>
         </Pressable>
-        <Pressable style={styles.button} onPress={() => navigation.navigate('game-lobby')}>
+        <Pressable style={styles.button} onPress={() => navigation.navigate('(routes)/game-lobby')}>
           <Text style={styles.buttonText}>Manage Existing Game</Text>
         </Pressable>
-        <Pressable style={styles.button} onPress={() => navigation.navigate('manage-subgroups')}>
+        <Pressable style={styles.button} onPress={() => navigation.navigate('(routes)/manage-subgroups')}>
           <Text style={styles.buttonText}>Manage Subgroups</Text>
         </Pressable>
       </View>

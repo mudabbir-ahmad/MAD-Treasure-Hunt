@@ -23,10 +23,10 @@ const LoginPage = () => {
       return;
     }
     if (user.SGid === 0) {
-      navigation.navigate('admin-hub');
+      navigation.navigate('(routes)/admin-hub');
       return;
     }
-    navigation.navigate('game-type');
+    navigation.navigate('(routes)/game-type');
   };
 
   return (
@@ -48,7 +48,7 @@ const LoginPage = () => {
         onChangeText={setPassword}
       />
       <View style={styles.row}>
-        <Pressable style={styles.leftButton} onPress={() => navigation.navigate('register')}>
+        <Pressable style={styles.leftButton} onPress={() => navigation.navigate('(routes)/register')}>
           <Text style={styles.buttonText}>Register</Text>
         </Pressable>
         <Pressable style={styles.rightButton} onPress={handleLogin}>

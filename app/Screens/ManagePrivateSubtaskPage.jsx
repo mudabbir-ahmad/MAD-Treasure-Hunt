@@ -21,7 +21,7 @@ const ManagePrivateSubtaskPage = () => {
     if (!group) {
       return;
     }
-    navigation.navigate('admin-hub');
+    navigation.navigate('(routes)/admin-hub');
   };
 
   const handleJoinAdmin = async () => {
@@ -31,7 +31,7 @@ const ManagePrivateSubtaskPage = () => {
     if (!response) {
       return;
     }
-    navigation.navigate('admin-hub');
+    navigation.navigate('(routes)/admin-hub');
   };
 
   return (

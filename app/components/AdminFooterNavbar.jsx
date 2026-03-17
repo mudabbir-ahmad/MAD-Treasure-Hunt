@@ -7,13 +7,13 @@ const AdminFooterNavbar = () => {
 
   return (
     <View style={styles.container}>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('admin-hub')}>
+      <Pressable style={styles.button} onPress={() => navigation.navigate('(routes)/admin-hub')}>
         <Text style={styles.text}>Admin Hub</Text>
       </Pressable>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('game-lobby')}>
+      <Pressable style={styles.button} onPress={() => navigation.navigate('(routes)/game-lobby')}>
         <Text style={styles.text}>Manage Game</Text>
       </Pressable>
-      <Pressable style={styles.button} onPress={() => navigation.navigate('team')}>
+      <Pressable style={styles.button} onPress={() => navigation.navigate('(routes)/team')}>
         <Text style={styles.text}>Manage Team</Text>
       </Pressable>
     </View>
