@@ -1,0 +1,45 @@
+{
+  "users": [
+    {
+      "Uid": 1,
+      "username": "admin",
+      "password": "admin123",
+      "Gid": null,
+      "SGid": 0,
+      "TGid": null
+    },
+    {
+      "Uid": 2,
+      "username": "user1",
+      "password": "user123",
+      "Gid": 1,
+      "SGid": 1,
+      "TGid": null
+    }
+  ],
+  "groups": [
+    {
+      "Gid": 1,
+      "GroupName": "Public Group"
+    }
+  ],
+  "subgroups": [
+    {
+      "SGid": 0,
+      "SubGroupName": "Admin Subgroup",
+      "Gid": null
+    },
+    {
+      "SGid": 1,
+      "SubGroupName": "User Subgroup",
+      "Gid": 1
+    }
+  ],
+  "user_groups": [
+    {
+      "Uid": 2,
+      "Gid": 1,
+      "SGid": 1
+    }
+  ]
+}
