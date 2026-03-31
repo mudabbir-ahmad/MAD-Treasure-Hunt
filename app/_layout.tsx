@@ -4,33 +4,33 @@ export default function RootLayout() {
   return (
     <Stack initialRouteName="(routes)/index" screenOptions={{ headerShown: false }}>
       <Stack.Screen 
-        name="(routes)/index" 
+        name="Screens/LoginPage"
         options={{
           gestureEnabled: false,
         }}
       />
       <Stack.Screen 
-        name="(routes)/login" 
+        name="Screens/LoginPage"
         options={{
           gestureEnabled: false,
         }}
       />
       <Stack.Screen 
-        name="(routes)/register" 
+        name="Screens/RegisterPage"
         options={{
           gestureEnabled: false,
         }}
       />
-      <Stack.Screen name="(routes)/game-type" />
-      <Stack.Screen name="(routes)/join-private-game" />
-      <Stack.Screen name="(routes)/manage-private-subtask" />
-      <Stack.Screen name="(routes)/create-game" />
-      <Stack.Screen name="(routes)/manage-game" />
-      <Stack.Screen name="(routes)/game-lobby" />
-      <Stack.Screen name="(routes)/team" />
-      <Stack.Screen name="(routes)/map" />
-      <Stack.Screen name="(routes)/admin-hub" />
-      <Stack.Screen name="(routes)/manage-subgroups" />
+      <Stack.Screen name="Screens/GameTypePage"/>
+      <Stack.Screen name="Screens/JoinPrivateGamePage" />
+      <Stack.Screen name="Screens/ManagePrivateSubtaskPage" />
+      <Stack.Screen name="Screens/CreateGamePage" />
+      <Stack.Screen name="Screens/ManageGamePage" />
+      <Stack.Screen name="Screens/GameLobbyPage" />
+      <Stack.Screen name="Screens/TeamPage" />
+      <Stack.Screen name="Screens/MapPage" />
+      <Stack.Screen name="Screens/AdminHubPage" />
+      <Stack.Screen name="Screens/ManageSubgroupsPage" />
     </Stack>
   );
 }
