@@ -40,13 +40,13 @@ const MapScreen = () => {
   const subgroupFilter = session.currentSGid;
   const { visibleCache, isClaiming, setIsClaiming } = usePlayerGame(userLocation, heading, activeCaches);
 
-  const loadCaches = useCallback(() => {
+  const loadCaches = useCallback(async () => {
     if (!session.currentGid) {
       setCacheRecords([]);
       return;
     }
-    const rows = getCaches(session.currentGid, subgroupFilter);
-    setCacheRecords(rows);
+    const rows = await getCaches(session.currentGid, subgroupFilter);
+    setCacheRecords(rows || []);
   }, [getCaches, session.currentGid, subgroupFilter]);
 
   useEffect(() => {
@@ -99,18 +99,18 @@ const MapScreen = () => {
     };
   }, []);
 
-  const handleClaim = (cacheId) => {
+  const handleClaim = async (cacheId) => {
     if (!session.currentGid) {
       return;
     }
-    claimCache({
+    await claimCache({
       gid: session.currentGid,
       cacheId,
       uid: session.currentUid,
       tid: session.currentTid,
     });
     setIsClaiming(false);
-    loadCaches();
+    await loadCaches();
   };
 
   if (!session.currentGid) {

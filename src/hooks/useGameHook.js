@@ -1,55 +1,33 @@
-import dbController from './DbController';
+import {postDb} from './dbLink';
 
 const useGameHook = () => {
-  const getGameTypes = () => dbController.getGameTypes();
+  const request = async (action, payload = {}) => postDb(action, payload);
 
-  const getCreatedPrivateGame = (userId) => {
-    return dbController.getCreatedPrivateGameByUser(userId);
-  };
+  const getGameTypes = async () => request('getGameTypes');
 
-  const createPrivateGame = (payload) => {
-    return dbController.createPrivateGame(payload);
-  };
+  const getCreatedPrivateGame = async (userId) => request('getCreatedPrivateGameByUser', { userId });
 
-  const joinPrivateGame = (payload) => {
-    return dbController.joinPrivateGame(payload);
-  };
+  const createPrivateGame = async (payload) => request('createPrivateGame', payload);
 
-  const joinAsAdmin = (payload) => {
-    return dbController.joinAsAdmin(payload);
-  };
+  const joinPrivateGame = async (payload) => request('joinPrivateGame', payload);
 
-  const getLobby = (gid) => {
-    return dbController.getLobby(gid);
-  };
+  const joinAsAdmin = async (payload) => request('joinAsAdmin', payload);
 
-  const getTeam = (tid) => {
-    return dbController.getTeam(tid);
-  };
+  const getLobby = async (gid) => request('getLobby', { gid });
 
-  const createTeam = (payload) => {
-    return dbController.createTeam(payload);
-  };
+  const getTeam = async (tid) => request('getTeam', { tid });
 
-  const joinTeamByCode = (payload) => {
-    return dbController.joinTeamByCode(payload);
-  };
+  const createTeam = async (payload) => request('createTeam', payload);
 
-  const getMapPoints = (gid, sgid = null) => {
-    return dbController.getMapPoints(gid, sgid);
-  };
+  const joinTeamByCode = async (payload) => request('joinTeamByCode', payload);
 
-  const getCaches = (gid, sgid = null) => {
-    return dbController.getCaches(gid, sgid);
-  };
+  const getMapPoints = async (gid, sgid = null) => request('getMapPoints', { gid, sgid });
 
-  const upsertCache = (payload) => {
-    return dbController.upsertCache(payload);
-  };
+  const getCaches = async (gid, sgid = null) => request('getCaches', { gid, sgid });
 
-  const claimCache = (payload) => {
-    return dbController.claimCache(payload);
-  };
+  const upsertCache = async (payload) => request('upsertCache', payload);
+
+  const claimCache = async (payload) => request('claimCache', payload);
 
   return {
     getGameTypes,

@@ -1,23 +1,6 @@
 import {useState} from 'react';
-import Constants from 'expo-constants';
-import dbController from './DbController';
+import {postDb} from './dbLink';
 import {clearSession, setSessionUser} from './SessionStore';
-
-const hostFromExpo = Constants.expoConfig?.hostUri?.split(':')[0] || null;
-const apiBaseUrl = process.env.EXPO_PUBLIC_API_BASE_URL || (hostFromExpo ? `http://${hostFromExpo}:3000` : 'http://localhost:3000');
-
-const postJson = async (path, payload) => {
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  const result = await response.json();
-  if (!response.ok) {
-    throw new Error(result.message || 'Request failed');
-  }
-  return result;
-};
 
 const useAuthHook = () => {
   const [email, setEmail] = useState('');
@@ -32,21 +15,14 @@ const useAuthHook = () => {
     setError('');
     setIsLoading(true);
     try {
-      const user = await postJson('/auth/login', { email: email.trim(), password });
+      const user = await postDb('login', { email: email.trim(), password });
       setSessionUser(user);
       setIsLoading(false);
       return user;
     } catch (e) {
-      try {
-        const fallbackUser = dbController.login({ email: email.trim(), password });
-        setSessionUser(fallbackUser);
-        setIsLoading(false);
-        return fallbackUser;
-      } catch {
-        setError(e.message);
-        setIsLoading(false);
-        return null;
-      }
+      setError(e.message);
+      setIsLoading(false);
+      return null;
     }
   };
 
@@ -54,7 +30,7 @@ const useAuthHook = () => {
     setError('');
     setIsLoading(true);
     try {
-      const user = await postJson('/auth/register', {
+      const user = await postDb('register', {
         username: username.trim(),
         email: email.trim().toLowerCase(),
         password,
@@ -65,22 +41,9 @@ const useAuthHook = () => {
       setIsLoading(false);
       return user;
     } catch (e) {
-      try {
-        const fallbackUser = dbController.register({
-          username: username.trim(),
-          email: email.trim().toLowerCase(),
-          password,
-          confirmPassword,
-          accountType,
-        });
-        setSessionUser(fallbackUser);
-        setIsLoading(false);
-        return fallbackUser;
-      } catch {
-        setError(e.message);
-        setIsLoading(false);
-        return null;
-      }
+      setError(e.message);
+      setIsLoading(false);
+      return null;
     }
   };
 

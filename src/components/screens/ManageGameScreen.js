@@ -14,12 +14,13 @@ const ManageGameScreen = () => {
   const [error, setError] = useState('');
   const [cacheRecords, setCacheRecords] = useState([]);
 
-  const loadCaches = useCallback(() => {
+  const loadCaches = useCallback(async () => {
     if (!session.currentGid) {
       setCacheRecords([]);
       return;
     }
-    setCacheRecords(getCaches(session.currentGid, null));
+    const rows = await getCaches(session.currentGid, null);
+    setCacheRecords(rows || []);
   }, [getCaches, session.currentGid]);
 
   useEffect(() => {
@@ -63,11 +64,11 @@ const ManageGameScreen = () => {
     };
   }, []);
 
-  const handleAddCache = (coordinate) => {
+  const handleAddCache = async (coordinate) => {
     if (!session.currentGid) {
       return;
     }
-    upsertCache({
+    await upsertCache({
       gid: session.currentGid,
       latitude: coordinate.latitude,
       longitude: coordinate.longitude,
@@ -75,10 +76,10 @@ const ManageGameScreen = () => {
       clue: `Cache ${cacheRecords.length + 1}`,
       subgroupId: 1,
     });
-    loadCaches();
+    await loadCaches();
   };
 
-  const handleMoveCache = (cacheId, coordinate) => {
+  const handleMoveCache = async (cacheId, coordinate) => {
     if (!session.currentGid) {
       return;
     }
@@ -86,7 +87,7 @@ const ManageGameScreen = () => {
     if (!current) {
       return;
     }
-    upsertCache({
+    await upsertCache({
       gid: session.currentGid,
       cacheId,
       latitude: coordinate.latitude,
@@ -95,7 +96,7 @@ const ManageGameScreen = () => {
       clue: current.clue,
       subgroupId: current.subgroupId,
     });
-    loadCaches();
+    await loadCaches();
   };
 
   if (!session.currentGid) {
