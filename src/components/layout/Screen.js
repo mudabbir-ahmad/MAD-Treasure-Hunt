@@ -5,18 +5,18 @@ import TopNavbar from "./TopNavbar";
 import BottomNavbar from "./BottomNavbar";
 
 const Screen = ({ children, style }) => {
+  //   Initialisation -------------
+
   const navigation = useNavigation();
   const route = useRoute();
 
   const titleMap = {
-    LoginScreen: "Login",
-    RegisterScreen: "Register",
     GameTypeScreen: "Game Type",
     JoinPrivateGameScreen: "Join Private Game",
     ManagePrivateGameScreen: "Manage Private Game",
     CreateGameScreen: "Create Game",
     ManageGameScreen: "Manage Game",
-    GameLobbyScreen: "Leaderboard",
+    GameLobbyScreen: "Game Lobby",
     LeaderboardScreen: "Leaderboard",
     TeamScreen: "Current Team",
     MapScreen: "Map",
@@ -24,15 +24,21 @@ const Screen = ({ children, style }) => {
     ManageSubgroupsScreen: "Manage Subgroups",
   };
 
+  //   State ----------------------
+
   const routeName = route.name;
-  const showBack = routeName !== "LoginScreen" && navigation.canGoBack();
+  const isAuthScreen = routeName === "LoginScreen" || routeName === "RegisterScreen";
+  const showBack = !isAuthScreen && navigation.canGoBack();
   const pageTitle = titleMap[routeName] || "Treasure Hunt";
+
+  //   Handlers -------------------
+  //   View -----------------------
 
   return (
     <View style={[styles.screen, style]}>
-      <TopNavbar title={pageTitle} showBack={showBack} navigation={navigation} />
+      {!isAuthScreen && <TopNavbar title={pageTitle} showBack={showBack} navigation={navigation} />}
       <View style={styles.content}>{children}</View>
-      <BottomNavbar navigation={navigation} routeName={routeName} />
+      {!isAuthScreen && <BottomNavbar navigation={navigation} routeName={routeName} />}
       <StatusBar style="light" />
     </View>
   );

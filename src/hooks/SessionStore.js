@@ -1,3 +1,5 @@
+// --- Session Store ---
+
 const session = {
   currentUid: null,
   currentGid: null,
@@ -6,6 +8,8 @@ const session = {
   isBusiness: null,
   isAcceptedAdmin: false,
 };
+
+// --- Handlers ---
 
 const setSessionUser = (user) => {
   session.currentUid = user?.Uid ?? null;

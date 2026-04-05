@@ -2,6 +2,11 @@ import React from 'react';
 import MapView, {Circle, Marker} from 'react-native-maps';
 
 const AdminCacheEditorView = ({ userLocation, caches, onAddCache, onMoveCache }) => {
+//   Initialisation -------------
+//   State ----------------------
+//   Handlers -------------------
+//   View -----------------------
+
   if (!userLocation) {
     return null;
   }

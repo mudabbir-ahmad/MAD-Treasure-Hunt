@@ -5,8 +5,15 @@ import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
 
 const LoginScreen = ({ navigation }) => {
+//   Initialisation ------------->
+
   const { email, password, error, isLoading, setEmail, setPassword, login } = useAuthHook();
+
+//   State ----------------------
+
   const [submitting, setSubmitting] = useState(false);
+
+//   Handlers -------------------
 
   const handleLogin = async () => {
     setSubmitting(true);
@@ -21,6 +28,8 @@ const LoginScreen = ({ navigation }) => {
     }
     navigation.reset({ index: 0, routes: [{ name: 'Game' }] });
   };
+
+//   View -----------------------
 
   return (
     <Screen style={styles.container}>
@@ -107,4 +116,3 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
-

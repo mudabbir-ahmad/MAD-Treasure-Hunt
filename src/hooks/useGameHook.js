@@ -1,33 +1,102 @@
-import {postDb} from './dbLink';
+import API from '../components/API/API';
+import API_BASE_URL from './dbLink';
 
 const useGameHook = () => {
-  const request = async (action, payload = {}) => postDb(action, payload);
+  //   Initialisation ------------
 
-  const getGameTypes = async () => request('getGameTypes');
+  const gameTypesEndpoint = `${API_BASE_URL}/game-types`;
+  const groupsEndpoint = `${API_BASE_URL}/groups`;
+  const subgroupMembershipsEndpoint = `${API_BASE_URL}/subgroup-memberships`;
+  const teamsEndpoint = `${API_BASE_URL}/teams`;
+  const teamMembersEndpoint = `${API_BASE_URL}/team-members`;
+  const gameDataEndpoint = `${API_BASE_URL}/game-data`;
+  const adminWaitlistEndpoint = `${API_BASE_URL}/admin-waitlist`;
 
-  const getCreatedPrivateGame = async (userId) => request('getCreatedPrivateGameByUser', { userId });
+  //   Handlers -------------------
 
-  const createPrivateGame = async (payload) => request('createPrivateGame', payload);
+  const getGameTypes = async () => {
+    const response = await API.get(gameTypesEndpoint);
+    return response.isSuccess ? response.result : [];
+  };
 
-  const joinPrivateGame = async (payload) => request('joinPrivateGame', payload);
+  const getCreatedPrivateGame = async (userId) => {
+    const response = await API.get(`${groupsEndpoint}?CreatedByUid=${userId}`);
+    return response.isSuccess ? response.result : [];
+  };
 
-  const joinAsAdmin = async (payload) => request('joinAsAdmin', payload);
+  const createPrivateGame = async (payload) => {
+    const response = await API.post(groupsEndpoint, payload);
+    return response.isSuccess ? response.result : null;
+  };
 
-  const getLobby = async (gid) => request('getLobby', { gid });
+  const joinPrivateGame = async (payload) => {
+    const response = await API.post(subgroupMembershipsEndpoint, payload);
+    return response.isSuccess ? response.result : null;
+  };
 
-  const getTeam = async (tid) => request('getTeam', { tid });
+  const joinAsAdmin = async (payload) => {
+    const response = await API.post(adminWaitlistEndpoint, payload);
+    return response.isSuccess ? response.result : null;
+  };
 
-  const createTeam = async (payload) => request('createTeam', payload);
+  const getLobby = async (gid) => {
+    const response = await API.get(`${groupsEndpoint}/${gid}`);
+    return response.isSuccess ? response.result : null;
+  };
 
-  const joinTeamByCode = async (payload) => request('joinTeamByCode', payload);
+  const getTeam = async (tid) => {
+    const response = await API.get(`${teamsEndpoint}/${tid}`);
+    return response.isSuccess ? response.result : null;
+  };
 
-  const getMapPoints = async (gid, sgid = null) => request('getMapPoints', { gid, sgid });
+  const createTeam = async (payload) => {
+    const response = await API.post(teamsEndpoint, payload);
+    return response.isSuccess ? response.result : null;
+  };
 
-  const getCaches = async (gid, sgid = null) => request('getCaches', { gid, sgid });
+  const joinTeamByCode = async (payload) => {
+    const response = await API.post(teamMembersEndpoint, payload);
+    return response.isSuccess ? response.result : null;
+  };
 
-  const upsertCache = async (payload) => request('upsertCache', payload);
+  const getMapPoints = async (gid, sgid = null) => {
+    let url = `${gameDataEndpoint}/${gid}/caches`;
+    if (sgid !== null) url += `?SGid=${sgid}`;
+    const response = await API.get(url);
+    return response.isSuccess ? response.result : [];
+  };
 
-  const claimCache = async (payload) => request('claimCache', payload);
+  const getCaches = async (gid, sgid = null) => {
+    let url = `${gameDataEndpoint}/${gid}/caches`;
+    if (sgid !== null) url += `?SGid=${sgid}`;
+    const response = await API.get(url);
+    return response.isSuccess ? response.result : [];
+  };
+
+  const upsertCache = async (payload) => {
+    if (payload.cacheId) {
+      const response = await API.put(
+        `${gameDataEndpoint}/${payload.gid}/caches/${payload.cacheId}`,
+        payload,
+      );
+      return response.isSuccess ? response.result : null;
+    }
+    const response = await API.post(
+      `${gameDataEndpoint}/${payload.gid}/caches`,
+      payload,
+    );
+    return response.isSuccess ? response.result : null;
+  };
+
+  const claimCache = async (payload) => {
+    const response = await API.put(
+      `${gameDataEndpoint}/${payload.gid}/caches/${payload.cacheId}`,
+      {ClaimedByUid: payload.uid, ClaimedByTid: payload.tid},
+    );
+    return response.isSuccess ? response.result : null;
+  };
+
+  //   Return ---------------------
 
   return {
     getGameTypes,

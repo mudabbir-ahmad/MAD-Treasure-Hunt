@@ -1,6 +1,11 @@
 import {Pressable, StyleSheet, Text, View} from "react-native";
 
 export const Button = ({ label, icon, onClick, styleLabel, styleButton }) => {
+  //   Initialisation -------------
+  //   State ----------------------
+  //   Handlers -------------------
+  //   View -----------------------
+
   return (
     <Pressable onPress={onClick} style={[styles.button, styleButton]}>
       {icon ? icon : null}
@@ -10,6 +15,11 @@ export const Button = ({ label, icon, onClick, styleLabel, styleButton }) => {
 };
 
 export const ButtonTray = ({ children }) => {
+  //   Initialisation -------------
+  //   State ----------------------
+  //   Handlers -------------------
+  //   View -----------------------
+
   return <View style={styles.buttonTray}>{children}</View>;
 };
 

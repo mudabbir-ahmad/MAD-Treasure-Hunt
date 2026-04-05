@@ -3,6 +3,11 @@ import {StyleSheet, Text} from 'react-native';
 import Screen from '../layout/Screen';
 
 const JoinPrivateGameScreen = () => {
+  //   Initialisation -------------
+  //   State ----------------------
+  //   Handlers -------------------
+  //   View -----------------------
+
   return (
     <Screen style={styles.container}>
       <Text style={styles.title}>Join Private Game</Text>

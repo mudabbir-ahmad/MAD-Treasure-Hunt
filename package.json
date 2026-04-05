@@ -3,10 +3,7 @@
   "main": "node_modules/expo/AppEntry.js",
   "version": "1.0.0",
   "scripts": {
-    "api": "node server/server.js",
-    "api:standalone": "npm --prefix server start",
     "start": "expo start",
-    "start:api": "npm run api",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",

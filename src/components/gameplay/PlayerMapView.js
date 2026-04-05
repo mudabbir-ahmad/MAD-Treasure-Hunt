@@ -3,9 +3,12 @@ import MapView, {Circle} from 'react-native-maps';
 import ClaimTimerView from './ClaimTimerView';
 
 const PlayerMapView = ({ userLocation, visibleCache, isClaiming, onClaimSuccess }) => {
-  if (!userLocation) {
-    return null;
-  }
+//   Initialisation -------------
+//   State ----------------------
+//   Handlers -------------------
+//   View -----------------------
+
+  if (!userLocation) return null;
 
   return (
     <>

@@ -17,65 +17,56 @@ import ManageSubgroupsScreen from "./src/components/screens/ManageSubgroupsScree
 const Stack = createNativeStackNavigator();
 
 const AuthStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerShown: false,
-    }}
-  >
-    <Stack.Screen name="LoginScreen" component={LoginScreen} />
-    <Stack.Screen name="RegisterScreen" component={RegisterScreen} />
-  </Stack.Navigator>
+    <Stack.Navigator
+        screenOptions={{headerShown: false}}
+    >
+        <Stack.Screen name="LoginScreen" component={LoginScreen}/>
+        <Stack.Screen name="RegisterScreen" component={RegisterScreen}/>
+    </Stack.Navigator>
 );
 
 const GameStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerShown: false,
-    }}
-  >
-    <Stack.Screen name="GameTypeScreen" component={GameTypeScreen} />
-    <Stack.Screen name="JoinPrivateGameScreen" component={JoinPrivateGameScreen} />
-    <Stack.Screen name="ManagePrivateGameScreen" component={ManagePrivateGameScreen} />
-    <Stack.Screen name="CreateGameScreen" component={CreateGameScreen} />
-    <Stack.Screen name="ManageGameScreen" component={ManageGameScreen} />
-    <Stack.Screen name="GameLobbyScreen" component={GameLobbyScreen} />
-    <Stack.Screen name="LeaderboardScreen" component={LeaderboardScreen} />
-    <Stack.Screen name="TeamScreen" component={TeamScreen} />
-    <Stack.Screen name="MapScreen" component={MapScreen} />
-  </Stack.Navigator>
+    <Stack.Navigator
+        screenOptions={{headerShown: false}}
+    >
+        <Stack.Screen name="GameTypeScreen" component={GameTypeScreen}/>
+        <Stack.Screen name="JoinPrivateGameScreen" component={JoinPrivateGameScreen}/>
+        <Stack.Screen name="ManagePrivateGameScreen" component={ManagePrivateGameScreen}/>
+        <Stack.Screen name="CreateGameScreen" component={CreateGameScreen}/>
+        <Stack.Screen name="ManageGameScreen" component={ManageGameScreen}/>
+        <Stack.Screen name="GameLobbyScreen" component={GameLobbyScreen}/>
+        <Stack.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
+        <Stack.Screen name="TeamScreen" component={TeamScreen}/>
+        <Stack.Screen name="MapScreen" component={MapScreen}/>
+    </Stack.Navigator>
 );
 
 const AdminStack = () => (
-  <Stack.Navigator
-    screenOptions={{
-      headerShown: false,
-    }}
-  >
-    <Stack.Screen name="AdminHubScreen" component={AdminHubScreen} />
-    <Stack.Screen name="ManageSubgroupsScreen" component={ManageSubgroupsScreen} />
-    <Stack.Screen name="LeaderboardScreen" component={LeaderboardScreen} />
-    <Stack.Screen name="MapScreen" component={MapScreen} />
-    <Stack.Screen name="TeamScreen" component={TeamScreen} />
-    <Stack.Screen name="CreateGameScreen" component={CreateGameScreen} />
-    <Stack.Screen name="ManageGameScreen" component={ManageGameScreen} />
-  </Stack.Navigator>
+    <Stack.Navigator
+        screenOptions={{headerShown: false}}
+    >
+        <Stack.Screen name="AdminHubScreen" component={AdminHubScreen}/>
+        <Stack.Screen name="ManageSubgroupsScreen" component={ManageSubgroupsScreen}/>
+        <Stack.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
+        <Stack.Screen name="MapScreen" component={MapScreen}/>
+        <Stack.Screen name="TeamScreen" component={TeamScreen}/>
+        <Stack.Screen name="CreateGameScreen" component={CreateGameScreen}/>
+        <Stack.Screen name="ManageGameScreen" component={ManageGameScreen}/>
+    </Stack.Navigator>
 );
 
 export const App = () => {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-        }}
-      >
-        <Stack.Screen name="Auth" component={AuthStack} />
-        <Stack.Screen name="Game" component={GameStack} />
-        <Stack.Screen name="Admin" component={AdminStack} />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+    return (
+        <NavigationContainer>
+            <Stack.Navigator
+                screenOptions={{headerShown: false}}
+            >
+                <Stack.Screen name="Auth" component={AuthStack}/>
+                <Stack.Screen name="Game" component={GameStack}/>
+                <Stack.Screen name="Admin" component={AdminStack}/>
+            </Stack.Navigator>
+        </NavigationContainer>
+    );
 };
 
 export default App;
-

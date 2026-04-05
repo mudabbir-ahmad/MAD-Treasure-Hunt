@@ -9,175 +9,153 @@ import usePlayerGame from '../../hooks/usePlayerGame';
 import {getSession} from '../../hooks/SessionStore';
 import Cache from '../../models/Cache';
 
-const toHeading = ({ x, y }) => {
-  const angle = Math.atan2(y, x) * (180 / Math.PI);
-  return angle < 0 ? angle + 360 : angle;
+const toHeading = ({x, y}) => {
+    const angle = Math.atan2(y, x) * (180 / Math.PI);
+    return angle < 0 ? angle + 360 : angle;
 };
 
 const MapScreen = () => {
-  const session = getSession();
-  const { getCaches, claimCache } = useGameHook();
-  const [userLocation, setUserLocation] = useState(null);
-  const [heading, setHeading] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [cacheRecords, setCacheRecords] = useState([]);
-  const [error, setError] = useState('');
+//   Initialisation ------------
 
-  const activeCaches = useMemo(() => (
-    cacheRecords.map(
-      (cache) => new Cache(
-        cache.id,
-        cache.coordinates.latitude,
-        cache.coordinates.longitude,
-        cache.radius,
-        cache.clue,
-        cache.groupId,
-        cache.subgroupId,
-      ),
-    )
-  ), [cacheRecords]);
+    const session = getSession();
+    const {getCaches, claimCache} = useGameHook();
 
-  const subgroupFilter = session.currentSGid;
-  const { visibleCache, isClaiming, setIsClaiming } = usePlayerGame(userLocation, heading, activeCaches);
+//   State ----------------------
 
-  const loadCaches = useCallback(async () => {
-    if (!session.currentGid) {
-      setCacheRecords([]);
-      return;
-    }
-    const rows = await getCaches(session.currentGid, subgroupFilter);
-    setCacheRecords(rows || []);
-  }, [getCaches, session.currentGid, subgroupFilter]);
+    const [userLocation, setUserLocation] = useState(null);
+    const [heading, setHeading] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [cacheRecords, setCacheRecords] = useState([]);
+    const [error, setError] = useState('');
 
-  useEffect(() => {
-    loadCaches();
-  }, [loadCaches]);
+    const activeCaches = useMemo(() => (
+        cacheRecords.map((cache) => new Cache(
+            cache.id,
+            cache.coordinates.latitude,
+            cache.coordinates.longitude,
+            cache.radius,
+            cache.clue,
+            cache.groupId,
+            cache.subgroupId,
+        ))
+    ), [cacheRecords]);
 
-  useEffect(() => {
-    let locationSub;
-    let headingSub;
+    const subgroupFilter = session.currentSGid;
+    const {visibleCache, isClaiming, setIsClaiming} = usePlayerGame(userLocation, heading, activeCaches);
 
-    const start = async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Location permission denied');
-        setLoading(false);
-        return;
-      }
+//   Handlers -------------------
 
-      const current = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      setUserLocation({ latitude: current.coords.latitude, longitude: current.coords.longitude });
+    const loadCaches = useCallback(async () => {
+        if (!session.currentGid) {
+            setCacheRecords([]);
+            return;
+        }
+        const rows = await getCaches(session.currentGid, subgroupFilter);
+        setCacheRecords(rows || []);
+    }, [session.currentGid, subgroupFilter]);
 
-      locationSub = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.Balanced,
-          distanceInterval: 1,
-          timeInterval: 1000,
-        },
-        (next) => {
-          setUserLocation({ latitude: next.coords.latitude, longitude: next.coords.longitude });
-        },
-      );
+    useEffect(() => { loadCaches(); }, [loadCaches]);
 
-      Magnetometer.setUpdateInterval(500);
-      headingSub = Magnetometer.addListener((data) => {
-        setHeading(toHeading(data));
-      });
+    useEffect(() => {
+        let locationSub;
+        let headingSub;
 
-      setLoading(false);
+        const start = async () => {
+            const {status} = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                setError('Location permission denied');
+                setLoading(false);
+                return;
+            }
+            const current = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Balanced});
+            setUserLocation({latitude: current.coords.latitude, longitude: current.coords.longitude});
+
+            locationSub = await Location.watchPositionAsync(
+                {accuracy: Location.Accuracy.Balanced, distanceInterval: 1, timeInterval: 1000},
+                (next) => {
+                    setUserLocation({latitude: next.coords.latitude, longitude: next.coords.longitude});
+                },
+            );
+
+            Magnetometer.setUpdateInterval(500);
+            headingSub = Magnetometer.addListener((data) => { setHeading(toHeading(data)); });
+            setLoading(false);
+        };
+
+        start();
+
+        return () => {
+            if (locationSub) locationSub.remove();
+            if (headingSub) headingSub.remove();
+        };
+    }, []);
+
+    const handleClaim = async (cacheId) => {
+        if (!session.currentGid) return;
+        await claimCache({
+            gid: session.currentGid,
+            cacheId,
+            uid: session.currentUid,
+            tid: session.currentTid,
+        });
+        setIsClaiming(false);
+        await loadCaches();
     };
 
-    start();
+//   View -----------------------
 
-    return () => {
-      if (locationSub) {
-        locationSub.remove();
-      }
-      if (headingSub) {
-        headingSub.remove();
-      }
-    };
-  }, []);
-
-  const handleClaim = async (cacheId) => {
     if (!session.currentGid) {
-      return;
+        return (
+            <Screen style={styles.center}>
+                <Text style={styles.body}>Join or create a game to use map features.</Text>
+            </Screen>
+        );
     }
-    await claimCache({
-      gid: session.currentGid,
-      cacheId,
-      uid: session.currentUid,
-      tid: session.currentTid,
-    });
-    setIsClaiming(false);
-    await loadCaches();
-  };
 
-  if (!session.currentGid) {
+    if (session.isAcceptedAdmin) {
+        return (
+            <Screen style={styles.center}>
+                <Text style={styles.body}>Admins manage caches from Manage Game.</Text>
+            </Screen>
+        );
+    }
+
+    if (loading) {
+        return (
+            <Screen style={styles.center}>
+                <ActivityIndicator size="large"/>
+            </Screen>
+        );
+    }
+
+    if (error) {
+        return (
+            <Screen style={styles.center}>
+                <Text style={styles.error}>{error}</Text>
+            </Screen>
+        );
+    }
+
     return (
-      <Screen style={styles.center}>
-        <Text style={styles.body}>Join or create a game to use map features.</Text>
-      </Screen>
+        <Screen style={styles.container}>
+            <View style={styles.mapWrap}>
+                <PlayerMapView
+                    userLocation={userLocation}
+                    visibleCache={visibleCache}
+                    isClaiming={isClaiming}
+                    onClaimSuccess={handleClaim}
+                />
+            </View>
+        </Screen>
     );
-  }
-
-  if (session.isAcceptedAdmin) {
-    return (
-      <Screen style={styles.center}>
-        <Text style={styles.body}>Admins manage caches from Manage Game.</Text>
-      </Screen>
-    );
-  }
-
-  if (loading) {
-    return (
-      <Screen style={styles.center}>
-        <ActivityIndicator size="large" />
-      </Screen>
-    );
-  }
-
-  if (error) {
-    return (
-      <Screen style={styles.center}>
-        <Text style={styles.error}>{error}</Text>
-      </Screen>
-    );
-  }
-
-  return (
-    <Screen style={styles.container}>
-      <View style={styles.mapWrap}>
-        <PlayerMapView
-          userLocation={userLocation}
-          visibleCache={visibleCache}
-          isClaiming={isClaiming}
-          onClaimSuccess={handleClaim}
-        />
-      </View>
-    </Screen>
-  );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 0,
-  },
-  mapWrap: {
-    flex: 1,
-  },
-  center: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  body: {
-    color: '#4b5563',
-    fontSize: 15,
-  },
-  error: {
-    color: '#dc2626',
-    fontSize: 15,
-  },
+    container: {padding: 0},
+    mapWrap: {flex: 1},
+    center: {justifyContent: 'center', alignItems: 'center'},
+    body: {color: '#4b5563', fontSize: 15},
+    error: {color: '#dc2626', fontSize: 15},
 });
 
 export default MapScreen;

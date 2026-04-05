@@ -1,8 +1,16 @@
 import {useState} from 'react';
-import {postDb} from './dbLink';
+import API from '../components/API/API';
+import API_BASE_URL from './dbLink';
 import {clearSession, setSessionUser} from './SessionStore';
 
 const useAuthHook = () => {
+  //   Initialisation ------------
+
+  const loginEndpoint = `${API_BASE_URL}/auth/login`;
+  const registerEndpoint = `${API_BASE_URL}/auth/register`;
+
+  //   State ----------------------
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -11,40 +19,41 @@ const useAuthHook = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
+  //   Handlers -------------------
+
   const login = async () => {
     setError('');
     setIsLoading(true);
-    try {
-      const user = await postDb('login', { email: email.trim(), password });
-      setSessionUser(user);
-      setIsLoading(false);
-      return user;
-    } catch (e) {
-      setError(e.message);
-      setIsLoading(false);
-      return null;
+    const response = await API.post(loginEndpoint, {
+      email: email.trim(),
+      password,
+    });
+    setIsLoading(false);
+    if (response.isSuccess) {
+      setSessionUser(response.result);
+      return response.result;
     }
+    setError(response.message);
+    return null;
   };
 
   const register = async () => {
     setError('');
     setIsLoading(true);
-    try {
-      const user = await postDb('register', {
-        username: username.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        confirmPassword,
-        accountType,
-      });
-      setSessionUser(user);
-      setIsLoading(false);
-      return user;
-    } catch (e) {
-      setError(e.message);
-      setIsLoading(false);
-      return null;
+    const response = await API.post(registerEndpoint, {
+      username: username.trim(),
+      email: email.trim().toLowerCase(),
+      password,
+      confirmPassword,
+      accountType,
+    });
+    setIsLoading(false);
+    if (response.isSuccess) {
+      setSessionUser(response.result);
+      return response.result;
     }
+    setError(response.message);
+    return null;
   };
 
   const logout = () => {
@@ -56,6 +65,8 @@ const useAuthHook = () => {
     setAccountType('Individual');
     setError('');
   };
+
+  //   Return ---------------------
 
   return {
     email,

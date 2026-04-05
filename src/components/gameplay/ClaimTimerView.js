@@ -2,7 +2,12 @@ import React, {useEffect, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 
 const ClaimTimerView = ({ cache, onClaimSuccess, isClaiming }) => {
+//   Initialisation -------------
+//   State ----------------------
+
   const [timeLeft, setTimeLeft] = useState(5);
+
+//   Handlers -------------------
 
   useEffect(() => {
     let timer;
@@ -15,6 +20,8 @@ const ClaimTimerView = ({ cache, onClaimSuccess, isClaiming }) => {
     }
     return () => clearTimeout(timer);
   }, [isClaiming, timeLeft, cache, onClaimSuccess]);
+
+//   View -----------------------
 
   if (!isClaiming) {
     return null;
@@ -45,4 +52,3 @@ const styles = StyleSheet.create({
 });
 
 export default ClaimTimerView;
-
