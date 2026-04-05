@@ -1,6 +1,5 @@
 import {useState} from 'react';
-import API from '../components/API/API';
-import API_BASE_URL from './dbLink';
+import API, {API_BASE_URL} from '../components/API/API';
 import {clearSession, setSessionUser} from './SessionStore';
 
 const useAuthHook = () => {

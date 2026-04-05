@@ -3,10 +3,6 @@ import {clearSession} from '../../hooks/SessionStore';
 
 const TopNavbar = ({title, showBack, navigation}) => {
 //   Initialisation ------------
-
-    const routeName = navigation.getState()?.routes?.[navigation.getState().index]?.name;
-    const showLogout = routeName !== 'LoginScreen' && routeName !== 'RegisterScreen';
-
 //   State ----------------------
 //   Handlers -------------------
 
@@ -35,11 +31,9 @@ const TopNavbar = ({title, showBack, navigation}) => {
             </View>
             <Text style={styles.title}>{title}</Text>
             <View style={styles.rightSlot}>
-                {showLogout ? (
-                    <Pressable onPress={handleLogout} style={styles.logoutButton}>
-                        <Text style={styles.logoutText}>Logout</Text>
-                    </Pressable>
-                ) : null}
+                <Pressable onPress={handleLogout} style={styles.logoutButton}>
+                    <Text style={styles.logoutText}>Logout</Text>
+                </Pressable>
             </View>
         </View>
     );

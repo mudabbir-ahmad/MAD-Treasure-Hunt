@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
 import * as Location from 'expo-location';
 import {Magnetometer} from 'expo-sensors';
@@ -7,7 +7,6 @@ import PlayerMapView from '../gameplay/PlayerMapView';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
 import {getSession} from '../../hooks/SessionStore';
-import Cache from '../../models/Cache';
 
 const toHeading = ({x, y}) => {
     const angle = Math.atan2(y, x) * (180 / Math.PI);
@@ -28,20 +27,8 @@ const MapScreen = () => {
     const [cacheRecords, setCacheRecords] = useState([]);
     const [error, setError] = useState('');
 
-    const activeCaches = useMemo(() => (
-        cacheRecords.map((cache) => new Cache(
-            cache.id,
-            cache.coordinates.latitude,
-            cache.coordinates.longitude,
-            cache.radius,
-            cache.clue,
-            cache.groupId,
-            cache.subgroupId,
-        ))
-    ), [cacheRecords]);
-
     const subgroupFilter = session.currentSGid;
-    const {visibleCache, isClaiming, setIsClaiming} = usePlayerGame(userLocation, heading, activeCaches);
+    const {visibleCache, isClaiming, setIsClaiming} = usePlayerGame(userLocation, heading, cacheRecords);
 
 //   Handlers -------------------
 

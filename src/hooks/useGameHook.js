@@ -1,5 +1,4 @@
-import API from '../components/API/API';
-import API_BASE_URL from './dbLink';
+import API, {API_BASE_URL} from '../components/API/API';
 
 const useGameHook = () => {
   //   Initialisation ------------
@@ -59,12 +58,6 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
-  const getMapPoints = async (gid, sgid = null) => {
-    let url = `${gameDataEndpoint}/${gid}/caches`;
-    if (sgid !== null) url += `?SGid=${sgid}`;
-    const response = await API.get(url);
-    return response.isSuccess ? response.result : [];
-  };
 
   const getCaches = async (gid, sgid = null) => {
     let url = `${gameDataEndpoint}/${gid}/caches`;
@@ -108,7 +101,6 @@ const useGameHook = () => {
     getTeam,
     createTeam,
     joinTeamByCode,
-    getMapPoints,
     getCaches,
     upsertCache,
     claimCache,
