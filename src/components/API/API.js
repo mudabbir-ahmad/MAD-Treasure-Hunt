@@ -1,8 +1,8 @@
 import Constants from 'expo-constants';
 
 const getBaseUrl = () => {
-    const host = Constants.expoGoConfig?.debuggerHost;
-    if (host) return 'http://192.168.8.100:3000';
+     const host = Constants.expoGoConfig?.debuggerHost;
+     if (host) return 'http://localhost:3000';
     return 'http://api.bobby.ip-ddns.com';
 };
 
