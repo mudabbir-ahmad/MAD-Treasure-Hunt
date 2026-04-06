@@ -19,12 +19,9 @@ const AdminCacheEditorView = ({ userLocation, caches, onAddCache, onMoveCache })
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       }}
-      region={{
-        ...userLocation,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }}
       onLongPress={(event) => onAddCache(event.nativeEvent.coordinate)}
+      scrollEnabled={true}
+      zoomEnabled={true}
       showsUserLocation
     >
       {(caches || []).map((cache) => (

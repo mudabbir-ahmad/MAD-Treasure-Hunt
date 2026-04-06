@@ -89,7 +89,7 @@ const ManageGameScreen = () => {
 
     if (!session.currentGid) {
         return (
-            <Screen style={styles.center}>
+            <Screen showBack={true} style={styles.center}>
                 <Text style={styles.body}>Create or join a game first.</Text>
             </Screen>
         );
@@ -97,7 +97,7 @@ const ManageGameScreen = () => {
 
     if (!session.isAcceptedAdmin) {
         return (
-            <Screen style={styles.center}>
+            <Screen showBack={true} style={styles.center}>
                 <Text style={styles.body}>Only admins can edit cache locations.</Text>
             </Screen>
         );
@@ -105,7 +105,7 @@ const ManageGameScreen = () => {
 
     if (loading) {
         return (
-            <Screen style={styles.center}>
+            <Screen showBack={true} style={styles.center}>
                 <ActivityIndicator size="large"/>
             </Screen>
         );
@@ -113,14 +113,14 @@ const ManageGameScreen = () => {
 
     if (error) {
         return (
-            <Screen style={styles.center}>
+            <Screen showBack={true} style={styles.center}>
                 <Text style={styles.error}>{error}</Text>
             </Screen>
         );
     }
 
     return (
-        <Screen style={styles.container}>
+        <Screen showBack={true} style={styles.container}>
             <View style={styles.mapWrap}>
                 <AdminCacheEditorView
                     userLocation={userLocation}

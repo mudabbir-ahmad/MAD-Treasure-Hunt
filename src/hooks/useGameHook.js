@@ -6,6 +6,7 @@ const useGameHook = () => {
   const usersEndpoint = `${API_BASE_URL}/users`;
   const gameTypesEndpoint = `${API_BASE_URL}/game-types`;
   const groupsEndpoint = `${API_BASE_URL}/groups`;
+  const subgroupsEndpoint = `${API_BASE_URL}/subgroups`;
   const subgroupMembershipsEndpoint = `${API_BASE_URL}/subgroup-memberships`;
   const teamsEndpoint = `${API_BASE_URL}/teams`;
   const teamMembersEndpoint = `${API_BASE_URL}/team-members`;
@@ -47,10 +48,25 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  const updateGroup = async (gid, data) => {
+    const response = await API.put(`${groupsEndpoint}/${gid}`, data);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const getSubgroups = async (gid) => {
+    const response = await API.get(`${subgroupsEndpoint}?Gid=${gid}`);
+    return response.isSuccess ? response.result : [];
+  };
+
   // Subgroup memberships
   const joinPrivateGame = async (payload) => {
     const response = await API.post(subgroupMembershipsEndpoint, payload);
     return response.isSuccess ? response.result : null;
+  };
+
+  const getGroupMembers = async (gid) => {
+    const response = await API.get(`${subgroupMembershipsEndpoint}?Gid=${gid}`);
+    return response.isSuccess ? response.result : [];
   };
 
   const joinAsAdmin = async (payload) => {
@@ -59,6 +75,11 @@ const useGameHook = () => {
   };
 
   // Teams
+  const getTeams = async (gid) => {
+    const response = await API.get(`${teamsEndpoint}?Gid=${gid}`);
+    return response.isSuccess ? response.result : [];
+  };
+
   const getTeam = async (tid) => {
     const response = await API.get(`${teamsEndpoint}/${tid}`);
     return response.isSuccess ? response.result : null;
@@ -116,6 +137,11 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  const deleteCache = async (gid, cacheId) => {
+    const response = await API.delete(`${gameDataEndpoint}/${gid}/caches/${cacheId}`);
+    return response.isSuccess;
+  };
+
   //   Return ---------------------
 
   return {
@@ -125,8 +151,12 @@ const useGameHook = () => {
     getCreatedPrivateGame,
     createPrivateGame,
     getLobby,
+    updateGroup,
+    getSubgroups,
     joinPrivateGame,
     joinAsAdmin,
+    getGroupMembers,
+    getTeams,
     getTeam,
     createTeam,
     joinTeamByCode,
@@ -135,6 +165,7 @@ const useGameHook = () => {
     getCaches,
     upsertCache,
     claimCache,
+    deleteCache,
   };
 };
 

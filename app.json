@@ -2,7 +2,7 @@
   "expo": {
     "name": "MAD_Treasure_Hunt_App",
     "slug": "MAD_Treasure_Hunt_App",
-        "version": "1.0.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
@@ -13,14 +13,28 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "This app needs your location for the treasure hunt."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": false
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyA-G0tSzzcM5z6HyI23s8dzKDLCOrekhbw"
+        }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "package": "com.bobthebob.MAD_Treasure_Hunt_App"
     },
     "web": {
       "favicon": "./assets/favicon.png"

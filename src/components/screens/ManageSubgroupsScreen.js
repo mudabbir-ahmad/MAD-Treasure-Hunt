@@ -9,7 +9,7 @@ const ManageSubgroupsScreen = () => {
 //   View -----------------------
 
     return (
-        <Screen style={styles.container}>
+        <Screen showBack={true} style={styles.container}>
             <Text style={styles.title}>Manage Subgroups</Text>
             <Text style={styles.body}>Manage subgroups setup goes here.</Text>
         </Screen>

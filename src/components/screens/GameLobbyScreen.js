@@ -9,7 +9,7 @@ const GameLobbyScreen = () => {
 //   View -----------------------
 
     return (
-        <Screen style={styles.container}>
+        <Screen showBack={true} style={styles.container}>
             <Text style={styles.title}>Game Lobby</Text>
             <Text style={styles.body}>Game lobby setup goes here.</Text>
         </Screen>

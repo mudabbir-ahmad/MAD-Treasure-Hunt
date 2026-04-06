@@ -13,13 +13,8 @@ const PlayerMapView = ({ userLocation, visibleCache, isClaiming, onClaimSuccess 
   return (
     <>
       <MapView
-        style={{ flex: 1 }}
+        style={{flex: 1}}
         initialRegion={{
-          ...userLocation,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
-        region={{
           ...userLocation,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,

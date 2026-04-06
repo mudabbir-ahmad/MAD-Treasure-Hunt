@@ -9,6 +9,7 @@ const TeamScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
+    const isAdmin = session.isAcceptedAdmin;
     const {getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser} = useGameHook();
 
 //   State ----------------------
@@ -86,7 +87,7 @@ const TeamScreen = () => {
     if (!activeTid || !team) {
         return (
             <Screen style={styles.center}>
-                <View style={styles.row}>
+                <View style={styles.inputRow}>
                     <TextInput
                         style={styles.codeInput}
                         placeholder="Enter Team Code"
@@ -101,14 +102,18 @@ const TeamScreen = () => {
                         styleLabel={styles.joinLabel}
                     />
                 </View>
-                <ButtonTray>
-                    <Button
-                        label="Create Team"
-                        onClick={handleCreateTeam}
-                        styleButton={styles.createButton}
-                        styleLabel={styles.createLabel}
-                    />
-                </ButtonTray>
+                {!isAdmin && (
+                    <View style={styles.fullRow}>
+                        <ButtonTray>
+                            <Button
+                                label="Create Team"
+                                onClick={handleCreateTeam}
+                                styleButton={styles.createButton}
+                                styleLabel={styles.createLabel}
+                            />
+                        </ButtonTray>
+                    </View>
+                )}
             </Screen>
         );
     }
@@ -145,7 +150,8 @@ const TeamScreen = () => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     container: {padding: 0},
-    row: {flexDirection: 'row', gap: 10, marginBottom: 15, width: '100%', paddingHorizontal: 20},
+    inputRow: {flexDirection: 'row', gap: 10, marginBottom: 15, width: '100%', paddingHorizontal: 20},
+    fullRow: {width: '100%', paddingHorizontal: 20},
     codeInput: {
         flex: 1,
         borderWidth: 1,

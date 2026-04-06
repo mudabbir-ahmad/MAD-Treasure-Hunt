@@ -5,7 +5,7 @@ import {useSafeAreaInsets} from "react-native-safe-area-context";
 import TopNavbar from "./TopNavbar";
 import BottomNavbar from "./BottomNavbar";
 
-const Screen = ({ children, style }) => {
+const Screen = ({ children, style, showBack = false }) => {
   //   Initialisation -------------
 
   const navigation = useNavigation();
@@ -24,13 +24,14 @@ const Screen = ({ children, style }) => {
     MapScreen: "Map",
     AdminHubScreen: "Admin Hub",
     ManageSubgroupsScreen: "Manage Subgroups",
+    GameSettingsScreen: "Game Settings",
+    PlayersScreen: "Players",
   };
 
   //   State ----------------------
 
   const routeName = route.name;
   const isAuthScreen = routeName === "LoginScreen" || routeName === "RegisterScreen";
-  const showBack = !isAuthScreen && navigation.canGoBack();
   const pageTitle = titleMap[routeName] || "Treasure Hunt";
 
   //   Handlers -------------------

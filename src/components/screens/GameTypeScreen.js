@@ -27,7 +27,7 @@ const GameTypeScreen = ({navigation}) => {
 //   View -----------------------
 
     return (
-        <Screen style={styles.container}>
+        <Screen showBack={true} style={styles.container}>
             <Text style={styles.title}>Select Game Type</Text>
             <View style={styles.content}>
                 {gameTypes && gameTypes.map((type) => (

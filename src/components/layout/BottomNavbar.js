@@ -1,28 +1,55 @@
 import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {getSession} from '../../hooks/SessionStore';
 
 const BottomNavbar = ({ navigation, routeName }) => {
 //   Initialisation ------------
 
     const insets = useSafeAreaInsets();
+    const session = getSession();
 
-    const tabs = [
+    const adminTabs = [
+        {
+            label: 'Game Settings',
+            route: 'GameSettingsScreen',
+            onPress: () => navigation.navigate('GameSettingsScreen'),
+        },
         {
             label: 'Map',
             route: 'MapScreen',
-            onPress: () => navigation.navigate('Game', { screen: 'MapScreen' }),
+            onPress: () => navigation.navigate('MapScreen'),
+        },
+        {
+            label: 'Players',
+            route: 'PlayersScreen',
+            onPress: () => navigation.navigate('PlayersScreen'),
         },
         {
             label: 'Leaderboard',
             route: 'LeaderboardScreen',
-            onPress: () => navigation.navigate('Game', { screen: 'LeaderboardScreen' }),
+            onPress: () => navigation.navigate('LeaderboardScreen'),
+        },
+    ];
+
+    const playerTabs = [
+        {
+            label: 'Map',
+            route: 'MapScreen',
+            onPress: () => navigation.navigate('MapScreen'),
+        },
+        {
+            label: 'Leaderboard',
+            route: 'LeaderboardScreen',
+            onPress: () => navigation.navigate('LeaderboardScreen'),
         },
         {
             label: 'Current Team',
             route: 'TeamScreen',
-            onPress: () => navigation.navigate('Game', { screen: 'TeamScreen' }),
+            onPress: () => navigation.navigate('TeamScreen'),
         },
     ];
+
+    const tabs = session.isAcceptedAdmin ? adminTabs : playerTabs;
 
 //   State ----------------------
 //   Handlers -------------------

@@ -14,6 +14,8 @@ import MapScreen from "./src/components/screens/MapScreen";
 import LeaderboardScreen from "./src/components/screens/LeaderboardScreen";
 import AdminHubScreen from "./src/components/screens/AdminHubScreen";
 import ManageSubgroupsScreen from "./src/components/screens/ManageSubgroupsScreen";
+import GameSettingsScreen from "./src/components/screens/GameSettingsScreen";
+import PlayersScreen from "./src/components/screens/PlayersScreen";
 
 const RootStack = createNativeStackNavigator();
 const AuthStackNav = createNativeStackNavigator();
@@ -43,6 +45,8 @@ const GameStack = () => (
         <GameStackNav.Screen name="MapScreen" component={MapScreen}/>
         <GameStackNav.Screen name="TeamScreen" component={TeamScreen}/>
         <GameStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
+        <GameStackNav.Screen name="GameSettingsScreen" component={GameSettingsScreen}/>
+        <GameStackNav.Screen name="PlayersScreen" component={PlayersScreen}/>
         <GameStackNav.Screen name="GameTypeScreen" component={GameTypeScreen}/>
         <GameStackNav.Screen name="JoinPrivateGameScreen" component={JoinPrivateGameScreen}/>
         <GameStackNav.Screen name="ManagePrivateGameScreen" component={ManagePrivateGameScreen}/>
@@ -59,10 +63,12 @@ const AdminStack = () => (
             contentStyle: { backgroundColor: '#ffffff' },
         }}
     >
+        <AdminStackNav.Screen name="GameSettingsScreen" component={GameSettingsScreen}/>
+        <AdminStackNav.Screen name="MapScreen" component={MapScreen}/>
+        <AdminStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
+        <AdminStackNav.Screen name="PlayersScreen" component={PlayersScreen}/>
         <AdminStackNav.Screen name="AdminHubScreen" component={AdminHubScreen}/>
         <AdminStackNav.Screen name="ManageSubgroupsScreen" component={ManageSubgroupsScreen}/>
-        <AdminStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
-        <AdminStackNav.Screen name="MapScreen" component={MapScreen}/>
         <AdminStackNav.Screen name="TeamScreen" component={TeamScreen}/>
         <AdminStackNav.Screen name="CreateGameScreen" component={CreateGameScreen}/>
         <AdminStackNav.Screen name="ManageGameScreen" component={ManageGameScreen}/>

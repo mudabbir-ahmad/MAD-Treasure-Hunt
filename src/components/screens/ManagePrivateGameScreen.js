@@ -9,7 +9,7 @@ const ManagePrivateGameScreen = () => {
 //   View -----------------------
 
     return (
-        <Screen style={styles.container}>
+        <Screen showBack={true} style={styles.container}>
             <Text style={styles.title}>Manage Private Game</Text>
             <Text style={styles.body}>Manage private game setup goes here.</Text>
         </Screen>

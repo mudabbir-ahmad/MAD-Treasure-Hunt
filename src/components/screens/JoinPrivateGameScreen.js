@@ -9,7 +9,7 @@ const JoinPrivateGameScreen = () => {
   //   View -----------------------
 
   return (
-    <Screen style={styles.container}>
+    <Screen showBack={true} style={styles.container}>
       <Text style={styles.title}>Join Private Game</Text>
       <Text style={styles.body}>Join private game setup goes here.</Text>
     </Screen>

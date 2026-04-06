@@ -1,13 +1,17 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import MapView, {Circle, Marker} from 'react-native-maps';
 import * as Location from 'expo-location';
 import {Magnetometer} from 'expo-sensors';
 import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
+import CacheCardItem from '../gameplay/CacheCardItem';
 import PlayerMapView from '../gameplay/PlayerMapView';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
 import {getSession, setSessionGroup, setSessionUser} from '../../hooks/SessionStore';
+
+const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
 
 const toHeading = ({x, y}) => {
     const angle = Math.atan2(y, x) * (180 / Math.PI);
@@ -18,7 +22,7 @@ const MapScreen = ({navigation}) => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getCaches, claimCache, joinPrivateGame, createPrivateGame, getLobby, getUser} = useGameHook();
+    const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser} = useGameHook();
 
 //   State ----------------------
 
@@ -26,11 +30,18 @@ const MapScreen = ({navigation}) => {
     const [isAdmin, setIsAdmin] = useState(session.isAcceptedAdmin);
     const [userLocation, setUserLocation] = useState(null);
     const [heading, setHeading] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const [playerLoading, setPlayerLoading] = useState(true);
     const [cacheRecords, setCacheRecords] = useState([]);
     const [error, setError] = useState('');
     const [gameCode, setGameCode] = useState('');
     const [groupInfo, setGroupInfo] = useState(null);
+
+    // Admin cache creation / editing state
+    const [isCreating, setIsCreating] = useState(false);
+    const [editingCacheId, setEditingCacheId] = useState(null);
+    const [newCoord, setNewCoord] = useState(null);
+    const [newClue, setNewClue] = useState('');
+    const [newRadius, setNewRadius] = useState('20');
 
     const isPlayer = inGame && !isAdmin;
     const {visibleCache, isClaiming, setIsClaiming} = usePlayerGame(
@@ -39,32 +50,32 @@ const MapScreen = ({navigation}) => {
         isPlayer ? cacheRecords : [],
     );
 
+    const mapRegion = userLocation
+        ? {...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01}
+        : DEFAULT_REGION;
+
 //   Handlers -------------------
 
-    // Load group info for TeamsEnabled check
     useEffect(() => {
         if (!session.currentGid) return;
         getLobby(session.currentGid).then(setGroupInfo);
     }, [inGame]);
 
-    // Load caches for players only
     const loadCaches = useCallback(async () => {
-        if (!session.currentGid || isAdmin) {
+        if (!session.currentGid) {
             setCacheRecords([]);
             return;
         }
-        const rows = await getCaches(session.currentGid, session.currentSGid);
+        const sgFilter = isAdmin ? null : session.currentSGid;
+        const rows = await getCaches(session.currentGid, sgFilter);
         setCacheRecords(rows || []);
     }, [inGame, isAdmin]);
 
     useEffect(() => { loadCaches(); }, [loadCaches]);
 
-    // Location + compass tracking for players only
+    // Location tracking
     useEffect(() => {
-        if (!isPlayer) {
-            setLoading(false);
-            return;
-        }
+        if (!inGame) return;
         let locationSub;
         let headingSub;
 
@@ -72,7 +83,7 @@ const MapScreen = ({navigation}) => {
             const {status} = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') {
                 setError('Location permission denied');
-                setLoading(false);
+                setPlayerLoading(false);
                 return;
             }
             const current = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Balanced});
@@ -83,9 +94,11 @@ const MapScreen = ({navigation}) => {
                 (next) => setUserLocation({latitude: next.coords.latitude, longitude: next.coords.longitude}),
             );
 
-            Magnetometer.setUpdateInterval(500);
-            headingSub = Magnetometer.addListener((data) => setHeading(toHeading(data)));
-            setLoading(false);
+            if (isPlayer) {
+                Magnetometer.setUpdateInterval(500);
+                headingSub = Magnetometer.addListener((data) => setHeading(toHeading(data)));
+            }
+            setPlayerLoading(false);
         };
 
         start();
@@ -93,7 +106,7 @@ const MapScreen = ({navigation}) => {
             if (locationSub) locationSub.remove();
             if (headingSub) headingSub.remove();
         };
-    }, [isPlayer]);
+    }, [inGame, isPlayer]);
 
     const handleJoinGame = async () => {
         if (!gameCode.trim()) return;
@@ -118,6 +131,7 @@ const MapScreen = ({navigation}) => {
             setSessionUser(freshUser);
             setInGame(true);
             setIsAdmin(true);
+            navigation.navigate('GameSettingsScreen');
         }
     };
 
@@ -133,13 +147,67 @@ const MapScreen = ({navigation}) => {
         await loadCaches();
     };
 
+    // Admin — open create form
+    const handleCreateCachePress = () => {
+        const fallback = userLocation || {latitude: mapRegion.latitude, longitude: mapRegion.longitude};
+        setEditingCacheId(null);
+        setNewCoord(fallback);
+        setNewClue('');
+        setNewRadius('20');
+        setIsCreating(true);
+    };
+
+    // Admin — open edit form
+    const handleEditCache = (cache) => {
+        setEditingCacheId(cache.id);
+        setNewCoord(cache.coordinates);
+        setNewClue(cache.clue || '');
+        setNewRadius(String(cache.radius || 20));
+        setIsCreating(true);
+    };
+
+    // Admin — delete cache
+    const handleDeleteCache = async (cache) => {
+        if (!session.currentGid) return;
+        await deleteCache(session.currentGid, cache.id);
+        await loadCaches();
+    };
+
+    // Admin — save create or edit
+    const handleSaveCache = async () => {
+        if (!newCoord || !newClue.trim() || !session.currentGid) return;
+        const payload = {
+            gid: session.currentGid,
+            latitude: newCoord.latitude,
+            longitude: newCoord.longitude,
+            radius: parseInt(newRadius) || 20,
+            clue: newClue.trim(),
+            subgroupId: 1,
+        };
+        if (editingCacheId) payload.cacheId = editingCacheId;
+        await upsertCache(payload);
+        setIsCreating(false);
+        setEditingCacheId(null);
+        await loadCaches();
+    };
+
+    const handleCancelCreate = () => {
+        setIsCreating(false);
+        setEditingCacheId(null);
+    };
+
+    // Player — select cache (scroll to / highlight)
+    const handleSelectCache = (cache) => {
+        // Future: scroll map to cache location
+    };
+
 //   View -----------------------
 
     // Not in a game
     if (!inGame) {
         return (
             <Screen style={styles.center}>
-                <View style={styles.row}>
+                <View style={styles.inputRow}>
                     <TextInput
                         style={styles.codeInput}
                         placeholder="Enter Game Code"
@@ -154,37 +222,179 @@ const MapScreen = ({navigation}) => {
                         styleLabel={styles.joinLabel}
                     />
                 </View>
-                <ButtonTray>
-                    <Button
-                        label="Create a Game"
-                        onClick={handleCreateGame}
-                        styleButton={styles.createButton}
-                        styleLabel={styles.createLabel}
-                    />
-                </ButtonTray>
+                <View style={styles.fullRow}>
+                    <ButtonTray>
+                        <Button
+                            label="Create a Game"
+                            onClick={handleCreateGame}
+                            styleButton={styles.createButton}
+                            styleLabel={styles.createLabel}
+                        />
+                    </ButtonTray>
+                </View>
             </Screen>
         );
     }
 
-    // Admin view
+    // Admin — creating / editing a cache
+    if (isAdmin && isCreating) {
+        return (
+            <Screen style={styles.containerMap}>
+                <View style={styles.mapWrap}>
+                    <MapView
+                        style={{flex: 1}}
+                        initialRegion={newCoord ? {...newCoord, latitudeDelta: 0.01, longitudeDelta: 0.01} : mapRegion}
+                        scrollEnabled={true}
+                        zoomEnabled={true}
+                        onPress={(e) => setNewCoord(e.nativeEvent.coordinate)}
+                        showsUserLocation
+                    >
+                        {cacheRecords.map((cache) => (
+                            <React.Fragment key={cache.id}>
+                                <Marker coordinate={cache.coordinates} pinColor="#9ca3af" title={cache.clue}/>
+                                <Circle
+                                    center={cache.coordinates}
+                                    radius={cache.radius}
+                                    fillColor="rgba(156,163,175,0.15)"
+                                    strokeColor="rgba(156,163,175,0.6)"
+                                />
+                            </React.Fragment>
+                        ))}
+                        {newCoord && (
+                            <>
+                                <Marker
+                                    coordinate={newCoord}
+                                    draggable
+                                    tracksViewChanges={false}
+                                    pinColor="#2563eb"
+                                    title={editingCacheId ? 'Edit Cache' : 'New Cache'}
+                                    onDragEnd={(e) => setNewCoord(e.nativeEvent.coordinate)}
+                                />
+                                <Circle
+                                    center={newCoord}
+                                    radius={parseInt(newRadius) || 20}
+                                    fillColor="rgba(37,99,235,0.15)"
+                                    strokeColor="rgba(37,99,235,0.85)"
+                                />
+                            </>
+                        )}
+                    </MapView>
+                </View>
+                <ScrollView style={styles.formSection}>
+                    <TextInput
+                        style={styles.formInput}
+                        placeholder="Cache's Clue"
+                        value={newClue}
+                        onChangeText={setNewClue}
+                    />
+                    <View style={styles.coordRow}>
+                        <View style={styles.coordField}>
+                            <Text style={styles.coordLabel}>Latitude</Text>
+                            <TextInput
+                                style={styles.formInput}
+                                placeholder="Latitude"
+                                value={newCoord ? String(newCoord.latitude.toFixed(6)) : ''}
+                                editable={false}
+                            />
+                        </View>
+                        <View style={styles.coordField}>
+                            <Text style={styles.coordLabel}>Longitude</Text>
+                            <TextInput
+                                style={styles.formInput}
+                                placeholder="Longitude"
+                                value={newCoord ? String(newCoord.longitude.toFixed(6)) : ''}
+                                editable={false}
+                            />
+                        </View>
+                    </View>
+                    <TextInput
+                        style={styles.formInput}
+                        placeholder="Claim Radius (metres)"
+                        value={newRadius}
+                        onChangeText={setNewRadius}
+                        keyboardType="numeric"
+                    />
+                    <ButtonTray>
+                        <Button
+                            label={editingCacheId ? 'Update Cache' : 'Save Cache'}
+                            onClick={handleSaveCache}
+                            styleButton={styles.saveButton}
+                            styleLabel={styles.saveLabel}
+                        />
+                        <Button
+                            label="Cancel"
+                            onClick={handleCancelCreate}
+                            styleButton={styles.cancelButton}
+                            styleLabel={styles.cancelLabel}
+                        />
+                    </ButtonTray>
+                </ScrollView>
+            </Screen>
+        );
+    }
+
+    // Admin — normal view (map + create button + cache list)
     if (isAdmin) {
         return (
-            <Screen style={styles.center}>
-                <Text style={styles.body}>Admins manage caches from Manage Game.</Text>
+            <Screen style={styles.containerMap}>
+                <View style={styles.mapWrap}>
+                    <MapView
+                        style={{flex: 1}}
+                        initialRegion={mapRegion}
+                        showsUserLocation
+                    >
+                        {cacheRecords.map((cache) => (
+                            <React.Fragment key={cache.id}>
+                                <Marker coordinate={cache.coordinates} title={cache.clue}/>
+                                <Circle
+                                    center={cache.coordinates}
+                                    radius={cache.radius}
+                                    fillColor="rgba(59,130,246,0.15)"
+                                    strokeColor="rgba(59,130,246,0.85)"
+                                />
+                            </React.Fragment>
+                        ))}
+                    </MapView>
+                </View>
+                <View style={styles.createCacheWrap}>
+                    <Button
+                        label="Create Cache"
+                        onClick={handleCreateCachePress}
+                        styleButton={styles.createCacheButton}
+                        styleLabel={styles.createCacheLabel}
+                    />
+                </View>
+                <View style={styles.cacheSection}>
+                    <ScrollView>
+                        {cacheRecords.map((cache) => (
+                            <CacheCardItem
+                                key={cache.id}
+                                cache={cache}
+                                isAdmin={true}
+                                onEdit={handleEditCache}
+                                onDelete={handleDeleteCache}
+                            />
+                        ))}
+                        {cacheRecords.length === 0 && (
+                            <Text style={styles.emptyText}>No caches yet. Tap Create Cache to add one.</Text>
+                        )}
+                    </ScrollView>
+                </View>
             </Screen>
         );
     }
 
-    // Loading
-    if (loading) {
+    // Player — loading location
+    if (playerLoading) {
         return (
             <Screen style={styles.center}>
                 <ActivityIndicator size="large"/>
+                <Text style={styles.loadingText}>Getting your location...</Text>
             </Screen>
         );
     }
 
-    // Error
+    // Player — error
     if (error) {
         return (
             <Screen style={styles.center}>
@@ -212,12 +422,12 @@ const MapScreen = ({navigation}) => {
             <View style={styles.cacheSection}>
                 <ScrollView>
                     {cacheRecords.map((cache) => (
-                        <View key={cache.id} style={styles.cacheCard}>
-                            <Text style={styles.cacheClue}>{cache.clue}</Text>
-                            <Text style={[styles.cacheStatus, cache.ClaimedByUid && styles.cacheStatusClaimed]}>
-                                {cache.ClaimedByUid ? 'Claimed' : 'Available'}
-                            </Text>
-                        </View>
+                        <CacheCardItem
+                            key={cache.id}
+                            cache={cache}
+                            isAdmin={false}
+                            onSelect={handleSelectCache}
+                        />
                     ))}
                     {cacheRecords.length === 0 && (
                         <Text style={styles.emptyText}>No caches available yet.</Text>
@@ -231,10 +441,11 @@ const MapScreen = ({navigation}) => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     containerMap: {padding: 0},
-    mapWrap: {flex: 2},
-    body: {color: '#4b5563', fontSize: 15},
+    mapWrap: {flex: 1},
     error: {color: '#dc2626', fontSize: 15},
-    row: {flexDirection: 'row', gap: 10, marginBottom: 15, width: '100%', paddingHorizontal: 20},
+    loadingText: {color: '#6b7280', fontSize: 14, marginTop: 10},
+    inputRow: {flexDirection: 'row', gap: 10, marginBottom: 15, width: '100%', paddingHorizontal: 20},
+    fullRow: {width: '100%', paddingHorizontal: 20},
     codeInput: {
         flex: 1,
         borderWidth: 1,
@@ -255,26 +466,33 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         fontSize: 14,
     },
+    createCacheWrap: {paddingHorizontal: 12, paddingVertical: 8},
+    createCacheButton: {backgroundColor: '#2563eb', borderColor: '#2563eb'},
+    createCacheLabel: {color: '#ffffff', fontWeight: '600'},
+    formSection: {flex: 1, paddingHorizontal: 12, paddingVertical: 10},
+    formInput: {
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 16,
+        backgroundColor: '#ffffff',
+        marginBottom: 10,
+    },
+    coordRow: {flexDirection: 'row', gap: 10},
+    coordField: {flex: 1},
+    coordLabel: {fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4},
+    saveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
+    saveLabel: {color: '#ffffff', fontWeight: '600'},
+    cancelButton: {backgroundColor: '#6b7280', borderColor: '#6b7280'},
+    cancelLabel: {color: '#ffffff', fontWeight: '600'},
     cacheSection: {
-        flex: 1,
+        maxHeight: 160,
         backgroundColor: '#f3f4f6',
         paddingHorizontal: 12,
         paddingTop: 10,
     },
-    cacheCard: {
-        backgroundColor: '#ffffff',
-        borderRadius: 8,
-        padding: 12,
-        marginBottom: 8,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
-    },
-    cacheClue: {fontSize: 15, fontWeight: '600', color: '#1f2937'},
-    cacheStatus: {fontSize: 13, color: '#16a34a', fontWeight: '600'},
-    cacheStatusClaimed: {color: '#9ca3af'},
     emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 20, fontSize: 14},
 });
 

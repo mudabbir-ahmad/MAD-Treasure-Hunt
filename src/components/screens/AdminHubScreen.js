@@ -9,7 +9,7 @@ const AdminHubScreen = () => {
 //   View -----------------------
 
     return (
-        <Screen style={styles.container}>
+        <Screen showBack={true} style={styles.container}>
             <Text style={styles.title}>Admin Hub</Text>
             <Text style={styles.body}>Admin hub setup goes here.</Text>
         </Screen>

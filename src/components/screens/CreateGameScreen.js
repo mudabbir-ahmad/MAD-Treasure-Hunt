@@ -9,7 +9,7 @@ const CreateGameScreen = () => {
 //   View -----------------------
 
     return (
-        <Screen style={styles.container}>
+        <Screen showBack={true} style={styles.container}>
             <Text style={styles.title}>Create Game</Text>
             <Text style={styles.body}>Create game setup goes here.</Text>
         </Screen>
