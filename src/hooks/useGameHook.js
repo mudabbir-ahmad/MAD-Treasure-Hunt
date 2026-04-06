@@ -3,6 +3,7 @@ import API, {API_BASE_URL} from '../components/API/API';
 const useGameHook = () => {
   //   Initialisation ------------
 
+  const usersEndpoint = `${API_BASE_URL}/users`;
   const gameTypesEndpoint = `${API_BASE_URL}/game-types`;
   const groupsEndpoint = `${API_BASE_URL}/groups`;
   const subgroupMembershipsEndpoint = `${API_BASE_URL}/subgroup-memberships`;
@@ -13,11 +14,24 @@ const useGameHook = () => {
 
   //   Handlers -------------------
 
+  // Users
+  const getUser = async (uid) => {
+    const response = await API.get(`${usersEndpoint}/${uid}`);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const updateUser = async (uid, data) => {
+    const response = await API.put(`${usersEndpoint}/${uid}`, data);
+    return response.isSuccess ? response.result : null;
+  };
+
+  // Game types
   const getGameTypes = async () => {
     const response = await API.get(gameTypesEndpoint);
     return response.isSuccess ? response.result : [];
   };
 
+  // Groups
   const getCreatedPrivateGame = async (userId) => {
     const response = await API.get(`${groupsEndpoint}?CreatedByUid=${userId}`);
     return response.isSuccess ? response.result : [];
@@ -28,6 +42,12 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  const getLobby = async (gid) => {
+    const response = await API.get(`${groupsEndpoint}/${gid}`);
+    return response.isSuccess ? response.result : null;
+  };
+
+  // Subgroup memberships
   const joinPrivateGame = async (payload) => {
     const response = await API.post(subgroupMembershipsEndpoint, payload);
     return response.isSuccess ? response.result : null;
@@ -38,11 +58,7 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
-  const getLobby = async (gid) => {
-    const response = await API.get(`${groupsEndpoint}/${gid}`);
-    return response.isSuccess ? response.result : null;
-  };
-
+  // Teams
   const getTeam = async (tid) => {
     const response = await API.get(`${teamsEndpoint}/${tid}`);
     return response.isSuccess ? response.result : null;
@@ -58,7 +74,18 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  // Team members
+  const getTeamMembers = async (tid) => {
+    const response = await API.get(`${teamMembersEndpoint}?Tid=${tid}`);
+    return response.isSuccess ? response.result : [];
+  };
 
+  const leaveTeam = async (membershipId) => {
+    const response = await API.delete(`${teamMembersEndpoint}/${membershipId}`);
+    return response.isSuccess;
+  };
+
+  // Caches
   const getCaches = async (gid, sgid = null) => {
     let url = `${gameDataEndpoint}/${gid}/caches`;
     if (sgid !== null) url += `?SGid=${sgid}`;
@@ -92,15 +119,19 @@ const useGameHook = () => {
   //   Return ---------------------
 
   return {
+    getUser,
+    updateUser,
     getGameTypes,
     getCreatedPrivateGame,
     createPrivateGame,
+    getLobby,
     joinPrivateGame,
     joinAsAdmin,
-    getLobby,
     getTeam,
     createTeam,
     joinTeamByCode,
+    getTeamMembers,
+    leaveTeam,
     getCaches,
     upsertCache,
     claimCache,

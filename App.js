@@ -40,15 +40,15 @@ const GameStack = () => (
             contentStyle: { backgroundColor: '#ffffff' },
         }}
     >
+        <GameStackNav.Screen name="MapScreen" component={MapScreen}/>
+        <GameStackNav.Screen name="TeamScreen" component={TeamScreen}/>
+        <GameStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
         <GameStackNav.Screen name="GameTypeScreen" component={GameTypeScreen}/>
         <GameStackNav.Screen name="JoinPrivateGameScreen" component={JoinPrivateGameScreen}/>
         <GameStackNav.Screen name="ManagePrivateGameScreen" component={ManagePrivateGameScreen}/>
         <GameStackNav.Screen name="CreateGameScreen" component={CreateGameScreen}/>
         <GameStackNav.Screen name="ManageGameScreen" component={ManageGameScreen}/>
         <GameStackNav.Screen name="GameLobbyScreen" component={GameLobbyScreen}/>
-        <GameStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
-        <GameStackNav.Screen name="TeamScreen" component={TeamScreen}/>
-        <GameStackNav.Screen name="MapScreen" component={MapScreen}/>
     </GameStackNav.Navigator>
 );
 
