@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 
 const getBaseUrl = () => {
     const host = Constants.expoGoConfig?.debuggerHost;
-    if (host) return `http://${host.split(':')[0]}:3000`;
+    if (host) return 'http://192.168.8.100:3000';
     return 'http://api.bobby.ip-ddns.com';
 };
 
@@ -29,7 +29,10 @@ const callFetch = async (endpoint, method, dataObj = null) => {
     // Call the fetch and process the return
     try {
         let result = null;
-        const response = await fetch(endpoint, requestObj);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const response = await fetch(endpoint, {...requestObj, signal: controller.signal});
+        clearTimeout(timeoutId);
         if (response.status !== 204) result = await response.json();
         return response.status >= 200 && response.status < 300
             ? {isSuccess: true, result}
