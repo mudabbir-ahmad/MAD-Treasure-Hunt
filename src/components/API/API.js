@@ -1,12 +1,4 @@
-import Constants from 'expo-constants';
-
-const getBaseUrl = () => {
-     const host = Constants.expoGoConfig?.debuggerHost;
-     if (host) return 'http://localhost:3000';
-    return 'http://api.bobby.ip-ddns.com';
-};
-
-export const API_BASE_URL = getBaseUrl();
+export const API_BASE_URL = 'http://api.bobby.ip-ddns.com';
 const API = {};
 
 API.get = (endpoint) => callFetch(endpoint, 'GET');
