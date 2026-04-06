@@ -22,7 +22,11 @@ const AdminStackNav = createNativeStackNavigator();
 
 const AuthStack = () => (
     <AuthStackNav.Navigator
-        screenOptions={{headerShown: false}}
+        screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#ffffff' },
+            keyboardHandlingEnabled: false,
+        }}
     >
         <AuthStackNav.Screen name="LoginScreen" component={LoginScreen}/>
         <AuthStackNav.Screen name="RegisterScreen" component={RegisterScreen}/>
@@ -31,7 +35,10 @@ const AuthStack = () => (
 
 const GameStack = () => (
     <GameStackNav.Navigator
-        screenOptions={{headerShown: false}}
+        screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#ffffff' },
+        }}
     >
         <GameStackNav.Screen name="GameTypeScreen" component={GameTypeScreen}/>
         <GameStackNav.Screen name="JoinPrivateGameScreen" component={JoinPrivateGameScreen}/>
@@ -47,7 +54,10 @@ const GameStack = () => (
 
 const AdminStack = () => (
     <AdminStackNav.Navigator
-        screenOptions={{headerShown: false}}
+        screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#ffffff' },
+        }}
     >
         <AdminStackNav.Screen name="AdminHubScreen" component={AdminHubScreen}/>
         <AdminStackNav.Screen name="ManageSubgroupsScreen" component={ManageSubgroupsScreen}/>
@@ -64,7 +74,10 @@ export const App = () => {
         <SafeAreaProvider>
             <NavigationContainer>
                 <RootStack.Navigator
-                    screenOptions={{headerShown: false}}
+                    screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: '#ffffff' },
+                    }}
                 >
                     <RootStack.Screen name="Auth" component={AuthStack}/>
                     <RootStack.Screen name="Game" component={GameStack}/>
