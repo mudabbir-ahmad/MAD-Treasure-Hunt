@@ -1,7 +1,10 @@
 import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 const BottomNavbar = ({ navigation, routeName }) => {
 //   Initialisation ------------
+
+    const insets = useSafeAreaInsets();
 
     const tabs = [
         {
@@ -26,7 +29,7 @@ const BottomNavbar = ({ navigation, routeName }) => {
 //   View -----------------------
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, {paddingBottom: insets.bottom}]}>
             {tabs.map((tab) => {
                 const isActive = routeName === tab.route;
                 return (
@@ -47,8 +50,8 @@ const styles = StyleSheet.create({
     container: {
         minHeight: 64,
         borderTopWidth: 1,
-        borderTopColor: '#e5e7eb',
-        backgroundColor: '#ffffff',
+        borderTopColor: '#555555',
+        backgroundColor: '#4a4a4a',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around',
@@ -63,16 +66,16 @@ const styles = StyleSheet.create({
         marginHorizontal: 4,
     },
     tabActive: {
-        backgroundColor: '#eff6ff',
+        backgroundColor: '#5c5c5c',
     },
     tabText: {
-        color: '#374151',
+        color: '#d1d5db',
         fontSize: 12,
         fontWeight: '600',
         textAlign: 'center',
     },
     tabTextActive: {
-        color: '#2563eb',
+        color: '#ffffff',
     },
 });
 

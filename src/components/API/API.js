@@ -1,4 +1,18 @@
-export const API_BASE_URL = 'http://localhost:3000';
+import Constants from 'expo-constants';
+
+const getBaseUrl = () => {
+    // In Expo Go the debuggerHost is "192.168.x.x:8081" — grab the IP
+    const debuggerHost = Constants.expoGoConfig?.debuggerHost;
+    if (debuggerHost) {
+        const ip = debuggerHost.split(':')[0];
+        return `http://${ip}:3000`;
+    }
+    // Fallback for web / production
+    return 'http://localhost:3000';
+};
+
+export const API_BASE_URL = getBaseUrl();
+//export const API_BASE_URL = 'http://api.bobby.ip-ddns.com'; // Production server URL
 
 const API = {};
 

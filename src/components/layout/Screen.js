@@ -1,6 +1,7 @@
 import {StatusBar} from "expo-status-bar";
 import {StyleSheet, View} from "react-native";
 import {useNavigation, useRoute} from "@react-navigation/native";
+import {useSafeAreaInsets} from "react-native-safe-area-context";
 import TopNavbar from "./TopNavbar";
 import BottomNavbar from "./BottomNavbar";
 
@@ -9,6 +10,7 @@ const Screen = ({ children, style }) => {
 
   const navigation = useNavigation();
   const route = useRoute();
+  const insets = useSafeAreaInsets();
 
   const titleMap = {
     GameTypeScreen: "Game Type",
@@ -35,9 +37,9 @@ const Screen = ({ children, style }) => {
   //   View -----------------------
 
   return (
-    <View style={[styles.screen, style]}>
+    <View style={[styles.screen, isAuthScreen && {paddingTop: insets.top, paddingBottom: insets.bottom}]}>
       {!isAuthScreen && <TopNavbar title={pageTitle} showBack={showBack} navigation={navigation} />}
-      <View style={styles.content}>{children}</View>
+      <View style={[styles.content, style]}>{children}</View>
       {!isAuthScreen && <BottomNavbar navigation={navigation} routeName={routeName} />}
       <StatusBar style="light" />
     </View>
