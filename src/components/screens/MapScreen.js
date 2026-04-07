@@ -1,6 +1,6 @@
 import React, {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
-import MapView, {Circle, Marker} from 'react-native-maps';
+import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import {Magnetometer} from 'expo-sensors';
 import Screen from '../layout/Screen';
@@ -11,7 +11,7 @@ import PlayerMapView from '../gameplay/PlayerMapView';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
 import {getSession, setSessionGroup, setSessionUser} from '../../hooks/SessionStore';
-import {toHeading} from '../../utils/geoMath';
+import {getFovCone, toHeading} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
 
@@ -378,17 +378,12 @@ const MapScreen = ({navigation}) => {
                             </React.Fragment>
                         ))}
                         {userLocation && heading !== null && (
-                            <Marker
-                                coordinate={userLocation}
-                                flat={true}
-                                rotation={heading}
-                                anchor={{x: 0.5, y: 1.0}}
-                                tracksViewChanges={false}
-                            >
-                                <View style={styles.headingConeWrap}>
-                                    <View style={styles.headingCone}/>
-                                </View>
-                            </Marker>
+                            <Polygon
+                                coordinates={getFovCone(userLocation, heading)}
+                                fillColor="rgba(66,133,244,0.28)"
+                                strokeColor="rgba(66,133,244,0.50)"
+                                strokeWidth={1}
+                            />
                         )}
                     </MapView>
                     <Pressable style={styles.expandButton} onPress={handleExpandMap}>
@@ -563,18 +558,6 @@ const styles = StyleSheet.create({
     cacheSection: {flex: 1, backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingTop: 10},
     emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 20, fontSize: 14},
     mapWrap: {flex: 1},
-    // Heading direction cone (like Google Maps)
-    headingConeWrap: {width: 22, height: 24, alignItems: 'center'},
-    headingCone: {
-        width: 0,
-        height: 0,
-        borderTopWidth: 24,
-        borderLeftWidth: 11,
-        borderRightWidth: 11,
-        borderTopColor: 'rgba(37,99,235,0.70)',
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-    },
 });
 
 export default MapScreen;

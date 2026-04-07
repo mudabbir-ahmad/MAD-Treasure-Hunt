@@ -1,10 +1,10 @@
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
-import MapView, {Circle, Marker} from 'react-native-maps';
+import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import {Magnetometer} from 'expo-sensors';
 import Screen from '../layout/Screen';
-import {toHeading} from '../../utils/geoMath';
+import {getFovCone, toHeading} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.01, longitudeDelta: 0.01};
 
@@ -54,6 +54,10 @@ const ExpandedMapScreen = ({route}) => {
 
 //   View -----------------------
 
+    const coneCoords = (userLocation && heading !== null)
+        ? getFovCone(userLocation, heading)
+        : null;
+
     return (
         <Screen showBack={true} style={styles.container}>
             <View style={styles.mapWrap}>
@@ -78,19 +82,14 @@ const ExpandedMapScreen = ({route}) => {
                             />
                         </React.Fragment>
                     ))}
-                    {/* Heading cone for both admin and player */}
-                    {userLocation && heading !== null && (
-                        <Marker
-                            coordinate={userLocation}
-                            flat={true}
-                            rotation={heading}
-                            anchor={{x: 0.5, y: 1.0}}
-                            tracksViewChanges={false}
-                        >
-                            <View style={styles.coneWrap}>
-                                <View style={styles.cone}/>
-                            </View>
-                        </Marker>
+                    {/* Heading FOV cone */}
+                    {coneCoords && (
+                        <Polygon
+                            coordinates={coneCoords}
+                            fillColor="rgba(66,133,244,0.28)"
+                            strokeColor="rgba(66,133,244,0.50)"
+                            strokeWidth={1}
+                        />
                     )}
                 </MapView>
             </View>
@@ -101,17 +100,6 @@ const ExpandedMapScreen = ({route}) => {
 const styles = StyleSheet.create({
     container: {padding: 0},
     mapWrap: {flex: 1},
-    coneWrap: {width: 22, height: 24, alignItems: 'center'},
-    cone: {
-        width: 0,
-        height: 0,
-        borderTopWidth: 24,
-        borderLeftWidth: 11,
-        borderRightWidth: 11,
-        borderTopColor: 'rgba(37,99,235,0.70)',
-        borderLeftColor: 'transparent',
-        borderRightColor: 'transparent',
-    },
 });
 
 export default ExpandedMapScreen;

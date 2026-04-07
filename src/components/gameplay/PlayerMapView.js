@@ -1,6 +1,6 @@
 import React from 'react';
-import {StyleSheet, View} from 'react-native';
-import MapView, {Circle, Marker} from 'react-native-maps';
+import MapView, {Circle, Polygon} from 'react-native-maps';
+import {getFovCone} from '../../utils/geoMath';
 
 const PlayerMapView = ({ userLocation, visibleCache, heading }) => {
 //   Initialisation -------------
@@ -9,6 +9,10 @@ const PlayerMapView = ({ userLocation, visibleCache, heading }) => {
 //   View -----------------------
 
   if (!userLocation) return null;
+
+  const coneCoords = (heading !== null && heading !== undefined)
+    ? getFovCone(userLocation, heading)
+    : null;
 
   return (
     <MapView
@@ -32,35 +36,17 @@ const PlayerMapView = ({ userLocation, visibleCache, heading }) => {
           strokeColor="rgba(250, 204, 21, 0.90)"
         />
       ) : null}
-      {heading !== null && heading !== undefined && (
-        <Marker
-          coordinate={userLocation}
-          flat={true}
-          rotation={heading}
-          anchor={{x: 0.5, y: 1.0}}
-          tracksViewChanges={false}
-        >
-          <View style={styles.coneWrap}>
-            <View style={styles.cone}/>
-          </View>
-        </Marker>
+      {coneCoords && (
+        <Polygon
+          coordinates={coneCoords}
+          fillColor="rgba(66,133,244,0.28)"
+          strokeColor="rgba(66,133,244,0.50)"
+          strokeWidth={1}
+        />
       )}
     </MapView>
   );
 };
 
-const styles = StyleSheet.create({
-  coneWrap: {width: 22, height: 24, alignItems: 'center'},
-  cone: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 24,
-    borderLeftWidth: 11,
-    borderRightWidth: 11,
-    borderTopColor: 'rgba(37,99,235,0.70)',
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-  },
-});
 
 export default PlayerMapView;
