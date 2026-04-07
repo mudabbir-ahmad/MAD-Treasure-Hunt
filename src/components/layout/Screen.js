@@ -26,6 +26,7 @@ const Screen = ({ children, style, showBack = false }) => {
     ManageSubgroupsScreen: "Manage Subgroups",
     GameSettingsScreen: "Game Settings",
     PlayersScreen: "Players",
+    ExpandedMapScreen: "Map View",
   };
 
   //   State ----------------------

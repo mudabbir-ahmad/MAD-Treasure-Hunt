@@ -16,6 +16,7 @@ import AdminHubScreen from "./src/components/screens/AdminHubScreen";
 import ManageSubgroupsScreen from "./src/components/screens/ManageSubgroupsScreen";
 import GameSettingsScreen from "./src/components/screens/GameSettingsScreen";
 import PlayersScreen from "./src/components/screens/PlayersScreen";
+import ExpandedMapScreen from "./src/components/screens/ExpandedMapScreen";
 
 const RootStack = createNativeStackNavigator();
 const AuthStackNav = createNativeStackNavigator();
@@ -47,6 +48,7 @@ const GameStack = () => (
         <GameStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
         <GameStackNav.Screen name="GameSettingsScreen" component={GameSettingsScreen}/>
         <GameStackNav.Screen name="PlayersScreen" component={PlayersScreen}/>
+        <GameStackNav.Screen name="ExpandedMapScreen" component={ExpandedMapScreen}/>
         <GameStackNav.Screen name="GameTypeScreen" component={GameTypeScreen}/>
         <GameStackNav.Screen name="JoinPrivateGameScreen" component={JoinPrivateGameScreen}/>
         <GameStackNav.Screen name="ManagePrivateGameScreen" component={ManagePrivateGameScreen}/>
@@ -67,6 +69,7 @@ const AdminStack = () => (
         <AdminStackNav.Screen name="MapScreen" component={MapScreen}/>
         <AdminStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
         <AdminStackNav.Screen name="PlayersScreen" component={PlayersScreen}/>
+        <AdminStackNav.Screen name="ExpandedMapScreen" component={ExpandedMapScreen}/>
         <AdminStackNav.Screen name="AdminHubScreen" component={AdminHubScreen}/>
         <AdminStackNav.Screen name="ManageSubgroupsScreen" component={ManageSubgroupsScreen}/>
         <AdminStackNav.Screen name="TeamScreen" component={TeamScreen}/>

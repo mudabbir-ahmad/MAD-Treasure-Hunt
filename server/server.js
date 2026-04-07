@@ -560,6 +560,7 @@ addRoute('GET', '/game-data/:gid', (req, res, params) => {
 // Helper: convert storage cache to API response format
 const toCacheApi = (cache, gid) => ({
     id: cache.CacheId,
+    name: cache.Name || '',
     coordinates: { latitude: cache.Latitude, longitude: cache.Longitude },
     radius: cache.TriggerMeters,
     clue: cache.Title,
@@ -572,6 +573,7 @@ const toCacheApi = (cache, gid) => ({
 // Helper: convert API payload to storage cache format
 const toCacheStorage = (data, cacheId) => ({
     CacheId: cacheId,
+    Name: data.name || data.Name || '',
     Title: data.clue || data.Title || '',
     Latitude: data.latitude != null ? data.latitude : (data.Latitude || 0),
     Longitude: data.longitude != null ? data.longitude : (data.Longitude || 0),

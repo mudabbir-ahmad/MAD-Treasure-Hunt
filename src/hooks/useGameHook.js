@@ -69,6 +69,11 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : [];
   };
 
+  const removeMember = async (membershipId) => {
+    const response = await API.delete(`${subgroupMembershipsEndpoint}/${membershipId}`);
+    return response.isSuccess;
+  };
+
   const joinAsAdmin = async (payload) => {
     const response = await API.post(adminWaitlistEndpoint, payload);
     return response.isSuccess ? response.result : null;
@@ -156,6 +161,7 @@ const useGameHook = () => {
     joinPrivateGame,
     joinAsAdmin,
     getGroupMembers,
+    removeMember,
     getTeams,
     getTeam,
     createTeam,

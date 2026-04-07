@@ -36,13 +36,12 @@ const ClaimTimerView = ({ cache, onClaimSuccess, isClaiming }) => {
 
 const styles = StyleSheet.create({
   overlay: {
-    position: 'absolute',
-    bottom: 24,
     alignSelf: 'center',
     backgroundColor: 'rgba(0,0,0,0.75)',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 10,
+    marginTop: 8,
   },
   text: {
     color: '#ffffff',

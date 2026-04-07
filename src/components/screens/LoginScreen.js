@@ -39,6 +39,7 @@ const LoginScreen = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Email"
+          placeholderTextColor="#9ca3af"
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
@@ -48,6 +49,7 @@ const LoginScreen = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Password"
+          placeholderTextColor="#9ca3af"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -93,6 +95,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
+    color: '#1f2937',
+    backgroundColor: '#ffffff',
   },
   errorText: {
     color: '#dc2626',

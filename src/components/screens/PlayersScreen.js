@@ -10,7 +10,7 @@ const PlayersScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getUser, getCaches} = useGameHook();
+    const {getLobby, getTeams, getTeamMembers, getGroupMembers, removeMember, getUser, getCaches} = useGameHook();
 
 //   State ----------------------
 
@@ -35,17 +35,15 @@ const PlayersScreen = () => {
         setGroupInfo(group);
 
         if (group && group.TeamsEnabled) {
-            // Teams enabled — load all teams for this group
             const teamRows = await getTeams(session.currentGid);
             setTeams(teamRows || []);
         } else {
-            // Teams disabled — load all members for this group
-            const memberships = await getGroupMembers(session.currentGid);
-            const nonAdminMembers = (memberships || []).filter((m) => !m.IsAcceptedAdmin);
+            const allMembers = await getGroupMembers(session.currentGid);
+            const nonAdminMembers = (allMembers || []).filter((m) => !m.IsAcceptedAdmin);
             const playerList = [];
             for (const m of nonAdminMembers) {
                 const user = await getUser(m.Uid);
-                if (user) playerList.push(user);
+                if (user) playerList.push({...user, membershipId: m.id});
             }
             setPlayers(playerList);
         }
@@ -58,7 +56,6 @@ const PlayersScreen = () => {
         setSelectedTeam(team);
         setDetailLoading(true);
 
-        // Load team members and their usernames
         const ms = await getTeamMembers(team.Tid);
         setTeamMembers(ms || []);
 
@@ -69,7 +66,6 @@ const PlayersScreen = () => {
         }
         setMemberNames(names);
 
-        // Load all caches to count individual contributions
         const caches = await getCaches(session.currentGid, null);
         const counts = {};
         for (const m of (ms || [])) {
@@ -84,6 +80,21 @@ const PlayersScreen = () => {
         setTeamMembers([]);
         setMemberNames({});
         setMemberCacheCounts({});
+    };
+
+    const handleRemovePlayer = async (membershipId) => {
+        await removeMember(membershipId);
+        await loadData();
+    };
+
+    const handleRemoveTeamMember = async (member) => {
+        // Find this user's subgroup membership to remove them from the game
+        const allMembers = await getGroupMembers(session.currentGid);
+        const membership = (allMembers || []).find((m) => m.Uid === member.Uid && !m.IsAcceptedAdmin);
+        if (membership) {
+            await removeMember(membership.id);
+            await handleSelectTeam(selectedTeam);
+        }
     };
 
 //   View -----------------------
@@ -129,6 +140,14 @@ const PlayersScreen = () => {
                                     <Text style={styles.memberCaches}>
                                         {memberCacheCounts[m.Uid] || 0} cache(s) claimed
                                     </Text>
+                                </View>
+                                <View style={styles.removeWrap}>
+                                    <Button
+                                        label="Remove"
+                                        onClick={() => handleRemoveTeamMember(m)}
+                                        styleButton={styles.removeButton}
+                                        styleLabel={styles.removeLabel}
+                                    />
                                 </View>
                             </Card>
                         ))}
@@ -185,7 +204,17 @@ const PlayersScreen = () => {
             <ScrollView style={styles.listSection}>
                 {players.map((player) => (
                     <Card key={player.Uid}>
-                        <Text style={styles.playerName}>{player.username}</Text>
+                        <View style={styles.memberRow}>
+                            <Text style={styles.playerName}>{player.username}</Text>
+                        </View>
+                        <View style={styles.removeWrap}>
+                            <Button
+                                label="Remove"
+                                onClick={() => handleRemovePlayer(player.membershipId)}
+                                styleButton={styles.removeButton}
+                                styleLabel={styles.removeLabel}
+                            />
+                        </View>
                     </Card>
                 ))}
                 {players.length === 0 && (
@@ -204,7 +233,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '700',
         color: '#1f2937',
-        marginBottom: 10,
+        marginBottom: 12,
         paddingHorizontal: 15,
         paddingTop: 15,
     },
@@ -233,6 +262,10 @@ const styles = StyleSheet.create({
     },
     memberName: {fontSize: 16, fontWeight: '600', color: '#1f2937'},
     memberCaches: {fontSize: 13, fontWeight: '600', color: '#16a34a'},
+    // Remove button
+    removeWrap: {marginTop: 8},
+    removeButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36},
+    removeLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     backWrap: {padding: 15},
     backButton: {backgroundColor: '#6b7280', borderColor: '#6b7280'},
     backLabel: {color: '#ffffff', fontWeight: '600'},

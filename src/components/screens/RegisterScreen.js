@@ -42,6 +42,7 @@ const RegisterScreen = ({navigation}) => {
                 <TextInput
                     style={styles.input}
                     placeholder="Username"
+                    placeholderTextColor="#9ca3af"
                     value={username}
                     onChangeText={setUsername}
                     editable={!isLoading}
@@ -49,6 +50,7 @@ const RegisterScreen = ({navigation}) => {
                 <TextInput
                     style={styles.input}
                     placeholder="Email"
+                    placeholderTextColor="#9ca3af"
                     autoCapitalize="none"
                     keyboardType="email-address"
                     value={email}
@@ -58,6 +60,7 @@ const RegisterScreen = ({navigation}) => {
                 <TextInput
                     style={styles.input}
                     placeholder="Password"
+                    placeholderTextColor="#9ca3af"
                     secureTextEntry
                     value={password}
                     onChangeText={setPassword}
@@ -66,6 +69,7 @@ const RegisterScreen = ({navigation}) => {
                 <TextInput
                     style={styles.input}
                     placeholder="Confirm Password"
+                    placeholderTextColor="#9ca3af"
                     secureTextEntry
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
@@ -132,6 +136,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
+        color: '#1f2937',
+        backgroundColor: '#ffffff',
     },
     typeRow: {
         flexDirection: 'row',

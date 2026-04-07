@@ -160,6 +160,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
+        color: '#1f2937',
+        backgroundColor: '#ffffff',
     },
     joinButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', flex: 0, paddingHorizontal: 20},
     joinLabel: {color: '#ffffff', fontWeight: '600'},
