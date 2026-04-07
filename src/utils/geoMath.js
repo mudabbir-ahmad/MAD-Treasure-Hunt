@@ -1,8 +1,8 @@
 import * as geolib from 'geolib';
 
 // --- FOV Configuration ---
-const FOV_DISTANCE = 20;   // metres — radius of arc + length of straight edges
-const FOV_ANGLE = 45;      // degrees — total field of view (halved for each side)
+const FOV_DISTANCE = 30;   // metres — radius of arc + length of straight edges
+const FOV_ANGLE = 60;      // degrees — total field of view (halved for each side)
 
 // Convert raw Magnetometer {x, y} reading to a 0-360° heading (0° = north)
 const toHeading = ({x, y}) => {
