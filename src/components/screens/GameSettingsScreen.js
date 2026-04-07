@@ -19,6 +19,7 @@ const GameSettingsScreen = () => {
     const [groupName, setGroupName] = useState('');
     const [teamsEnabled, setTeamsEnabled] = useState(false);
     const [maxSubgroups, setMaxSubgroups] = useState('1');
+    const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
     const [adminJoinCode, setAdminJoinCode] = useState('');
     const [memberJoinCode, setMemberJoinCode] = useState('');
 
@@ -35,6 +36,7 @@ const GameSettingsScreen = () => {
                 setGroupName(group.GroupName || '');
                 setTeamsEnabled(Boolean(group.TeamsEnabled));
                 setMaxSubgroups(String(group.MaxMemberSubgroups || 1));
+                setCacheTriggerMeters(String(group.CacheTriggerMeters || 20));
                 setAdminJoinCode(group.AdminJoinCode || '');
             }
             const sgs = await getSubgroups(session.currentGid);
@@ -52,6 +54,7 @@ const GameSettingsScreen = () => {
             GroupName: groupName.trim(),
             TeamsEnabled: teamsEnabled,
             MaxMemberSubgroups: parseInt(maxSubgroups) || 1,
+            CacheTriggerMeters: parseInt(cacheTriggerMeters) || 20,
         });
         setSaving(false);
     };
@@ -111,6 +114,16 @@ const GameSettingsScreen = () => {
                         />
                     </>
                 )}
+
+                <Text style={styles.label}>Cache Claim Distance (metres)</Text>
+                <TextInput
+                    style={styles.input}
+                    value={cacheTriggerMeters}
+                    onChangeText={setCacheTriggerMeters}
+                    keyboardType="numeric"
+                    placeholder="20"
+                    placeholderTextColor="#9ca3af"
+                />
 
                 <View style={styles.codeSection}>
                     <Text style={styles.codeLabel}>Admin Join Code</Text>

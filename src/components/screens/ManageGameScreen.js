@@ -10,7 +10,7 @@ const ManageGameScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getCaches, upsertCache} = useGameHook();
+    const {getCaches, upsertCache, getLobby} = useGameHook();
 
 //   State ----------------------
 
@@ -18,6 +18,7 @@ const ManageGameScreen = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [cacheRecords, setCacheRecords] = useState([]);
+    const [claimDistance, setClaimDistance] = useState(20);
 
 //   Handlers -------------------
 
@@ -31,6 +32,13 @@ const ManageGameScreen = () => {
     }, [session.currentGid]);
 
     useEffect(() => { loadCaches(); }, [loadCaches]);
+
+    useEffect(() => {
+        if (!session.currentGid) return;
+        getLobby(session.currentGid).then((group) => {
+            if (group) setClaimDistance(group.CacheTriggerMeters || 20);
+        });
+    }, [session.currentGid]);
 
     useEffect(() => {
         let locationSub;
@@ -62,7 +70,6 @@ const ManageGameScreen = () => {
             gid: session.currentGid,
             latitude: coordinate.latitude,
             longitude: coordinate.longitude,
-            radius: 20,
             clue: `Cache ${cacheRecords.length + 1}`,
             subgroupId: 1,
         });
@@ -78,7 +85,6 @@ const ManageGameScreen = () => {
             cacheId,
             latitude: coordinate.latitude,
             longitude: coordinate.longitude,
-            radius: current.radius,
             clue: current.clue,
             subgroupId: current.subgroupId,
         });
@@ -125,6 +131,7 @@ const ManageGameScreen = () => {
                 <AdminCacheEditorView
                     userLocation={userLocation}
                     caches={cacheRecords}
+                    claimDistance={claimDistance}
                     onAddCache={handleAddCache}
                     onMoveCache={handleMoveCache}
                 />

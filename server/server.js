@@ -209,6 +209,7 @@ addRoute('POST', '/groups', async (req, res) => {
         CreatedByUid: payload.CreatedByUid,
         MaxMemberSubgroups: payload.MaxMemberSubgroups || 1,
         TeamsEnabled: payload.TeamsEnabled !== undefined ? payload.TeamsEnabled : true,
+        CacheTriggerMeters: payload.CacheTriggerMeters || 20,
         ApprovedAdmins: [payload.CreatedByUid],
         CreatedAt: new Date().toISOString(),
     };

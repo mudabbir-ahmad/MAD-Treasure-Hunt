@@ -11,8 +11,9 @@ const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.
 const ExpandedMapScreen = ({route}) => {
 //   Initialisation ------------
 
-    const {isAdmin, cacheRecords: cacheStr} = route.params || {};
+    const {isAdmin, cacheRecords: cacheStr, claimDistance: routeClaimDistance} = route.params || {};
     const caches = cacheStr ? JSON.parse(cacheStr) : [];
+    const claimDistance = routeClaimDistance || 20;
 
 //   State ----------------------
 
@@ -74,9 +75,9 @@ const ExpandedMapScreen = ({route}) => {
                                 title={cache.name || cache.clue}
                                 pinColor="#2563eb"
                             />
-                            <Circle
+                             <Circle
                                 center={cache.coordinates}
-                                radius={cache.radius}
+                                radius={claimDistance}
                                 fillColor="rgba(59,130,246,0.15)"
                                 strokeColor="rgba(59,130,246,0.85)"
                             />

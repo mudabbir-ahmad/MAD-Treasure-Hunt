@@ -1,7 +1,7 @@
 import React from 'react';
 import MapView, {Circle, Marker} from 'react-native-maps';
 
-const AdminCacheEditorView = ({ userLocation, caches, onAddCache, onMoveCache }) => {
+const AdminCacheEditorView = ({ userLocation, caches, claimDistance, onAddCache, onMoveCache }) => {
 //   Initialisation -------------
 //   State ----------------------
 //   Handlers -------------------
@@ -34,7 +34,7 @@ const AdminCacheEditorView = ({ userLocation, caches, onAddCache, onMoveCache })
           />
           <Circle
             center={cache.coordinates}
-            radius={cache.radius}
+            radius={claimDistance}
             fillColor="rgba(59, 130, 246, 0.15)"
             strokeColor="rgba(59, 130, 246, 0.85)"
           />

@@ -40,13 +40,16 @@ const MapScreen = ({navigation}) => {
     const [newCoord, setNewCoord] = useState(null);
     const [newName, setNewName] = useState('');
     const [newClue, setNewClue] = useState('');
-    const [newRadius, setNewRadius] = useState('20');
+
+    // Global claim distance comes from the group's CacheTriggerMeters setting
+    const claimDistance = groupInfo?.CacheTriggerMeters || 20;
 
     const isPlayer = inGame && !isAdmin;
     const {visibleCache, isClaiming, setIsClaiming} = usePlayerGame(
         isPlayer ? userLocation : null,
         isPlayer ? heading : null,
         isPlayer ? cacheRecords : [],
+        claimDistance,
     );
 
     const mapRegion = userLocation
@@ -151,7 +154,6 @@ const MapScreen = ({navigation}) => {
         setNewCoord(fallback);
         setNewName('');
         setNewClue('');
-        setNewRadius('20');
         setIsCreating(true);
     };
 
@@ -161,7 +163,6 @@ const MapScreen = ({navigation}) => {
         setNewCoord(cache.coordinates);
         setNewName(cache.name || '');
         setNewClue(cache.clue || '');
-        setNewRadius(String(cache.radius || 20));
         setIsCreating(true);
     };
 
@@ -180,7 +181,6 @@ const MapScreen = ({navigation}) => {
             name: newName.trim(),
             latitude: newCoord.latitude,
             longitude: newCoord.longitude,
-            radius: parseInt(newRadius) || 20,
             clue: newClue.trim(),
             subgroupId: 1,
         };
@@ -202,6 +202,7 @@ const MapScreen = ({navigation}) => {
             isAdmin,
             cacheRecords: JSON.stringify(cacheRecords),
             heading: heading || 0,
+            claimDistance,
         });
     };
 
@@ -264,7 +265,7 @@ const MapScreen = ({navigation}) => {
                                 <Marker coordinate={cache.coordinates} pinColor="#9ca3af" title={cache.clue}/>
                                 <Circle
                                     center={cache.coordinates}
-                                    radius={cache.radius}
+                                    radius={claimDistance}
                                     fillColor="rgba(156,163,175,0.15)"
                                     strokeColor="rgba(156,163,175,0.6)"
                                 />
@@ -282,7 +283,7 @@ const MapScreen = ({navigation}) => {
                                 />
                                 <Circle
                                     center={newCoord}
-                                    radius={parseInt(newRadius) || 20}
+                                    radius={claimDistance}
                                     fillColor="rgba(37,99,235,0.15)"
                                     strokeColor="rgba(37,99,235,0.85)"
                                 />
@@ -305,8 +306,7 @@ const MapScreen = ({navigation}) => {
                         value={newClue}
                         onChangeText={setNewClue}
                     />
-                    <View style={styles.coordRow}>
-                        <View style={styles.coordField}>
+                    <View style={styles.coordRow}>                        <View style={styles.coordField}>
                             <Text style={styles.coordLabel}>Latitude</Text>
                             <TextInput
                                 style={styles.formInput}
@@ -327,14 +327,6 @@ const MapScreen = ({navigation}) => {
                             />
                         </View>
                     </View>
-                    <TextInput
-                        style={styles.formInput}
-                        placeholder="Claim Radius (metres)"
-                        placeholderTextColor="#9ca3af"
-                        value={newRadius}
-                        onChangeText={setNewRadius}
-                        keyboardType="numeric"
-                    />
                     <ButtonTray>
                         <Button
                             label={editingCacheId ? 'Update Cache' : 'Save Cache'}
@@ -371,7 +363,7 @@ const MapScreen = ({navigation}) => {
                                 <Marker coordinate={cache.coordinates} title={cache.name || cache.clue}/>
                                 <Circle
                                     center={cache.coordinates}
-                                    radius={cache.radius}
+                                    radius={claimDistance}
                                     fillColor="rgba(59,130,246,0.15)"
                                     strokeColor="rgba(59,130,246,0.85)"
                                 />
@@ -450,6 +442,7 @@ const MapScreen = ({navigation}) => {
                     userLocation={userLocation}
                     visibleCache={visibleCache}
                     heading={heading}
+                    claimDistance={claimDistance}
                 />
                 <Pressable style={styles.expandButton} onPress={handleExpandMap}>
                     <Text style={styles.expandIcon}>⛶</Text>

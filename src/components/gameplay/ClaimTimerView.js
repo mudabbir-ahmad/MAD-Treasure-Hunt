@@ -1,11 +1,12 @@
 import React, {useEffect, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
+import {CACHE_CLAIM_TIMER} from '../../utils/geoMath';
 
 const ClaimTimerView = ({ cache, onClaimSuccess, isClaiming }) => {
 //   Initialisation -------------
 //   State ----------------------
 
-  const [timeLeft, setTimeLeft] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(CACHE_CLAIM_TIMER);
 
 //   Handlers -------------------
 
@@ -16,7 +17,7 @@ const ClaimTimerView = ({ cache, onClaimSuccess, isClaiming }) => {
     } else if (isClaiming && timeLeft === 0 && cache) {
       onClaimSuccess(cache.id);
     } else {
-      setTimeLeft(5);
+      setTimeLeft(CACHE_CLAIM_TIMER);
     }
     return () => clearTimeout(timer);
   }, [isClaiming, timeLeft, cache, onClaimSuccess]);

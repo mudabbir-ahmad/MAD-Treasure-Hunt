@@ -2,7 +2,7 @@ import React from 'react';
 import MapView, {Circle, Polygon} from 'react-native-maps';
 import {getFovCone} from '../../utils/geoMath';
 
-const PlayerMapView = ({ userLocation, visibleCache, heading }) => {
+const PlayerMapView = ({ userLocation, visibleCache, heading, claimDistance }) => {
 //   Initialisation -------------
 //   State ----------------------
 //   Handlers -------------------
@@ -31,7 +31,7 @@ const PlayerMapView = ({ userLocation, visibleCache, heading }) => {
       {visibleCache ? (
         <Circle
           center={visibleCache.coordinates}
-          radius={visibleCache.radius}
+          radius={claimDistance}
           fillColor="rgba(250, 204, 21, 0.20)"
           strokeColor="rgba(250, 204, 21, 0.90)"
         />
