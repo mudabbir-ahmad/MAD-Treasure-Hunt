@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
-import {isLookingAtCache, isWithinRadius} from '../utils/geoMath';
+import {isInClaimCone} from '../utils/geoMath';
 
-const usePlayerGame = (playerLocation, playerHeading, activeCaches) => {
+const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance) => {
 //   State ----------------------
 
     const [visibleCache, setVisibleCache] = useState(null);
@@ -16,19 +16,15 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches) => {
             return;
         }
 
-        const nearbyCache = (activeCaches || []).find((cache) =>
-            isWithinRadius(playerLocation, cache.coordinates, cache.radius));
+        // Find the first cache that falls inside the invisible claim cone
+        // (same FOV angle as the visible cone, but radius = admin-set claimDistance)
+        const cacheInCone = (activeCaches || []).find((cache) =>
+            isInClaimCone(playerHeading, playerLocation, cache.coordinates, claimDistance)
+        );
 
-        if (!nearbyCache) {
-            setVisibleCache(null);
-            setIsClaiming(false);
-            return;
-        }
-
-        const isTargeted = isLookingAtCache(playerHeading, playerLocation, nearbyCache.coordinates);
-        setVisibleCache(nearbyCache);
-        setIsClaiming(isTargeted);
-    }, [playerLocation, playerHeading, activeCaches]);
+        setVisibleCache(cacheInCone || null);
+        setIsClaiming(Boolean(cacheInCone));
+    }, [playerLocation, playerHeading, activeCaches, claimDistance]);
 
 //   Return ---------------------
 

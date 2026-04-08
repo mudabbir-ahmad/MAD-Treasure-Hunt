@@ -1,22 +1,19 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
-import MapView, {Circle, Marker} from 'react-native-maps';
+import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
+import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
-import {Magnetometer} from 'expo-sensors';
 import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
 import CacheCardItem from '../gameplay/CacheCardItem';
+import ClaimTimerView from '../gameplay/ClaimTimerView';
 import PlayerMapView from '../gameplay/PlayerMapView';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
 import {getSession, setSessionGroup, setSessionUser} from '../../hooks/SessionStore';
+import {getFovCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
 
-const toHeading = ({x, y}) => {
-    const angle = Math.atan2(y, x) * (180 / Math.PI);
-    return angle < 0 ? angle + 360 : angle;
-};
 
 const MapScreen = ({navigation}) => {
 //   Initialisation ------------
@@ -40,14 +37,18 @@ const MapScreen = ({navigation}) => {
     const [isCreating, setIsCreating] = useState(false);
     const [editingCacheId, setEditingCacheId] = useState(null);
     const [newCoord, setNewCoord] = useState(null);
+    const [newName, setNewName] = useState('');
     const [newClue, setNewClue] = useState('');
-    const [newRadius, setNewRadius] = useState('20');
+
+    // Global claim distance comes from the group's CacheTriggerMeters setting
+    const claimDistance = groupInfo?.CacheTriggerMeters || 20;
 
     const isPlayer = inGame && !isAdmin;
     const {visibleCache, isClaiming, setIsClaiming} = usePlayerGame(
         isPlayer ? userLocation : null,
         isPlayer ? heading : null,
         isPlayer ? cacheRecords : [],
+        claimDistance,
     );
 
     const mapRegion = userLocation
@@ -66,8 +67,7 @@ const MapScreen = ({navigation}) => {
             setCacheRecords([]);
             return;
         }
-        const sgFilter = isAdmin ? null : session.currentSGid;
-        const rows = await getCaches(session.currentGid, sgFilter);
+        const rows = await getCaches(session.currentGid, null);
         setCacheRecords(rows || []);
     }, [inGame, isAdmin]);
 
@@ -86,19 +86,27 @@ const MapScreen = ({navigation}) => {
                 setPlayerLoading(false);
                 return;
             }
-            const current = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Balanced});
-            setUserLocation({latitude: current.coords.latitude, longitude: current.coords.longitude});
+
+            // Try cached position first for instant load, fall back to fresh fix
+            const last = await Location.getLastKnownPositionAsync();
+            if (last) {
+                setUserLocation({latitude: last.coords.latitude, longitude: last.coords.longitude});
+            } else {
+                const current = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Low});
+                setUserLocation({latitude: current.coords.latitude, longitude: current.coords.longitude});
+            }
+            setPlayerLoading(false);
 
             locationSub = await Location.watchPositionAsync(
                 {accuracy: Location.Accuracy.Balanced, distanceInterval: 1, timeInterval: 1000},
                 (next) => setUserLocation({latitude: next.coords.latitude, longitude: next.coords.longitude}),
             );
 
-            if (isPlayer) {
-                Magnetometer.setUpdateInterval(500);
-                headingSub = Magnetometer.addListener((data) => setHeading(toHeading(data)));
-            }
-            setPlayerLoading(false);
+            // Use OS-fused heading from expo-location
+            headingSub = await Location.watchHeadingAsync((headingData) => {
+                const raw = headingData.trueHeading >= 0 ? headingData.trueHeading : headingData.magHeading;
+                setHeading(raw);
+            });
         };
 
         start();
@@ -110,7 +118,7 @@ const MapScreen = ({navigation}) => {
 
     const handleJoinGame = async () => {
         if (!gameCode.trim()) return;
-        const result = await joinPrivateGame({JoinCode: gameCode.trim(), Uid: session.currentUid});
+        const result = await joinPrivateGame({JoinCode: gameCode.trim().toUpperCase(), Uid: session.currentUid});
         if (!result) return;
         setSessionGroup(result.Gid, result.SGid);
         setInGame(true);
@@ -152,8 +160,8 @@ const MapScreen = ({navigation}) => {
         const fallback = userLocation || {latitude: mapRegion.latitude, longitude: mapRegion.longitude};
         setEditingCacheId(null);
         setNewCoord(fallback);
+        setNewName('');
         setNewClue('');
-        setNewRadius('20');
         setIsCreating(true);
     };
 
@@ -161,8 +169,8 @@ const MapScreen = ({navigation}) => {
     const handleEditCache = (cache) => {
         setEditingCacheId(cache.id);
         setNewCoord(cache.coordinates);
+        setNewName(cache.name || '');
         setNewClue(cache.clue || '');
-        setNewRadius(String(cache.radius || 20));
         setIsCreating(true);
     };
 
@@ -178,9 +186,9 @@ const MapScreen = ({navigation}) => {
         if (!newCoord || !newClue.trim() || !session.currentGid) return;
         const payload = {
             gid: session.currentGid,
+            name: newName.trim(),
             latitude: newCoord.latitude,
             longitude: newCoord.longitude,
-            radius: parseInt(newRadius) || 20,
             clue: newClue.trim(),
             subgroupId: 1,
         };
@@ -196,7 +204,18 @@ const MapScreen = ({navigation}) => {
         setEditingCacheId(null);
     };
 
-    // Player — select cache (scroll to / highlight)
+    // Navigate to expanded map view, passing the live location so it opens centred on the user
+    const handleExpandMap = () => {
+        navigation.navigate('ExpandedMapScreen', {
+            isAdmin,
+            cacheRecords: JSON.stringify(cacheRecords),
+            heading: heading || 0,
+            claimDistance,
+            userLocation: userLocation || null,
+        });
+    };
+
+    // Player — select cache
     const handleSelectCache = (cache) => {
         // Future: scroll map to cache location
     };
@@ -211,6 +230,7 @@ const MapScreen = ({navigation}) => {
                     <TextInput
                         style={styles.codeInput}
                         placeholder="Enter Game Code"
+                        placeholderTextColor="#9ca3af"
                         value={gameCode}
                         onChangeText={setGameCode}
                         autoCapitalize="characters"
@@ -254,7 +274,7 @@ const MapScreen = ({navigation}) => {
                                 <Marker coordinate={cache.coordinates} pinColor="#9ca3af" title={cache.clue}/>
                                 <Circle
                                     center={cache.coordinates}
-                                    radius={cache.radius}
+                                    radius={claimDistance}
                                     fillColor="rgba(156,163,175,0.15)"
                                     strokeColor="rgba(156,163,175,0.6)"
                                 />
@@ -272,7 +292,7 @@ const MapScreen = ({navigation}) => {
                                 />
                                 <Circle
                                     center={newCoord}
-                                    radius={parseInt(newRadius) || 20}
+                                    radius={claimDistance}
                                     fillColor="rgba(37,99,235,0.15)"
                                     strokeColor="rgba(37,99,235,0.85)"
                                 />
@@ -283,7 +303,15 @@ const MapScreen = ({navigation}) => {
                 <ScrollView style={styles.formSection}>
                     <TextInput
                         style={styles.formInput}
-                        placeholder="Cache's Clue"
+                        placeholder="Cache Name"
+                        placeholderTextColor="#9ca3af"
+                        value={newName}
+                        onChangeText={setNewName}
+                    />
+                    <TextInput
+                        style={styles.formInput}
+                        placeholder="Cache Clue"
+                        placeholderTextColor="#9ca3af"
                         value={newClue}
                         onChangeText={setNewClue}
                     />
@@ -293,6 +321,7 @@ const MapScreen = ({navigation}) => {
                             <TextInput
                                 style={styles.formInput}
                                 placeholder="Latitude"
+                                placeholderTextColor="#9ca3af"
                                 value={newCoord ? String(newCoord.latitude.toFixed(6)) : ''}
                                 editable={false}
                             />
@@ -302,18 +331,12 @@ const MapScreen = ({navigation}) => {
                             <TextInput
                                 style={styles.formInput}
                                 placeholder="Longitude"
+                                placeholderTextColor="#9ca3af"
                                 value={newCoord ? String(newCoord.longitude.toFixed(6)) : ''}
                                 editable={false}
                             />
                         </View>
                     </View>
-                    <TextInput
-                        style={styles.formInput}
-                        placeholder="Claim Radius (metres)"
-                        value={newRadius}
-                        onChangeText={setNewRadius}
-                        keyboardType="numeric"
-                    />
                     <ButtonTray>
                         <Button
                             label={editingCacheId ? 'Update Cache' : 'Save Cache'}
@@ -337,24 +360,37 @@ const MapScreen = ({navigation}) => {
     if (isAdmin) {
         return (
             <Screen style={styles.containerMap}>
-                <View style={styles.mapWrap}>
+                <View style={styles.mapContainer}>
                     <MapView
                         style={{flex: 1}}
-                        initialRegion={mapRegion}
+                        region={mapRegion}
+                        scrollEnabled={true}
+                        zoomEnabled={true}
                         showsUserLocation
                     >
                         {cacheRecords.map((cache) => (
                             <React.Fragment key={cache.id}>
-                                <Marker coordinate={cache.coordinates} title={cache.clue}/>
+                                <Marker coordinate={cache.coordinates} title={cache.name || cache.clue}/>
                                 <Circle
                                     center={cache.coordinates}
-                                    radius={cache.radius}
+                                    radius={claimDistance}
                                     fillColor="rgba(59,130,246,0.15)"
                                     strokeColor="rgba(59,130,246,0.85)"
                                 />
                             </React.Fragment>
                         ))}
+                        {userLocation && heading !== null && (
+                            <Polygon
+                                coordinates={getFovCone(userLocation, heading)}
+                                fillColor="rgba(66,133,244,0.28)"
+                                strokeColor="rgba(66,133,244,0.50)"
+                                strokeWidth={1}
+                            />
+                        )}
                     </MapView>
+                    <Pressable style={styles.expandButton} onPress={handleExpandMap}>
+                        <Text style={styles.expandIcon}>⛶</Text>
+                    </Pressable>
                 </View>
                 <View style={styles.createCacheWrap}>
                     <Button
@@ -364,8 +400,8 @@ const MapScreen = ({navigation}) => {
                         styleLabel={styles.createCacheLabel}
                     />
                 </View>
-                <View style={styles.cacheSection}>
-                    <ScrollView>
+                <View style={styles.cacheListWrap}>
+                    <ScrollView contentContainerStyle={styles.cacheListContent}>
                         {cacheRecords.map((cache) => (
                             <CacheCardItem
                                 key={cache.id}
@@ -411,14 +447,22 @@ const MapScreen = ({navigation}) => {
             {teamsWarning && (
                 <Text style={styles.warning}>You are not in a team. Teams are required for this game!</Text>
             )}
-            <View style={styles.mapWrap}>
+            <View style={styles.mapContainer}>
                 <PlayerMapView
                     userLocation={userLocation}
                     visibleCache={visibleCache}
-                    isClaiming={isClaiming}
-                    onClaimSuccess={handleClaim}
+                    heading={heading}
+                    claimDistance={claimDistance}
                 />
+                <Pressable style={styles.expandButton} onPress={handleExpandMap}>
+                    <Text style={styles.expandIcon}>⛶</Text>
+                </Pressable>
             </View>
+            <ClaimTimerView
+                cache={visibleCache}
+                isClaiming={isClaiming}
+                onClaimSuccess={handleClaim}
+            />
             <View style={styles.cacheSection}>
                 <ScrollView>
                     {cacheRecords.map((cache) => (
@@ -441,7 +485,7 @@ const MapScreen = ({navigation}) => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     containerMap: {padding: 0},
-    mapWrap: {flex: 1},
+    mapContainer: {height: 200},
     error: {color: '#dc2626', fontSize: 15},
     loadingText: {color: '#6b7280', fontSize: 14, marginTop: 10},
     inputRow: {flexDirection: 'row', gap: 10, marginBottom: 15, width: '100%', paddingHorizontal: 20},
@@ -454,6 +498,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
+        color: '#1f2937',
+        backgroundColor: '#ffffff',
     },
     joinButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', flex: 0, paddingHorizontal: 20},
     joinLabel: {color: '#ffffff', fontWeight: '600'},
@@ -466,9 +512,32 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         fontSize: 14,
     },
-    createCacheWrap: {paddingHorizontal: 12, paddingVertical: 8},
-    createCacheButton: {backgroundColor: '#2563eb', borderColor: '#2563eb'},
+    expandButton: {
+        position: 'absolute',
+        top: 10,
+        left: 10,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        borderRadius: 6,
+        width: 36,
+        height: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10,
+    },
+    expandIcon: {color: '#ffffff', fontSize: 18, fontWeight: '700'},
+    // Admin create button + scrollable cache list
+    createCacheWrap: {
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: '#ffffff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+    },
+    createCacheButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', flex: 0},
     createCacheLabel: {color: '#ffffff', fontWeight: '600'},
+    cacheListWrap: {flex: 1, backgroundColor: '#f3f4f6'},
+    cacheListContent: {paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12},
+    // Cache editor form
     formSection: {flex: 1, paddingHorizontal: 12, paddingVertical: 10},
     formInput: {
         borderWidth: 1,
@@ -477,6 +546,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
+        color: '#1f2937',
         backgroundColor: '#ffffff',
         marginBottom: 10,
     },
@@ -487,13 +557,10 @@ const styles = StyleSheet.create({
     saveLabel: {color: '#ffffff', fontWeight: '600'},
     cancelButton: {backgroundColor: '#6b7280', borderColor: '#6b7280'},
     cancelLabel: {color: '#ffffff', fontWeight: '600'},
-    cacheSection: {
-        maxHeight: 160,
-        backgroundColor: '#f3f4f6',
-        paddingHorizontal: 12,
-        paddingTop: 10,
-    },
+    // Player cache section
+    cacheSection: {flex: 1, backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingTop: 10},
     emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 20, fontSize: 14},
+    mapWrap: {flex: 1},
 });
 
 export default MapScreen;

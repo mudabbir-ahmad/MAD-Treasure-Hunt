@@ -8,6 +8,7 @@ const CacheCardItem = ({cache, isAdmin, onEdit, onDelete, onSelect}) => {
     const isClaimed = Boolean(cache.ClaimedByUid);
     const statusText = isClaimed ? 'Claimed' : 'Available';
     const statusColor = isClaimed ? '#9ca3af' : '#16a34a';
+    const displayName = cache.name || cache.clue || 'Unnamed Cache';
 
 //   State ----------------------
 //   Handlers -------------------
@@ -16,7 +17,12 @@ const CacheCardItem = ({cache, isAdmin, onEdit, onDelete, onSelect}) => {
     return (
         <Card>
             <View style={styles.topRow}>
-                <Text style={styles.clue} numberOfLines={1}>{cache.clue}</Text>
+                <View style={styles.nameWrap}>
+                    <Text style={styles.name} numberOfLines={1}>{displayName}</Text>
+                    {cache.name ? (
+                        <Text style={styles.clue} numberOfLines={1}>{cache.clue}</Text>
+                    ) : null}
+                </View>
                 <Text style={[styles.status, {color: statusColor}]}>{statusText}</Text>
             </View>
             <View style={styles.actions}>
@@ -55,7 +61,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 8,
     },
-    clue: {fontSize: 15, fontWeight: '600', color: '#1f2937', flex: 1, marginRight: 8},
+    clue: {fontSize: 13, color: '#6b7280', marginTop: 2},
+    nameWrap: {flex: 1, marginRight: 8},
+    name: {fontSize: 15, fontWeight: '600', color: '#1f2937'},
     status: {fontSize: 13, fontWeight: '600'},
     actions: {flexDirection: 'row', gap: 8},
     editBtn: {

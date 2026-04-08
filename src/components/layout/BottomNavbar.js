@@ -1,71 +1,69 @@
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Alert, Pressable, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import {getSession} from '../../hooks/SessionStore';
+import {clearGameSession, getSession} from '../../hooks/SessionStore';
+import API, {API_BASE_URL} from '../API/API';
 
-const BottomNavbar = ({ navigation, routeName }) => {
+const BottomNavbar = ({navigation, routeName}) => {
 //   Initialisation ------------
 
     const insets = useSafeAreaInsets();
     const session = getSession();
 
     const adminTabs = [
-        {
-            label: 'Game Settings',
-            route: 'GameSettingsScreen',
-            onPress: () => navigation.navigate('GameSettingsScreen'),
-        },
-        {
-            label: 'Map',
-            route: 'MapScreen',
-            onPress: () => navigation.navigate('MapScreen'),
-        },
-        {
-            label: 'Players',
-            route: 'PlayersScreen',
-            onPress: () => navigation.navigate('PlayersScreen'),
-        },
-        {
-            label: 'Leaderboard',
-            route: 'LeaderboardScreen',
-            onPress: () => navigation.navigate('LeaderboardScreen'),
-        },
+        {label: 'Settings', route: 'GameSettingsScreen', onPress: () => navigation.navigate('GameSettingsScreen')},
+        {label: 'Map', route: 'MapScreen', onPress: () => navigation.navigate('MapScreen')},
+        {label: 'Players', route: 'PlayersScreen', onPress: () => navigation.navigate('PlayersScreen')},
+        {label: 'Leaderboard', route: 'LeaderboardScreen', onPress: () => navigation.navigate('LeaderboardScreen')},
     ];
 
     const playerTabs = [
-        {
-            label: 'Map',
-            route: 'MapScreen',
-            onPress: () => navigation.navigate('MapScreen'),
-        },
-        {
-            label: 'Leaderboard',
-            route: 'LeaderboardScreen',
-            onPress: () => navigation.navigate('LeaderboardScreen'),
-        },
-        {
-            label: 'Current Team',
-            route: 'TeamScreen',
-            onPress: () => navigation.navigate('TeamScreen'),
-        },
+        {label: 'Team', route: 'TeamScreen', onPress: () => navigation.navigate('TeamScreen')},
+        {label: 'Map', route: 'MapScreen', onPress: () => navigation.navigate('MapScreen')},
+        {label: 'Leaderboard', route: 'LeaderboardScreen', onPress: () => navigation.navigate('LeaderboardScreen')},
+        {label: 'Leave', route: '__leave__', onPress: () => handleLeaveGame()},
     ];
 
     const tabs = session.isAcceptedAdmin ? adminTabs : playerTabs;
 
 //   State ----------------------
 //   Handlers -------------------
+
+    const handleLeaveGame = () => {
+        Alert.alert('Leave Game', 'Are you sure you want to leave this game?', [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Leave',
+                style: 'destructive',
+                onPress: async () => {
+                    const s = getSession();
+                    const endpoint = `${API_BASE_URL}/subgroup-memberships?Uid=${s.currentUid}&Gid=${s.currentGid}`;
+                    const res = await API.get(endpoint);
+                    if (res.isSuccess && res.result.length > 0) {
+                        await API.delete(`${API_BASE_URL}/subgroup-memberships/${res.result[0].id}`);
+                    }
+                    clearGameSession();
+                    navigation.reset({index: 0, routes: [{name: 'Game'}]});
+                },
+            },
+        ]);
+    };
+
 //   View -----------------------
 
     return (
         <View style={[styles.container, {paddingBottom: insets.bottom}]}>
             {tabs.map((tab) => {
                 const isActive = routeName === tab.route;
+                const isLeave = tab.route === '__leave__';
                 return (
                     <Pressable
-                        key={tab.route}
+                        key={tab.label}
                         onPress={tab.onPress}
-                        style={[styles.tab, isActive && styles.tabActive]}
+                        style={[styles.tab, isActive && styles.tabActive, isLeave && styles.tabLeave]}
                     >
-                        <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
+                        <Text style={[styles.tabText, isActive && styles.tabTextActive, isLeave && styles.tabTextLeave]}>
+                            {tab.label}
+                        </Text>
                     </Pressable>
                 );
             })}
@@ -95,6 +93,9 @@ const styles = StyleSheet.create({
     tabActive: {
         backgroundColor: '#5c5c5c',
     },
+    tabLeave: {
+        backgroundColor: 'rgba(220,38,38,0.15)',
+    },
     tabText: {
         color: '#d1d5db',
         fontSize: 12,
@@ -103,6 +104,9 @@ const styles = StyleSheet.create({
     },
     tabTextActive: {
         color: '#ffffff',
+    },
+    tabTextLeave: {
+        color: '#fca5a5',
     },
 });
 

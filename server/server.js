@@ -4,7 +4,7 @@ const path = require('path');
 
 // --- Configuration ---
 
-const PORT = process.env.PORT || 80;
+const PORT = process.env.PORT || 3000;
 const DATA_DIR = path.join(__dirname, 'data');
 
 // --- Data Helpers ---
@@ -209,6 +209,7 @@ addRoute('POST', '/groups', async (req, res) => {
         CreatedByUid: payload.CreatedByUid,
         MaxMemberSubgroups: payload.MaxMemberSubgroups || 1,
         TeamsEnabled: payload.TeamsEnabled !== undefined ? payload.TeamsEnabled : true,
+        CacheTriggerMeters: payload.CacheTriggerMeters || 20,
         ApprovedAdmins: [payload.CreatedByUid],
         CreatedAt: new Date().toISOString(),
     };
@@ -358,7 +359,7 @@ addRoute('POST', '/subgroup-memberships', async (req, res) => {
     // If a JoinCode was supplied, look up the matching subgroup
     if (payload.JoinCode) {
         const subgroups = readJson('subgroups.json');
-        const sg = subgroups.find((s) => s.JoinCode === payload.JoinCode);
+        const sg = subgroups.find((s) => s.JoinCode === String(payload.JoinCode).toUpperCase());
         if (!sg) return sendJson(res, 400, { message: 'Invalid join code' });
         payload.Gid = sg.Gid;
         payload.SGid = sg.SGid;
@@ -395,8 +396,39 @@ addRoute('DELETE', '/subgroup-memberships/:id', (req, res, params) => {
     const rows = readJson('subgroup-memberships.json');
     const idx = rows.findIndex((r) => String(r.id) === params.id);
     if (idx === -1) return sendJson(res, 404, { message: 'Membership not found' });
+
+    const removed = rows[idx];
     rows.splice(idx, 1);
     writeJson('subgroup-memberships.json', rows);
+
+    // Cascade: remove from team if in one
+    const teamMembers = readJson('team-members.json');
+    const tmIdx = teamMembers.findIndex((r) => r.Uid === removed.Uid);
+    if (tmIdx !== -1) {
+        const tmRemoved = teamMembers[tmIdx];
+        teamMembers.splice(tmIdx, 1);
+        // Transfer leadership to longest-serving member if leader left
+        if (tmRemoved.IsLeader) {
+            const remaining = teamMembers.filter((r) => r.Tid === tmRemoved.Tid);
+            if (remaining.length > 0) {
+                remaining.sort((a, b) => new Date(a.JoinedAt || 0) - new Date(b.JoinedAt || 0));
+                remaining[0].IsLeader = true;
+            }
+        }
+        writeJson('team-members.json', teamMembers);
+    }
+
+    // Clear user game data
+    const users = readJson('users.json');
+    const uIdx = users.findIndex((u) => u.Uid === removed.Uid);
+    if (uIdx !== -1) {
+        users[uIdx].Gid = null;
+        users[uIdx].SGid = null;
+        users[uIdx].TGid = null;
+        users[uIdx].IsAcceptedAdmin = false;
+        writeJson('users.json', users);
+    }
+
     sendJson(res, 204, null);
 });
 
@@ -471,12 +503,16 @@ addRoute('POST', '/team-members', async (req, res) => {
     // If a JoinCode was supplied, look up the matching team
     if (payload.JoinCode) {
         const teams = readJson('teams.json');
-        const team = teams.find((t) => t.JoinCode === payload.JoinCode);
+        const team = teams.find((t) => t.JoinCode === String(payload.JoinCode).toUpperCase());
         if (!team) return sendJson(res, 400, { message: 'Invalid team join code' });
         payload.Tid = team.Tid;
     }
 
+    // Auto-set leader if first member in team
+    const existing = rows.filter((r) => r.Tid === payload.Tid);
     payload.id = nextId(rows, 'id');
+    payload.JoinedAt = new Date().toISOString();
+    payload.IsLeader = existing.length === 0;
     rows.push(payload);
     writeJson('team-members.json', rows);
 
@@ -505,8 +541,29 @@ addRoute('DELETE', '/team-members/:id', (req, res, params) => {
     const rows = readJson('team-members.json');
     const idx = rows.findIndex((r) => String(r.id) === params.id);
     if (idx === -1) return sendJson(res, 404, { message: 'Team member not found' });
+
+    const removed = rows[idx];
     rows.splice(idx, 1);
+
+    // Transfer leadership to longest-serving member if leader left
+    if (removed.IsLeader) {
+        const remaining = rows.filter((r) => r.Tid === removed.Tid);
+        if (remaining.length > 0) {
+            remaining.sort((a, b) => new Date(a.JoinedAt || 0) - new Date(b.JoinedAt || 0));
+            remaining[0].IsLeader = true;
+        }
+    }
+
     writeJson('team-members.json', rows);
+
+    // Clear user TGid
+    const users = readJson('users.json');
+    const uIdx = users.findIndex((u) => u.Uid === removed.Uid);
+    if (uIdx !== -1) {
+        users[uIdx].TGid = null;
+        writeJson('users.json', users);
+    }
+
     sendJson(res, 204, null);
 });
 

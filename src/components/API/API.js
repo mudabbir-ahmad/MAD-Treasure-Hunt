@@ -1,5 +1,5 @@
-//export const API_BASE_URL = 'http://api.bobby.ip-ddns.com'; //For outside Home network
-export const API_BASE_URL = 'http://192.168.8.100:3000'; //For when im home (API Endpoint is on my home server...)
+//export const API_BASE_URL = 'http://api.bobby.ip-ddns.com'; // For actual use
+export const API_BASE_URL = 'http://192.168.8.100:3000'; // Home network for mudabbir since, server is on my home network and router dont do loopback!!!
 const API = {};
 
 API.get = (endpoint) => callFetch(endpoint, 'GET');
