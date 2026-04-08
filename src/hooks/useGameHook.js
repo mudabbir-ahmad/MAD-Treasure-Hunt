@@ -10,6 +10,7 @@ const useGameHook = () => {
   const teamsEndpoint = `${API_BASE_URL}/teams`;
   const teamMembersEndpoint = `${API_BASE_URL}/team-members`;
   const gameDataEndpoint = `${API_BASE_URL}/game-data`;
+  const adminWaitlistEndpoint = `${API_BASE_URL}/admin-waitlist`;
 
   //   Handlers -------------------
 
@@ -116,16 +117,47 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  // Claim a cache via the multi-team claim endpoint
   const claimCache = async (payload) => {
-    const response = await API.put(
-      `${gameDataEndpoint}/${payload.gid}/caches/${payload.cacheId}`,
-      {ClaimedByUid: payload.uid, ClaimedByTid: payload.tid},
+    const response = await API.post(
+      `${gameDataEndpoint}/${payload.gid}/caches/${payload.cacheId}/claim`,
+      {Uid: payload.uid, Tid: payload.tid},
     );
     return response.isSuccess ? response.result : null;
   };
 
   const deleteCache = async (gid, cacheId) => {
     const response = await API.delete(`${gameDataEndpoint}/${gid}/caches/${cacheId}`);
+    return response.isSuccess;
+  };
+
+  // Game reset — clear all claims for a game
+  const resetGame = async (gid) => {
+    const response = await API.post(`${gameDataEndpoint}/${gid}/reset`, {});
+    return response.isSuccess;
+  };
+
+  // Player progress reset — clear all claims by a specific user
+  const resetPlayerProgress = async (gid, uid) => {
+    const response = await API.post(`${gameDataEndpoint}/${gid}/reset-player/${uid}`, {});
+    return response.isSuccess;
+  };
+
+  // Admin waitlist
+  const getAdminWaitlist = async (gid, uid = null) => {
+    let url = `${adminWaitlistEndpoint}?Gid=${gid}`;
+    if (uid !== null) url += `&Uid=${uid}`;
+    const response = await API.get(url);
+    return response.isSuccess ? response.result : [];
+  };
+
+  const approveAdmin = async (waitlistId) => {
+    const response = await API.post(`${adminWaitlistEndpoint}/${waitlistId}/approve`, {});
+    return response.isSuccess ? response.result : null;
+  };
+
+  const rejectAdmin = async (waitlistId) => {
+    const response = await API.delete(`${adminWaitlistEndpoint}/${waitlistId}`);
     return response.isSuccess;
   };
 
@@ -151,6 +183,11 @@ const useGameHook = () => {
     upsertCache,
     claimCache,
     deleteCache,
+    resetGame,
+    resetPlayerProgress,
+    getAdminWaitlist,
+    approveAdmin,
+    rejectAdmin,
   };
 };
 

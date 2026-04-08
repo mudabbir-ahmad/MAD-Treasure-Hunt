@@ -11,7 +11,7 @@ const TeamScreen = () => {
 
     const session = getSession();
     const isAdmin = session.isAcceptedAdmin;
-    const {getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser} = useGameHook();
+    const {getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser, getAdminWaitlist} = useGameHook();
 
 //   State ----------------------
 
@@ -21,6 +21,7 @@ const TeamScreen = () => {
     const [members, setMembers] = useState([]);
     const [memberNames, setMemberNames] = useState({});
     const [loading, setLoading] = useState(true);
+    const [onAdminWaitlist, setOnAdminWaitlist] = useState(false);
 
 //   Handlers -------------------
 
@@ -39,6 +40,15 @@ const TeamScreen = () => {
 
     useEffect(() => {
         const load = async () => {
+            // Check if the user is on the admin waitlist
+            if (session.currentGid && !activeTid) {
+                const waitlist = await getAdminWaitlist(session.currentGid, session.currentUid);
+                if (waitlist.length > 0) {
+                    setOnAdminWaitlist(true);
+                    setLoading(false);
+                    return;
+                }
+            }
             if (activeTid) await loadTeamData(activeTid);
             setLoading(false);
         };
@@ -47,8 +57,17 @@ const TeamScreen = () => {
 
     const handleJoinTeam = async () => {
         if (!teamCode.trim()) return;
-        const result = await joinTeamByCode({JoinCode: teamCode.trim().toUpperCase(), Uid: session.currentUid});
+        // Force uppercase just in case a lowercase code is pasted
+        const code = teamCode.trim().toUpperCase();
+        const result = await joinTeamByCode({JoinCode: code, Uid: session.currentUid});
         if (!result) return;
+
+        // If the server indicates this code matched the admin join code
+        if (result.adminWaitlist) {
+            setOnAdminWaitlist(true);
+            return;
+        }
+
         setSessionTeam(result.Tid);
         setActiveTid(result.Tid);
     };
@@ -95,6 +114,15 @@ const TeamScreen = () => {
         );
     }
 
+    // Waiting for admin approval
+    if (onAdminWaitlist) {
+        return (
+            <Screen style={styles.center}>
+                <Text style={styles.waitlistText}>Waiting to be approved for Admin Team</Text>
+            </Screen>
+        );
+    }
+
     // Not in a team
     if (!activeTid || !team) {
         return (
@@ -105,7 +133,7 @@ const TeamScreen = () => {
                         placeholder="Enter Team Code"
                         placeholderTextColor="#9ca3af"
                         value={teamCode}
-                        onChangeText={setTeamCode}
+                        onChangeText={(text) => setTeamCode(text.toUpperCase())}
                         autoCapitalize="characters"
                     />
                     <Button
@@ -195,6 +223,13 @@ const styles = StyleSheet.create({
     joinLabel: {color: '#ffffff', fontWeight: '600'},
     createButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
     createLabel: {color: '#ffffff', fontWeight: '600'},
+    waitlistText: {
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#374151',
+        textAlign: 'center',
+        paddingHorizontal: 30,
+    },
     teamHeader: {
         backgroundColor: '#374151',
         paddingVertical: 14,

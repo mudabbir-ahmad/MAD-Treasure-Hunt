@@ -500,10 +500,30 @@ addRoute('POST', '/team-members', async (req, res) => {
     const payload = await parseBody(req);
     const rows = readJson('team-members.json');
 
-    // If a JoinCode was supplied, look up the matching team
+    // If a JoinCode was supplied, check if it matches an admin join code first
     if (payload.JoinCode) {
+        const code = String(payload.JoinCode).toUpperCase();
+        const groups = readJson('groups.json');
+        const adminGroup = groups.find((g) => g.AdminJoinCode === code);
+        if (adminGroup) {
+            // Add to admin waitlist instead of joining as team member
+            const waitlist = readJson('admin-waitlist.json');
+            if (waitlist.some((w) => w.Uid === payload.Uid && w.Gid === adminGroup.Gid)) {
+                return sendJson(res, 200, { adminWaitlist: true, message: 'Already on waitlist' });
+            }
+            const entry = {
+                id: nextId(waitlist, 'id'),
+                Uid: payload.Uid,
+                Gid: adminGroup.Gid,
+                RequestedAt: new Date().toISOString(),
+            };
+            waitlist.push(entry);
+            writeJson('admin-waitlist.json', waitlist);
+            return sendJson(res, 200, { adminWaitlist: true, ...entry });
+        }
+
         const teams = readJson('teams.json');
-        const team = teams.find((t) => t.JoinCode === String(payload.JoinCode).toUpperCase());
+        const team = teams.find((t) => t.JoinCode === code);
         if (!team) return sendJson(res, 400, { message: 'Invalid team join code' });
         payload.Tid = team.Tid;
     }
@@ -574,6 +594,7 @@ addRoute('DELETE', '/team-members/:id', (req, res, params) => {
 addRoute('GET', '/admin-waitlist', (req, res, params, query) => {
     let rows = readJson('admin-waitlist.json');
     if (query.Gid) rows = rows.filter((r) => String(r.Gid) === query.Gid);
+    if (query.Uid) rows = rows.filter((r) => String(r.Uid) === query.Uid);
     sendJson(res, 200, rows);
 });
 
@@ -593,6 +614,55 @@ addRoute('DELETE', '/admin-waitlist/:id', (req, res, params) => {
     rows.splice(idx, 1);
     writeJson('admin-waitlist.json', rows);
     sendJson(res, 204, null);
+});
+
+// Approve an admin from the waitlist
+addRoute('POST', '/admin-waitlist/:id/approve', async (req, res, params) => {
+    const waitlist = readJson('admin-waitlist.json');
+    const idx = waitlist.findIndex((w) => String(w.id) === params.id);
+    if (idx === -1) return sendJson(res, 404, { message: 'Waitlist entry not found' });
+
+    const entry = waitlist[idx];
+    waitlist.splice(idx, 1);
+    writeJson('admin-waitlist.json', waitlist);
+
+    // Find the admin subgroup for this game
+    const subgroups = readJson('subgroups.json');
+    const adminSg = subgroups.find((sg) => sg.Gid === entry.Gid && sg.IsAdminGroup);
+    if (!adminSg) return sendJson(res, 400, { message: 'Admin subgroup not found' });
+
+    // Create subgroup membership
+    const memberships = readJson('subgroup-memberships.json');
+    const membership = {
+        id: nextId(memberships, 'id'),
+        Uid: entry.Uid,
+        Gid: entry.Gid,
+        SGid: adminSg.SGid,
+        IsAcceptedAdmin: true,
+    };
+    memberships.push(membership);
+    writeJson('subgroup-memberships.json', memberships);
+
+    // Update user record
+    const users = readJson('users.json');
+    const uIdx = users.findIndex((u) => u.Uid === entry.Uid);
+    if (uIdx !== -1) {
+        users[uIdx].Gid = entry.Gid;
+        users[uIdx].SGid = adminSg.SGid;
+        users[uIdx].IsAcceptedAdmin = true;
+        writeJson('users.json', users);
+    }
+
+    // Add to approved admins list in group
+    const groups = readJson('groups.json');
+    const gIdx = groups.findIndex((g) => g.Gid === entry.Gid);
+    if (gIdx !== -1) {
+        if (!groups[gIdx].ApprovedAdmins) groups[gIdx].ApprovedAdmins = [];
+        groups[gIdx].ApprovedAdmins.push(entry.Uid);
+        writeJson('groups.json', groups);
+    }
+
+    sendJson(res, 200, membership);
 });
 
 // ======================================================================
@@ -615,16 +685,22 @@ addRoute('GET', '/game-data/:gid', (req, res, params) => {
 // ======================================================================
 
 // Helper: convert storage cache to API response format
-const toCacheApi = (cache, gid) => ({
-    id: cache.CacheId,
-    coordinates: { latitude: cache.Latitude, longitude: cache.Longitude },
-    radius: cache.TriggerMeters,
-    clue: cache.Title,
-    groupId: Number(gid),
-    subgroupId: cache.SGid,
-    ClaimedByUid: cache.ClaimedByUid || null,
-    ClaimedByTid: cache.ClaimedByTid || null,
-});
+const toCacheApi = (cache, gid) => {
+    // Migrate old single-claim format to Claims array
+    let claims = cache.Claims || [];
+    if (claims.length === 0 && cache.ClaimedByUid) {
+        claims = [{ Uid: cache.ClaimedByUid, Tid: cache.ClaimedByTid || null, ClaimedAt: null }];
+    }
+    return {
+        id: cache.CacheId,
+        coordinates: { latitude: cache.Latitude, longitude: cache.Longitude },
+        radius: cache.TriggerMeters,
+        clue: cache.Title,
+        groupId: Number(gid),
+        subgroupId: cache.SGid,
+        Claims: claims,
+    };
+};
 
 // Helper: convert API payload to storage cache format
 const toCacheStorage = (data, cacheId) => ({
@@ -634,8 +710,6 @@ const toCacheStorage = (data, cacheId) => ({
     Longitude: data.longitude != null ? data.longitude : (data.Longitude || 0),
     TriggerMeters: data.radius || data.TriggerMeters || 20,
     SGid: data.subgroupId != null ? data.subgroupId : (data.SGid || null),
-    ClaimedByUid: data.ClaimedByUid || null,
-    ClaimedByTid: data.ClaimedByTid || null,
 });
 
 // GET /game-data/:gid/caches  — list caches for a group
@@ -674,7 +748,7 @@ addRoute('POST', '/game-data/:gid/caches', async (req, res, params) => {
     const nextNum = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
     const cacheId = `C${nextNum}`;
 
-    const stored = toCacheStorage(payload, cacheId);
+    const stored = { ...toCacheStorage(payload, cacheId), Claims: [] };
     if (!entry.GeoCaches) entry.GeoCaches = [];
     entry.GeoCaches.push(stored);
     writeJson('game-data.json', rows);
@@ -693,6 +767,8 @@ addRoute('PUT', '/game-data/:gid/caches/:cacheId', async (req, res, params) => {
 
     const existing = entry.GeoCaches[idx];
     const updated = { ...existing, ...toCacheStorage(payload, params.cacheId) };
+    // Preserve claims — property updates must not overwrite the Claims array
+    updated.Claims = existing.Claims || [];
     entry.GeoCaches[idx] = updated;
     writeJson('game-data.json', rows);
     sendJson(res, 200, toCacheApi(updated, params.gid));
@@ -710,6 +786,70 @@ addRoute('DELETE', '/game-data/:gid/caches/:cacheId', (req, res, params) => {
     entry.GeoCaches.splice(idx, 1);
     writeJson('game-data.json', rows);
     sendJson(res, 204, null);
+});
+
+// POST /game-data/:gid/caches/:cacheId/claim  — claim a cache (multi-team)
+addRoute('POST', '/game-data/:gid/caches/:cacheId/claim', async (req, res, params) => {
+    const payload = await parseBody(req);
+    const rows = readJson('game-data.json');
+    const entry = rows.find((r) => String(r.Gid) === params.gid);
+    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
+
+    const cache = (entry.GeoCaches || []).find((c) => c.CacheId === params.cacheId);
+    if (!cache) return sendJson(res, 404, { message: 'Cache not found' });
+
+    if (!cache.Claims) cache.Claims = [];
+
+    // Prevent the same team (or individual if no team) from claiming twice
+    if (payload.Tid && cache.Claims.some((c) => c.Tid === payload.Tid)) {
+        return sendJson(res, 400, { message: 'Your team has already claimed this cache' });
+    }
+    if (!payload.Tid && cache.Claims.some((c) => c.Uid === payload.Uid && !c.Tid)) {
+        return sendJson(res, 400, { message: 'You have already claimed this cache' });
+    }
+
+    cache.Claims.push({
+        Uid: payload.Uid,
+        Tid: payload.Tid || null,
+        ClaimedAt: new Date().toISOString(),
+    });
+
+    writeJson('game-data.json', rows);
+    sendJson(res, 200, toCacheApi(cache, params.gid));
+});
+
+// POST /game-data/:gid/reset  — reset all cache claims for a game
+addRoute('POST', '/game-data/:gid/reset', async (req, res, params) => {
+    const rows = readJson('game-data.json');
+    const entry = rows.find((r) => String(r.Gid) === params.gid);
+    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
+
+    for (const cache of (entry.GeoCaches || [])) {
+        cache.Claims = [];
+        // Clean up legacy fields
+        delete cache.ClaimedByUid;
+        delete cache.ClaimedByTid;
+    }
+
+    writeJson('game-data.json', rows);
+    sendJson(res, 200, { message: 'Game reset successfully' });
+});
+
+// POST /game-data/:gid/reset-player/:uid  — remove all claims by a specific user
+addRoute('POST', '/game-data/:gid/reset-player/:uid', async (req, res, params) => {
+    const rows = readJson('game-data.json');
+    const entry = rows.find((r) => String(r.Gid) === params.gid);
+    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
+
+    const uid = Number(params.uid);
+    for (const cache of (entry.GeoCaches || [])) {
+        if (cache.Claims) {
+            cache.Claims = cache.Claims.filter((c) => c.Uid !== uid);
+        }
+    }
+
+    writeJson('game-data.json', rows);
+    sendJson(res, 200, { message: 'Player progress reset' });
 });
 
 // ======================================================================

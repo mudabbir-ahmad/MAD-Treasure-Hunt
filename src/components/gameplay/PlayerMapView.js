@@ -1,7 +1,8 @@
-import MapView, {Circle, Polygon} from 'react-native-maps';
+import React from 'react';
+import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import {getFovCone} from '../../utils/geoMath';
 
-const PlayerMapView = ({userLocation, visibleCache, heading, claimDistance}) => {
+const PlayerMapView = ({userLocation, visibleCaches, heading, claimDistance}) => {
 //   Initialisation -------------
 //   State ----------------------
 //   Handlers -------------------
@@ -23,14 +24,22 @@ const PlayerMapView = ({userLocation, visibleCache, heading, claimDistance}) => 
             pitchEnabled={false}
             showsUserLocation
         >
-            {visibleCache && (
-                <Circle
-                    center={visibleCache.coordinates}
-                    radius={claimDistance}
-                    fillColor="rgba(250, 204, 21, 0.20)"
-                    strokeColor="rgba(250, 204, 21, 0.90)"
-                />
-            )}
+            {/* Show cache markers for all caches currently inside the FOV cone */}
+            {(visibleCaches || []).map((cache) => (
+                <React.Fragment key={cache.id}>
+                    <Marker
+                        coordinate={cache.coordinates}
+                        title={cache.clue}
+                        pinColor="#facc15"
+                    />
+                    <Circle
+                        center={cache.coordinates}
+                        radius={claimDistance}
+                        fillColor="rgba(250, 204, 21, 0.20)"
+                        strokeColor="rgba(250, 204, 21, 0.90)"
+                    />
+                </React.Fragment>
+            ))}
             {coneCoords && (
                 <Polygon
                     coordinates={coneCoords}

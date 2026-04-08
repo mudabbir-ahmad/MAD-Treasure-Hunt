@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-around',
         paddingHorizontal: 8,
+        zIndex: 10,
     },
     tab: {
         flex: 1,

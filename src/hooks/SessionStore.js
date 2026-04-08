@@ -12,6 +12,7 @@ const session = {
   isBusiness: null,
   isAcceptedAdmin: false,
   teamsEnabled: false,
+  selectedCacheId: null,
 };
 
 // --- Handlers ---
@@ -44,6 +45,11 @@ const setSessionTeamsEnabled = (val) => {
   persistSession();
 };
 
+const setSelectedCache = (cacheId) => {
+  session.selectedCacheId = cacheId ?? null;
+  persistSession();
+};
+
 const getSession = () => ({ ...session });
 
 const clearSession = () => {
@@ -63,6 +69,7 @@ const clearGameSession = () => {
   session.currentTid = null;
   session.isAcceptedAdmin = false;
   session.teamsEnabled = false;
+  session.selectedCacheId = null;
   persistSession();
 };
 
@@ -85,4 +92,4 @@ const loadSession = async () => {
   return { ...session };
 };
 
-export { setSessionUser, setSessionGroup, setSessionTeam, setSessionTeamsEnabled, getSession, clearSession, clearGameSession, loadSession };
+export { setSessionUser, setSessionGroup, setSessionTeam, setSessionTeamsEnabled, setSelectedCache, getSession, clearSession, clearGameSession, loadSession };

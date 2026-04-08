@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Screen from '../layout/Screen';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
@@ -10,7 +10,7 @@ const PlayersScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getTeams, getTeamMembers, getGroupMembers, removeMember, getUser} = useGameHook();
+    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser} = useGameHook();
 
 //   State ----------------------
 
@@ -63,6 +63,24 @@ const PlayersScreen = () => {
         await loadData();
     };
 
+    const handleResetPlayerProgress = (player) => {
+        Alert.alert(
+            'Reset Progress',
+            `Reset all cache claims for ${player.username}?`,
+            [
+                {text: 'Cancel', style: 'cancel'},
+                {
+                    text: 'Reset',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await resetPlayerProgress(session.currentGid, player.Uid);
+                        Alert.alert('Done', `Progress for ${player.username} has been reset.`);
+                    },
+                },
+            ],
+        );
+    };
+
 //   View -----------------------
 
     if (loading) {
@@ -97,11 +115,19 @@ const PlayersScreen = () => {
                                     <Text style={styles.teamCodeBadge}>{player.team.teamCode}</Text>
                                 )}
                             </View>
+                        </View>
+                        <View style={styles.actionRow}>
+                            <Button
+                                label="Reset Progress"
+                                onClick={() => handleResetPlayerProgress(player)}
+                                styleButton={styles.resetButton}
+                                styleLabel={styles.actionLabel}
+                            />
                             <Button
                                 label="Kick"
                                 onClick={() => handleRemovePlayer(player.membershipId)}
                                 styleButton={styles.removeButton}
-                                styleLabel={styles.removeLabel}
+                                styleLabel={styles.actionLabel}
                             />
                         </View>
                     </Card>
@@ -132,14 +158,16 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
+        marginBottom: 8,
     },
     playerName: {fontSize: 15, fontWeight: '600', color: '#1f2937', flex: 1},
     playerMeta: {flexDirection: 'row', alignItems: 'center', gap: 6},
     leaderBadge: {fontSize: 11, color: '#2563eb', fontWeight: '700'},
     teamCodeBadge: {fontSize: 12, fontWeight: '700', color: '#16a34a', letterSpacing: 1},
-    removeButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 0, paddingHorizontal: 12},
-    removeLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    actionRow: {flexDirection: 'row', gap: 8},
+    resetButton: {backgroundColor: '#f59e0b', borderColor: '#f59e0b', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    removeButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    actionLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
 });
 
 export default PlayersScreen;
-

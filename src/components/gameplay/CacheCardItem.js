@@ -2,12 +2,12 @@ import {StyleSheet, Text, View} from 'react-native';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
 
-const CacheCardItem = ({cache, isAdmin, onEdit, onDelete, onSelect}) => {
+const CacheCardItem = ({cache, isAdmin, isSelected, onEdit, onDelete, onSelect}) => {
 //   Initialisation -------------
 
-    const isClaimed = Boolean(cache.ClaimedByUid);
-    const statusText = isClaimed ? 'Claimed' : 'Available';
-    const statusColor = isClaimed ? '#9ca3af' : '#16a34a';
+    const hasClaims = (cache.Claims || []).length > 0;
+    const statusText = hasClaims ? 'Claimed' : 'Available';
+    const statusColor = hasClaims ? '#9ca3af' : '#16a34a';
     const displayName = cache.name || cache.clue || 'Unnamed Cache';
 
 //   State ----------------------
@@ -15,7 +15,7 @@ const CacheCardItem = ({cache, isAdmin, onEdit, onDelete, onSelect}) => {
 //   View -----------------------
 
     return (
-        <Card>
+        <Card style={isSelected ? styles.selectedCard : null}>
             <View style={styles.topRow}>
                 <View style={styles.nameWrap}>
                     <Text style={styles.name} numberOfLines={1}>{displayName}</Text>
@@ -41,6 +41,13 @@ const CacheCardItem = ({cache, isAdmin, onEdit, onDelete, onSelect}) => {
                             styleLabel={styles.btnLabel}
                         />
                     </>
+                ) : isSelected ? (
+                    <Button
+                        label="Cache Currently Selected"
+                        onClick={() => {}}
+                        styleButton={styles.selectedBtn}
+                        styleLabel={styles.selectedBtnLabel}
+                    />
                 ) : (
                     <Button
                         label="Select Cache"
@@ -87,6 +94,15 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         flex: 1,
     },
+    selectedBtn: {
+        backgroundColor: '#6b7280',
+        borderColor: '#6b7280',
+        minHeight: 36,
+        paddingHorizontal: 14,
+        flex: 1,
+    },
+    selectedBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    selectedCard: {borderColor: '#2563eb', borderWidth: 2},
     btnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
 });
 

@@ -9,15 +9,17 @@ const LeaderboardScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
+    const isAdmin = session.isAcceptedAdmin;
     const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser} = useGameHook();
 
 //   State ----------------------
 
     const [loading, setLoading] = useState(true);
     const [teamsEnabled, setTeamsEnabled] = useState(false);
-    const [activeTab, setActiveTab] = useState('global');
-    const [globalRanking, setGlobalRanking] = useState([]);
-    const [teamRanking, setTeamRanking] = useState([]);
+    const [activeTab, setActiveTab] = useState('game');
+    const [teamRankings, setTeamRankings] = useState([]);
+    const [playerRankings, setPlayerRankings] = useState([]);
+    const [myTeamRanking, setMyTeamRanking] = useState([]);
     const [expandedTeam, setExpandedTeam] = useState(null);
 
 //   Handlers -------------------
@@ -30,7 +32,6 @@ const LeaderboardScreen = () => {
         setTeamsEnabled(isTeams);
 
         const caches = await getCaches(session.currentGid, null);
-        const claimedCaches = (caches || []).filter((c) => c.ClaimedByUid);
 
         if (isTeams) {
             // Build team rankings
@@ -42,7 +43,9 @@ const LeaderboardScreen = () => {
                 const memberData = [];
                 for (const m of (members || [])) {
                     const user = await getUser(m.Uid);
-                    const count = claimedCaches.filter((c) => c.ClaimedByUid === m.Uid).length;
+                    const count = (caches || []).filter((c) =>
+                        (c.Claims || []).some((cl) => cl.Uid === m.Uid)
+                    ).length;
                     memberData.push({
                         uid: m.Uid,
                         name: user?.username || `Player ${m.Uid}`,
@@ -51,7 +54,9 @@ const LeaderboardScreen = () => {
                     });
                 }
                 memberData.sort((a, b) => b.caches - a.caches);
-                const totalCaches = memberData.reduce((sum, m) => sum + m.caches, 0);
+                const totalCaches = (caches || []).filter((c) =>
+                    (c.Claims || []).some((cl) => cl.Tid === team.Tid)
+                ).length;
                 teamData.push({
                     tid: team.Tid,
                     name: team.TeamName || 'Unnamed Team',
@@ -62,20 +67,22 @@ const LeaderboardScreen = () => {
             }
 
             teamData.sort((a, b) => b.totalCaches - a.totalCaches);
-            setGlobalRanking(teamData);
+            setTeamRankings(teamData);
 
-            // Build current team ranking
+            // Build current user's team ranking (for TEAM tab)
             if (session.currentTid) {
                 const myTeam = teamData.find((t) => t.tid === session.currentTid);
-                setTeamRanking(myTeam ? myTeam.members : []);
+                setMyTeamRanking(myTeam ? myTeam.members : []);
             }
         } else {
             // Build player rankings (no teams)
             const allMembers = await getGroupMembers(session.currentGid);
             const playerData = [];
-            for (const m of (allMembers || []).filter((m) => !m.IsAcceptedAdmin)) {
+            for (const m of (allMembers || []).filter((mem) => !mem.IsAcceptedAdmin)) {
                 const user = await getUser(m.Uid);
-                const count = claimedCaches.filter((c) => c.ClaimedByUid === m.Uid).length;
+                const count = (caches || []).filter((c) =>
+                    (c.Claims || []).some((cl) => cl.Uid === m.Uid)
+                ).length;
                 playerData.push({
                     uid: m.Uid,
                     name: user?.username || `Player ${m.Uid}`,
@@ -83,7 +90,7 @@ const LeaderboardScreen = () => {
                 });
             }
             playerData.sort((a, b) => b.caches - a.caches);
-            setGlobalRanking(playerData);
+            setPlayerRankings(playerData);
         }
 
         setLoading(false);
@@ -109,64 +116,109 @@ const LeaderboardScreen = () => {
         );
     }
 
-    // Teams enabled — tabbed view
+    // Helper: render an expandable team card
+    const renderTeamCard = (team, index) => (
+        <Pressable key={team.tid} onPress={() => setExpandedTeam(expandedTeam === team.tid ? null : team.tid)}>
+            <Card>
+                <View style={styles.rankRow}>
+                    <Text style={styles.rank}>#{index + 1}</Text>
+                    <Text style={styles.rankName}>{team.name}</Text>
+                    <Text style={styles.score}>{team.totalCaches} cache(s)</Text>
+                </View>
+                {expandedTeam === team.tid && team.members.map((m) => (
+                    <View key={m.uid} style={styles.subRow}>
+                        <Text style={styles.subName}>
+                            {m.name}{m.isLeader ? ' (Team Leader)' : ''}
+                        </Text>
+                        <Text style={styles.subScore}>{m.caches}</Text>
+                    </View>
+                ))}
+            </Card>
+        </Pressable>
+    );
+
+    // Helper: render a simple player card
+    const renderPlayerCard = (player, index) => (
+        <Card key={player.uid}>
+            <View style={styles.rankRow}>
+                <Text style={styles.rank}>#{index + 1}</Text>
+                <Text style={styles.rankName}>{player.name}</Text>
+                <Text style={styles.score}>{player.caches} cache(s)</Text>
+            </View>
+        </Card>
+    );
+
+    // ---------- ADMIN LEADERBOARD ----------
+    if (isAdmin) {
+        // Teams enabled: show team list (no tabs for admin)
+        if (teamsEnabled) {
+            return (
+                <Screen style={styles.container}>
+                    <ScrollView style={styles.listSection}>
+                        {teamRankings.map((team, index) => renderTeamCard(team, index))}
+                        {teamRankings.length === 0 && (
+                            <Text style={styles.emptyText}>No teams yet.</Text>
+                        )}
+                    </ScrollView>
+                </Screen>
+            );
+        }
+
+        // Teams disabled: show player list
+        return (
+            <Screen style={styles.container}>
+                <ScrollView style={styles.listSection}>
+                    {playerRankings.map((player, index) => renderPlayerCard(player, index))}
+                    {playerRankings.length === 0 && (
+                        <Text style={styles.emptyText}>No players yet.</Text>
+                    )}
+                </ScrollView>
+            </Screen>
+        );
+    }
+
+    // ---------- PLAYER LEADERBOARD ----------
+
+    // Teams enabled — tabbed view (GAME / TEAM)
     if (teamsEnabled) {
         return (
             <Screen style={styles.container}>
                 <View style={styles.tabRow}>
                     <Pressable
-                        style={[styles.tabButton, activeTab === 'global' && styles.tabButtonActive]}
-                        onPress={() => setActiveTab('global')}
+                        style={[styles.tabButton, activeTab === 'game' && styles.tabButtonActive]}
+                        onPress={() => setActiveTab('game')}
                     >
-                        <Text style={[styles.tabLabel, activeTab === 'global' && styles.tabLabelActive]}>Global</Text>
+                        <Text style={[styles.tabLabel, activeTab === 'game' && styles.tabLabelActive]}>GAME</Text>
                     </Pressable>
                     <Pressable
                         style={[styles.tabButton, activeTab === 'team' && styles.tabButtonActive]}
                         onPress={() => setActiveTab('team')}
                     >
-                        <Text style={[styles.tabLabel, activeTab === 'team' && styles.tabLabelActive]}>Team</Text>
+                        <Text style={[styles.tabLabel, activeTab === 'team' && styles.tabLabelActive]}>TEAM</Text>
                     </Pressable>
                 </View>
 
-                {activeTab === 'global' ? (
+                {activeTab === 'game' ? (
                     <ScrollView style={styles.listSection}>
-                        {globalRanking.map((team, index) => (
-                            <Pressable key={team.tid} onPress={() => setExpandedTeam(expandedTeam === team.tid ? null : team.tid)}>
-                                <Card>
-                                    <View style={styles.rankRow}>
-                                        <Text style={styles.rank}>#{index + 1}</Text>
-                                        <Text style={styles.rankName}>{team.name}</Text>
-                                        <Text style={styles.score}>{team.totalCaches} cache(s)</Text>
-                                    </View>
-                                    {expandedTeam === team.tid && team.members.map((m) => (
-                                        <View key={m.uid} style={styles.subRow}>
-                                            <Text style={styles.subName}>
-                                                {m.name}{m.isLeader ? ' (Leader)' : ''}
-                                            </Text>
-                                            <Text style={styles.subScore}>{m.caches}</Text>
-                                        </View>
-                                    ))}
-                                </Card>
-                            </Pressable>
-                        ))}
-                        {globalRanking.length === 0 && (
+                        {teamRankings.map((team, index) => renderTeamCard(team, index))}
+                        {teamRankings.length === 0 && (
                             <Text style={styles.emptyText}>No teams yet.</Text>
                         )}
                     </ScrollView>
                 ) : (
                     <ScrollView style={styles.listSection}>
-                        {teamRanking.map((m, index) => (
+                        {myTeamRanking.map((m, index) => (
                             <Card key={m.uid}>
                                 <View style={styles.rankRow}>
                                     <Text style={styles.rank}>#{index + 1}</Text>
                                     <Text style={styles.rankName}>
-                                        {m.name}{m.isLeader ? ' (Leader)' : ''}
+                                        {m.name}{m.isLeader ? ' (Team Leader)' : ''}
                                     </Text>
                                     <Text style={styles.score}>{m.caches} cache(s)</Text>
                                 </View>
                             </Card>
                         ))}
-                        {teamRanking.length === 0 && (
+                        {myTeamRanking.length === 0 && (
                             <Text style={styles.emptyText}>Join a team to see your team leaderboard.</Text>
                         )}
                     </ScrollView>
@@ -175,20 +227,12 @@ const LeaderboardScreen = () => {
         );
     }
 
-    // No teams — simple player ranking
+    // No teams — simple player ranking (GAME tab only, no TEAM tab)
     return (
         <Screen style={styles.container}>
             <ScrollView style={styles.listSection}>
-                {globalRanking.map((player, index) => (
-                    <Card key={player.uid}>
-                        <View style={styles.rankRow}>
-                            <Text style={styles.rank}>#{index + 1}</Text>
-                            <Text style={styles.rankName}>{player.name}</Text>
-                            <Text style={styles.score}>{player.caches} cache(s)</Text>
-                        </View>
-                    </Card>
-                ))}
-                {globalRanking.length === 0 && (
+                {playerRankings.map((player, index) => renderPlayerCard(player, index))}
+                {playerRankings.length === 0 && (
                     <Text style={styles.emptyText}>No players yet.</Text>
                 )}
             </ScrollView>

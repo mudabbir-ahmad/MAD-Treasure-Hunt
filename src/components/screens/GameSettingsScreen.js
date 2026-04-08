@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
-import {ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, View} from 'react-native';
+import {ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View} from 'react-native';
 import Screen from '../layout/Screen';
+import Card from '../UI/Card';
 import {Button, ButtonTray} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession, setSessionTeamsEnabled} from '../../hooks/SessionStore';
@@ -9,7 +10,7 @@ const GameSettingsScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getLobby, updateGroup, getSubgroups} = useGameHook();
+    const {getLobby, updateGroup, getSubgroups, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser} = useGameHook();
     const isBusiness = Boolean(session.isBusiness);
 
 //   State ----------------------
@@ -22,8 +23,22 @@ const GameSettingsScreen = () => {
     const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
     const [adminJoinCode, setAdminJoinCode] = useState('');
     const [memberJoinCode, setMemberJoinCode] = useState('');
+    const [waitlist, setWaitlist] = useState([]);
+    const [waitlistNames, setWaitlistNames] = useState({});
 
 //   Handlers -------------------
+
+    const loadWaitlist = async () => {
+        if (!session.currentGid) return;
+        const rows = await getAdminWaitlist(session.currentGid);
+        setWaitlist(rows || []);
+        const names = {};
+        for (const entry of (rows || [])) {
+            const u = await getUser(entry.Uid);
+            if (u) names[entry.Uid] = u.username;
+        }
+        setWaitlistNames(names);
+    };
 
     useEffect(() => {
         const load = async () => {
@@ -45,6 +60,7 @@ const GameSettingsScreen = () => {
             const sgs = await getSubgroups(session.currentGid);
             const memberSg = (sgs || []).find((sg) => !sg.IsAdminGroup);
             if (memberSg) setMemberJoinCode(memberSg.JoinCode || '');
+            await loadWaitlist();
             setLoading(false);
         };
         load();
@@ -62,6 +78,30 @@ const GameSettingsScreen = () => {
         // Persist the new toggle value so the session reflects it after a reload
         if (result) setSessionTeamsEnabled(teamsEnabled);
         setSaving(false);
+    };
+
+    const handleResetGame = () => {
+        Alert.alert('Reset Entire Game', 'This will clear ALL cache claims for every player. Are you sure?', [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Reset',
+                style: 'destructive',
+                onPress: async () => {
+                    await resetGame(session.currentGid);
+                    Alert.alert('Done', 'All cache claims have been reset.');
+                },
+            },
+        ]);
+    };
+
+    const handleApproveAdmin = async (entry) => {
+        await approveAdmin(entry.id);
+        await loadWaitlist();
+    };
+
+    const handleRejectAdmin = async (entry) => {
+        await rejectAdmin(entry.id);
+        await loadWaitlist();
     };
 
 //   View -----------------------
@@ -150,6 +190,46 @@ const GameSettingsScreen = () => {
                         />
                     </ButtonTray>
                 </View>
+
+                {/* Admin Waitlist */}
+                {waitlist.length > 0 && (
+                    <View style={styles.waitlistSection}>
+                        <Text style={styles.sectionTitle}>Admin Waitlist</Text>
+                        {waitlist.map((entry) => (
+                            <Card key={entry.id}>
+                                <View style={styles.waitlistRow}>
+                                    <Text style={styles.waitlistName}>
+                                        {waitlistNames[entry.Uid] || `User ${entry.Uid}`}
+                                    </Text>
+                                    <View style={styles.waitlistActions}>
+                                        <Button
+                                            label="Approve"
+                                            onClick={() => handleApproveAdmin(entry)}
+                                            styleButton={styles.approveButton}
+                                            styleLabel={styles.approveBtnLabel}
+                                        />
+                                        <Button
+                                            label="Reject"
+                                            onClick={() => handleRejectAdmin(entry)}
+                                            styleButton={styles.rejectButton}
+                                            styleLabel={styles.rejectBtnLabel}
+                                        />
+                                    </View>
+                                </View>
+                            </Card>
+                        ))}
+                    </View>
+                )}
+
+                {/* Reset Entire Game */}
+                <View style={styles.resetSection}>
+                    <Button
+                        label="Reset Entire Game"
+                        onClick={handleResetGame}
+                        styleButton={styles.resetButton}
+                        styleLabel={styles.resetLabel}
+                    />
+                </View>
             </ScrollView>
         </Screen>
     );
@@ -196,6 +276,23 @@ const styles = StyleSheet.create({
     saveWrap: {marginTop: 24},
     saveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
     saveLabel: {color: '#ffffff', fontWeight: '600'},
+    // Admin waitlist styles
+    waitlistSection: {marginTop: 30},
+    waitlistRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    waitlistName: {fontSize: 15, fontWeight: '600', color: '#1f2937', flex: 1},
+    waitlistActions: {flexDirection: 'row', gap: 6},
+    approveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a', minHeight: 36, flex: 0, paddingHorizontal: 10},
+    approveBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    rejectButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 0, paddingHorizontal: 10},
+    rejectBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    // Reset game styles
+    resetSection: {marginTop: 30},
+    resetButton: {backgroundColor: '#dc2626', borderColor: '#dc2626'},
+    resetLabel: {color: '#ffffff', fontWeight: '600'},
 });
 
 export default GameSettingsScreen;

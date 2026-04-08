@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -9,7 +9,7 @@ import ClaimTimerView from '../gameplay/ClaimTimerView';
 import PlayerMapView from '../gameplay/PlayerMapView';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
-import {getSession, setSessionGroup, setSessionUser} from '../../hooks/SessionStore';
+import {getSession, setSelectedCache, setSessionGroup, setSessionUser} from '../../hooks/SessionStore';
 import {getFovCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
@@ -32,6 +32,8 @@ const MapScreen = ({navigation}) => {
     const [error, setError] = useState('');
     const [gameCode, setGameCode] = useState('');
     const [groupInfo, setGroupInfo] = useState(null);
+    const [selectedCacheId, setSelectedCacheIdState] = useState(session.selectedCacheId);
+    const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
 
     // Admin cache creation / editing state
     const [isCreating, setIsCreating] = useState(false);
@@ -44,10 +46,23 @@ const MapScreen = ({navigation}) => {
     const claimDistance = groupInfo?.CacheTriggerMeters || 20;
 
     const isPlayer = inGame && !isAdmin;
-    const {visibleCache, isClaiming, setIsClaiming} = usePlayerGame(
+
+    // Filter out caches already claimed by the current user's team (or by the user if no team)
+    const activeCachesForPlayer = useMemo(() => {
+        if (!isPlayer) return [];
+        return cacheRecords.filter((cache) => {
+            const claims = cache.Claims || [];
+            if (session.currentTid) {
+                return !claims.some((c) => c.Tid === session.currentTid);
+            }
+            return !claims.some((c) => c.Uid === session.currentUid);
+        });
+    }, [cacheRecords, isPlayer, session.currentTid, session.currentUid]);
+
+    const {visibleCaches, isClaiming, setIsClaiming} = usePlayerGame(
         isPlayer ? userLocation : null,
         isPlayer ? heading : null,
-        isPlayer ? cacheRecords : [],
+        isPlayer ? activeCachesForPlayer : [],
         claimDistance,
     );
 
@@ -72,6 +87,17 @@ const MapScreen = ({navigation}) => {
     }, [inGame, isAdmin]);
 
     useEffect(() => { loadCaches(); }, [loadCaches]);
+
+    // Auto-select the first cache for the player when caches load and none is selected
+    useEffect(() => {
+        if (!isPlayer || cacheRecords.length === 0) return;
+        // If persisted selection still exists in the list, keep it
+        if (selectedCacheId && cacheRecords.some((c) => c.id === selectedCacheId)) return;
+        // Otherwise auto-select the first cache
+        const firstId = cacheRecords[0].id;
+        setSelectedCacheIdState(firstId);
+        setSelectedCache(firstId);
+    }, [cacheRecords, isPlayer]);
 
     // Location tracking
     useEffect(() => {
@@ -118,6 +144,7 @@ const MapScreen = ({navigation}) => {
 
     const handleJoinGame = async () => {
         if (!gameCode.trim()) return;
+        // Force uppercase just in case a lowercase code is pasted
         const result = await joinPrivateGame({JoinCode: gameCode.trim().toUpperCase(), Uid: session.currentUid});
         if (!result) return;
         setSessionGroup(result.Gid, result.SGid);
@@ -143,17 +170,22 @@ const MapScreen = ({navigation}) => {
         }
     };
 
-    const handleClaim = async (cacheId) => {
+    const handleClaim = useCallback(async (cacheId) => {
         if (!session.currentGid) return;
-        await claimCache({
+        const result = await claimCache({
             gid: session.currentGid,
             cacheId,
             uid: session.currentUid,
             tid: session.currentTid,
         });
         setIsClaiming(false);
+        if (result) {
+            // Show "Cache Claimed!" popup for 3 seconds
+            setClaimedPopupVisible(true);
+            setTimeout(() => setClaimedPopupVisible(false), 3000);
+        }
         await loadCaches();
-    };
+    }, [session.currentGid, session.currentUid, session.currentTid, loadCaches]);
 
     // Admin — open create form
     const handleCreateCachePress = () => {
@@ -215,9 +247,10 @@ const MapScreen = ({navigation}) => {
         });
     };
 
-    // Player — select cache
+    // Player — select cache (persist selection)
     const handleSelectCache = (cache) => {
-        // Future: scroll map to cache location
+        setSelectedCacheIdState(cache.id);
+        setSelectedCache(cache.id);
     };
 
 //   View -----------------------
@@ -232,7 +265,7 @@ const MapScreen = ({navigation}) => {
                         placeholder="Enter Game Code"
                         placeholderTextColor="#9ca3af"
                         value={gameCode}
-                        onChangeText={setGameCode}
+                        onChangeText={(text) => setGameCode(text.toUpperCase())}
                         autoCapitalize="characters"
                     />
                     <Button
@@ -439,8 +472,9 @@ const MapScreen = ({navigation}) => {
         );
     }
 
-    // Player in game
+    // Player in game — use the first visible cache for the claim timer
     const teamsWarning = groupInfo?.TeamsEnabled && !session.currentTid;
+    const claimTarget = visibleCaches.length > 0 ? visibleCaches[0] : null;
 
     return (
         <Screen style={styles.containerMap}>
@@ -450,7 +484,7 @@ const MapScreen = ({navigation}) => {
             <View style={styles.mapContainer}>
                 <PlayerMapView
                     userLocation={userLocation}
-                    visibleCache={visibleCache}
+                    visibleCaches={visibleCaches}
                     heading={heading}
                     claimDistance={claimDistance}
                 />
@@ -459,9 +493,10 @@ const MapScreen = ({navigation}) => {
                 </Pressable>
             </View>
             <ClaimTimerView
-                cache={visibleCache}
+                cache={claimTarget}
                 isClaiming={isClaiming}
                 onClaimSuccess={handleClaim}
+                showClaimedPopup={claimedPopupVisible}
             />
             <View style={styles.cacheSection}>
                 <ScrollView>
@@ -470,6 +505,7 @@ const MapScreen = ({navigation}) => {
                             key={cache.id}
                             cache={cache}
                             isAdmin={false}
+                            isSelected={selectedCacheId === cache.id}
                             onSelect={handleSelectCache}
                         />
                     ))}

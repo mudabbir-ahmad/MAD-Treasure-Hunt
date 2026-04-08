@@ -3,7 +3,7 @@ import {StyleSheet, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import Screen from '../layout/Screen';
-import {getFovCone} from '../../utils/geoMath';
+import {getFovCone, isInClaimCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.01, longitudeDelta: 0.01};
 
@@ -70,6 +70,11 @@ const ExpandedMapScreen = ({route}) => {
         ? getFovCone(userLocation, heading)
         : null;
 
+    // For players, show caches that currently fall within the FOV cone
+    const visiblePlayerCaches = (!isAdmin && userLocation && heading !== null)
+        ? caches.filter((c) => isInClaimCone(heading, userLocation, c.coordinates, claimDistance))
+        : [];
+
     return (
         <Screen showBack={true} style={styles.container}>
             <View style={styles.mapWrap}>
@@ -78,7 +83,7 @@ const ExpandedMapScreen = ({route}) => {
                     initialRegion={region}
                     showsUserLocation
                 >
-                    {/* Only admins see cache pin locations */}
+                    {/* Admins see all cache pin locations */}
                     {isAdmin && caches.map((cache) => (
                         <React.Fragment key={cache.id}>
                             <Marker
@@ -91,6 +96,22 @@ const ExpandedMapScreen = ({route}) => {
                                 radius={claimDistance}
                                 fillColor="rgba(59,130,246,0.15)"
                                 strokeColor="rgba(59,130,246,0.85)"
+                            />
+                        </React.Fragment>
+                    ))}
+                    {/* Players only see caches that are inside the FOV cone */}
+                    {!isAdmin && visiblePlayerCaches.map((cache) => (
+                        <React.Fragment key={cache.id}>
+                            <Marker
+                                coordinate={cache.coordinates}
+                                title={cache.clue}
+                                pinColor="#facc15"
+                            />
+                            <Circle
+                                center={cache.coordinates}
+                                radius={claimDistance}
+                                fillColor="rgba(250, 204, 21, 0.20)"
+                                strokeColor="rgba(250, 204, 21, 0.90)"
                             />
                         </React.Fragment>
                     ))}

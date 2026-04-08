@@ -53,6 +53,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingHorizontal: 12,
         backgroundColor: '#000000',
+        zIndex: 10,
     },
     leftSlot: {
         width: 72,
