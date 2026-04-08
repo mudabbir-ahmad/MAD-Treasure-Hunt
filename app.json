@@ -18,8 +18,8 @@
         "NSLocationWhenInUseUsageDescription": "This app needs your location for the treasure hunt."
       }
     },
-        "android": {
-          "adaptiveIcon": {
+    "android": {
+      "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-monochrome.png",
         "backgroundColor": "#ffffff"
       },

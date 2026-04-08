@@ -13,17 +13,9 @@ const Screen = ({ children, style, showBack = false }) => {
   const insets = useSafeAreaInsets();
 
   const titleMap = {
-    GameTypeScreen: "Game Type",
-    JoinPrivateGameScreen: "Join Private Game",
-    ManagePrivateGameScreen: "Manage Private Game",
-    CreateGameScreen: "Create Game",
-    ManageGameScreen: "Manage Game",
-    GameLobbyScreen: "Game Lobby",
     LeaderboardScreen: "Leaderboard",
     TeamScreen: "Current Team",
     MapScreen: "Map",
-    AdminHubScreen: "Admin Hub",
-    ManageSubgroupsScreen: "Manage Subgroups",
     GameSettingsScreen: "Game Settings",
     PlayersScreen: "Players",
     ExpandedMapScreen: "Map View",

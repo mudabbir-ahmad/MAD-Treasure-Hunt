@@ -4,14 +4,12 @@ const useGameHook = () => {
   //   Initialisation ------------
 
   const usersEndpoint = `${API_BASE_URL}/users`;
-  const gameTypesEndpoint = `${API_BASE_URL}/game-types`;
   const groupsEndpoint = `${API_BASE_URL}/groups`;
   const subgroupsEndpoint = `${API_BASE_URL}/subgroups`;
   const subgroupMembershipsEndpoint = `${API_BASE_URL}/subgroup-memberships`;
   const teamsEndpoint = `${API_BASE_URL}/teams`;
   const teamMembersEndpoint = `${API_BASE_URL}/team-members`;
   const gameDataEndpoint = `${API_BASE_URL}/game-data`;
-  const adminWaitlistEndpoint = `${API_BASE_URL}/admin-waitlist`;
 
   //   Handlers -------------------
 
@@ -26,18 +24,7 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
-  // Game types
-  const getGameTypes = async () => {
-    const response = await API.get(gameTypesEndpoint);
-    return response.isSuccess ? response.result : [];
-  };
-
   // Groups
-  const getCreatedPrivateGame = async (userId) => {
-    const response = await API.get(`${groupsEndpoint}?CreatedByUid=${userId}`);
-    return response.isSuccess ? response.result : [];
-  };
-
   const createPrivateGame = async (payload) => {
     const response = await API.post(groupsEndpoint, payload);
     return response.isSuccess ? response.result : null;
@@ -72,11 +59,6 @@ const useGameHook = () => {
   const removeMember = async (membershipId) => {
     const response = await API.delete(`${subgroupMembershipsEndpoint}/${membershipId}`);
     return response.isSuccess;
-  };
-
-  const joinAsAdmin = async (payload) => {
-    const response = await API.post(adminWaitlistEndpoint, payload);
-    return response.isSuccess ? response.result : null;
   };
 
   // Teams
@@ -152,14 +134,11 @@ const useGameHook = () => {
   return {
     getUser,
     updateUser,
-    getGameTypes,
-    getCreatedPrivateGame,
     createPrivateGame,
     getLobby,
     updateGroup,
     getSubgroups,
     joinPrivateGame,
-    joinAsAdmin,
     getGroupMembers,
     removeMember,
     getTeams,

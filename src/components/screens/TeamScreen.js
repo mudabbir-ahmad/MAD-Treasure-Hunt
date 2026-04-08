@@ -1,6 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import Screen from '../layout/Screen';
+import Card from '../UI/Card';
 import {Button, ButtonTray} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession, setSessionTeam} from '../../hooks/SessionStore';
@@ -23,20 +24,22 @@ const TeamScreen = () => {
 
 //   Handlers -------------------
 
+    const loadTeamData = async (tid) => {
+        const t = await getTeam(tid);
+        setTeam(t);
+        const ms = await getTeamMembers(tid);
+        setMembers(ms || []);
+        const names = {};
+        for (const m of (ms || [])) {
+            const u = await getUser(m.Uid);
+            if (u) names[m.Uid] = u.username;
+        }
+        setMemberNames(names);
+    };
+
     useEffect(() => {
         const load = async () => {
-            if (activeTid) {
-                const t = await getTeam(activeTid);
-                setTeam(t);
-                const ms = await getTeamMembers(activeTid);
-                setMembers(ms || []);
-                const names = {};
-                for (const m of (ms || [])) {
-                    const u = await getUser(m.Uid);
-                    if (u) names[m.Uid] = u.username;
-                }
-                setMemberNames(names);
-            }
+            if (activeTid) await loadTeamData(activeTid);
             setLoading(false);
         };
         load();
@@ -44,7 +47,7 @@ const TeamScreen = () => {
 
     const handleJoinTeam = async () => {
         if (!teamCode.trim()) return;
-        const result = await joinTeamByCode({JoinCode: teamCode.trim(), Uid: session.currentUid});
+        const result = await joinTeamByCode({JoinCode: teamCode.trim().toUpperCase(), Uid: session.currentUid});
         if (!result) return;
         setSessionTeam(result.Tid);
         setActiveTid(result.Tid);
@@ -73,6 +76,15 @@ const TeamScreen = () => {
         setMemberNames({});
     };
 
+    const handleKickMember = async (member) => {
+        await leaveTeam(member.id);
+        await loadTeamData(activeTid);
+    };
+
+    // Check if current user is the team leader
+    const myMembership = members.find((m) => m.Uid === session.currentUid);
+    const isCurrentUserLeader = Boolean(myMembership?.IsLeader);
+
 //   View -----------------------
 
     if (loading) {
@@ -91,6 +103,7 @@ const TeamScreen = () => {
                     <TextInput
                         style={styles.codeInput}
                         placeholder="Enter Team Code"
+                        placeholderTextColor="#9ca3af"
                         value={teamCode}
                         onChangeText={setTeamCode}
                         autoCapitalize="characters"
@@ -127,9 +140,24 @@ const TeamScreen = () => {
             </View>
             <ScrollView style={styles.memberList}>
                 {members.map((m) => (
-                    <View key={m.id} style={styles.memberItem}>
-                        <Text style={styles.memberName}>{memberNames[m.Uid] || `Player ${m.Uid}`}</Text>
-                    </View>
+                    <Card key={m.id}>
+                        <View style={styles.memberRow}>
+                            <View style={styles.memberInfo}>
+                                <Text style={styles.memberName}>
+                                    {memberNames[m.Uid] || `Player ${m.Uid}`}
+                                </Text>
+                                {m.IsLeader && <Text style={styles.leaderBadge}>(Team Leader)</Text>}
+                            </View>
+                            {isCurrentUserLeader && m.Uid !== session.currentUid && (
+                                <Button
+                                    label="Kick"
+                                    onClick={() => handleKickMember(m)}
+                                    styleButton={styles.kickButton}
+                                    styleLabel={styles.kickLabel}
+                                />
+                            )}
+                        </View>
+                    </Card>
                 ))}
                 {members.length === 0 && (
                     <Text style={styles.emptyText}>No members yet.</Text>
@@ -178,14 +206,18 @@ const styles = StyleSheet.create({
     teamCodeLabel: {color: '#d1d5db', fontSize: 15, fontWeight: '600'},
     teamCodeValue: {color: '#ffffff', fontSize: 17, fontWeight: '700', letterSpacing: 2},
     memberList: {flex: 1, paddingHorizontal: 15, paddingTop: 10},
-    memberItem: {
-        paddingVertical: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+    memberRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
-    memberName: {fontSize: 16, color: '#1f2937'},
+    memberInfo: {flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6},
+    memberName: {fontSize: 16, color: '#1f2937', fontWeight: '600'},
+    leaderBadge: {fontSize: 12, color: '#2563eb', fontWeight: '700'},
+    kickButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 0, paddingHorizontal: 14},
+    kickLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 30, fontSize: 14},
-    leaveWrap: {padding: 15},
+    leaveWrap: {paddingHorizontal: 15, paddingVertical: 10},
     leaveButton: {backgroundColor: '#dc2626', borderColor: '#dc2626'},
     leaveLabel: {color: '#ffffff', fontWeight: '600'},
 });

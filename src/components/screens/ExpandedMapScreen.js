@@ -2,22 +2,22 @@ import React, {useEffect, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
-import {Magnetometer} from 'expo-sensors';
 import Screen from '../layout/Screen';
-import {getFovCone, toHeading} from '../../utils/geoMath';
+import {getFovCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.01, longitudeDelta: 0.01};
 
 const ExpandedMapScreen = ({route}) => {
 //   Initialisation ------------
 
-    const {isAdmin, cacheRecords: cacheStr, claimDistance: routeClaimDistance} = route.params || {};
+    const {isAdmin, cacheRecords: cacheStr, claimDistance: routeClaimDistance, userLocation: routeLocation} = route.params || {};
     const caches = cacheStr ? JSON.parse(cacheStr) : [];
     const claimDistance = routeClaimDistance || 20;
 
 //   State ----------------------
 
-    const [userLocation, setUserLocation] = useState(null);
+    // Seed with the location passed from MapScreen so the map opens centred on the user immediately
+    const [userLocation, setUserLocation] = useState(routeLocation || null);
     const [heading, setHeading] = useState(null);
 
 //   Handlers -------------------
@@ -30,16 +30,27 @@ const ExpandedMapScreen = ({route}) => {
             const {status} = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') return;
 
-            const pos = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Balanced});
-            setUserLocation({latitude: pos.coords.latitude, longitude: pos.coords.longitude});
+            // Only do a fresh one-shot fix if MapScreen didn't supply a location
+            if (!routeLocation) {
+                const last = await Location.getLastKnownPositionAsync();
+                if (last) {
+                    setUserLocation({latitude: last.coords.latitude, longitude: last.coords.longitude});
+                } else {
+                    const pos = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Low});
+                    setUserLocation({latitude: pos.coords.latitude, longitude: pos.coords.longitude});
+                }
+            }
 
             locationSub = await Location.watchPositionAsync(
                 {accuracy: Location.Accuracy.Balanced, distanceInterval: 2, timeInterval: 1000},
                 (next) => setUserLocation({latitude: next.coords.latitude, longitude: next.coords.longitude}),
             );
 
-            Magnetometer.setUpdateInterval(500);
-            headingSub = Magnetometer.addListener((data) => setHeading(toHeading(data)));
+            // Use OS-fused heading from expo-location
+            headingSub = await Location.watchHeadingAsync((headingData) => {
+                const raw = headingData.trueHeading >= 0 ? headingData.trueHeading : headingData.magHeading;
+                setHeading(raw);
+            });
         };
 
         start();
@@ -75,7 +86,7 @@ const ExpandedMapScreen = ({route}) => {
                                 title={cache.name || cache.clue}
                                 pinColor="#2563eb"
                             />
-                             <Circle
+                            <Circle
                                 center={cache.coordinates}
                                 radius={claimDistance}
                                 fillColor="rgba(59,130,246,0.15)"

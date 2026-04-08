@@ -2,7 +2,6 @@ import React, {useCallback, useEffect, useState} from 'react';
 import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
-import {Magnetometer} from 'expo-sensors';
 import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
 import CacheCardItem from '../gameplay/CacheCardItem';
@@ -11,7 +10,7 @@ import PlayerMapView from '../gameplay/PlayerMapView';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
 import {getSession, setSessionGroup, setSessionUser} from '../../hooks/SessionStore';
-import {getFovCone, toHeading} from '../../utils/geoMath';
+import {getFovCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
 
@@ -87,18 +86,27 @@ const MapScreen = ({navigation}) => {
                 setPlayerLoading(false);
                 return;
             }
-            const current = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Balanced});
-            setUserLocation({latitude: current.coords.latitude, longitude: current.coords.longitude});
+
+            // Try cached position first for instant load, fall back to fresh fix
+            const last = await Location.getLastKnownPositionAsync();
+            if (last) {
+                setUserLocation({latitude: last.coords.latitude, longitude: last.coords.longitude});
+            } else {
+                const current = await Location.getCurrentPositionAsync({accuracy: Location.Accuracy.Low});
+                setUserLocation({latitude: current.coords.latitude, longitude: current.coords.longitude});
+            }
+            setPlayerLoading(false);
 
             locationSub = await Location.watchPositionAsync(
                 {accuracy: Location.Accuracy.Balanced, distanceInterval: 1, timeInterval: 1000},
                 (next) => setUserLocation({latitude: next.coords.latitude, longitude: next.coords.longitude}),
             );
 
-            // Track heading for all in-game users (admin + player)
-            Magnetometer.setUpdateInterval(500);
-            headingSub = Magnetometer.addListener((data) => setHeading(toHeading(data)));
-            setPlayerLoading(false);
+            // Use OS-fused heading from expo-location
+            headingSub = await Location.watchHeadingAsync((headingData) => {
+                const raw = headingData.trueHeading >= 0 ? headingData.trueHeading : headingData.magHeading;
+                setHeading(raw);
+            });
         };
 
         start();
@@ -110,7 +118,7 @@ const MapScreen = ({navigation}) => {
 
     const handleJoinGame = async () => {
         if (!gameCode.trim()) return;
-        const result = await joinPrivateGame({JoinCode: gameCode.trim(), Uid: session.currentUid});
+        const result = await joinPrivateGame({JoinCode: gameCode.trim().toUpperCase(), Uid: session.currentUid});
         if (!result) return;
         setSessionGroup(result.Gid, result.SGid);
         setInGame(true);
@@ -196,13 +204,14 @@ const MapScreen = ({navigation}) => {
         setEditingCacheId(null);
     };
 
-    // Navigate to expanded map view
+    // Navigate to expanded map view, passing the live location so it opens centred on the user
     const handleExpandMap = () => {
         navigation.navigate('ExpandedMapScreen', {
             isAdmin,
             cacheRecords: JSON.stringify(cacheRecords),
             heading: heading || 0,
             claimDistance,
+            userLocation: userLocation || null,
         });
     };
 
@@ -306,7 +315,8 @@ const MapScreen = ({navigation}) => {
                         value={newClue}
                         onChangeText={setNewClue}
                     />
-                    <View style={styles.coordRow}>                        <View style={styles.coordField}>
+                    <View style={styles.coordRow}>
+                        <View style={styles.coordField}>
                             <Text style={styles.coordLabel}>Latitude</Text>
                             <TextInput
                                 style={styles.formInput}

@@ -3,7 +3,7 @@ import {ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, View
 import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
-import {getSession} from '../../hooks/SessionStore';
+import {getSession, setSessionTeamsEnabled} from '../../hooks/SessionStore';
 
 const GameSettingsScreen = () => {
 //   Initialisation ------------
@@ -17,7 +17,7 @@ const GameSettingsScreen = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [groupName, setGroupName] = useState('');
-    const [teamsEnabled, setTeamsEnabled] = useState(false);
+    const [teamsEnabled, setTeamsEnabled] = useState(session.teamsEnabled);
     const [maxSubgroups, setMaxSubgroups] = useState('1');
     const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
     const [adminJoinCode, setAdminJoinCode] = useState('');
@@ -34,7 +34,10 @@ const GameSettingsScreen = () => {
             const group = await getLobby(session.currentGid);
             if (group) {
                 setGroupName(group.GroupName || '');
-                setTeamsEnabled(Boolean(group.TeamsEnabled));
+                const serverTeams = Boolean(group.TeamsEnabled);
+                setTeamsEnabled(serverTeams);
+                // Keep session in sync so the toggle survives app reloads
+                setSessionTeamsEnabled(serverTeams);
                 setMaxSubgroups(String(group.MaxMemberSubgroups || 1));
                 setCacheTriggerMeters(String(group.CacheTriggerMeters || 20));
                 setAdminJoinCode(group.AdminJoinCode || '');
@@ -50,12 +53,14 @@ const GameSettingsScreen = () => {
     const handleSave = async () => {
         if (!session.currentGid) return;
         setSaving(true);
-        await updateGroup(session.currentGid, {
+        const result = await updateGroup(session.currentGid, {
             GroupName: groupName.trim(),
             TeamsEnabled: teamsEnabled,
             MaxMemberSubgroups: parseInt(maxSubgroups) || 1,
             CacheTriggerMeters: parseInt(cacheTriggerMeters) || 20,
         });
+        // Persist the new toggle value so the session reflects it after a reload
+        if (result) setSessionTeamsEnabled(teamsEnabled);
         setSaving(false);
     };
 
