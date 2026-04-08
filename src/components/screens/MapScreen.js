@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useMemo, useState} from 'react';
 import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
+import {useFocusEffect} from '@react-navigation/native';
 import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
 import CacheCardItem from '../gameplay/CacheCardItem';
@@ -19,7 +20,7 @@ const MapScreen = ({navigation}) => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser} = useGameHook();
+    const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser, getSubgroups} = useGameHook();
 
 //   State ----------------------
 
@@ -34,6 +35,7 @@ const MapScreen = ({navigation}) => {
     const [groupInfo, setGroupInfo] = useState(null);
     const [selectedCacheId, setSelectedCacheIdState] = useState(session.selectedCacheId);
     const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
+    const [subgroups, setSubgroups] = useState([]);
 
     // Admin cache creation / editing state
     const [isCreating, setIsCreating] = useState(false);
@@ -75,18 +77,32 @@ const MapScreen = ({navigation}) => {
     useEffect(() => {
         if (!session.currentGid) return;
         getLobby(session.currentGid).then(setGroupInfo);
+        getSubgroups(session.currentGid).then(setSubgroups);
     }, [inGame]);
 
+    // Default member subgroup SGid for cache creation (first non-admin subgroup)
+    const defaultMemberSGid = subgroups.find((sg) => !sg.IsAdminGroup)?.SGid || null;
+
+    // Always call getSession() fresh inside the callback so we never read a
+    // stale currentGid from the closure — matches the server's /caches endpoint
     const loadCaches = useCallback(async () => {
-        if (!session.currentGid) {
+        const currentGid = getSession().currentGid;
+        if (!currentGid) {
             setCacheRecords([]);
             return;
         }
-        const rows = await getCaches(session.currentGid, null);
+        const rows = await getCaches(currentGid, null);
         setCacheRecords(rows || []);
-    }, [inGame, isAdmin]);
+    }, [getCaches]);
 
+    // Run once on mount
     useEffect(() => { loadCaches(); }, [loadCaches]);
+
+    // Re-fetch caches every time this screen gains focus so the list is always
+    // up-to-date after navigating away and back (e.g. Settings → Map)
+    useFocusEffect(
+        useCallback(() => { loadCaches(); }, [loadCaches])
+    );
 
     // Auto-select the first cache for the player when caches load and none is selected
     useEffect(() => {
@@ -222,7 +238,7 @@ const MapScreen = ({navigation}) => {
             latitude: newCoord.latitude,
             longitude: newCoord.longitude,
             clue: newClue.trim(),
-            subgroupId: 1,
+            subgroupId: defaultMemberSGid,
         };
         if (editingCacheId) payload.cacheId = editingCacheId;
         await upsertCache(payload);

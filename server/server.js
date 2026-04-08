@@ -250,10 +250,6 @@ addRoute('POST', '/groups', async (req, res) => {
     });
     writeJson('subgroup-memberships.json', memberships);
 
-    // Initialise empty game-data entry
-    const gameData = readJson('game-data.json');
-    gameData.push({ Gid: group.Gid, GeoCaches: [] });
-    writeJson('game-data.json', gameData);
 
     // Update the creating user
     const users = readJson('users.json');
@@ -666,136 +662,131 @@ addRoute('POST', '/admin-waitlist/:id/approve', async (req, res, params) => {
 });
 
 // ======================================================================
-//  GAME DATA  CRUDL
+//  CACHES  CRUDL  (standalone — reads/writes caches.json)
 // ======================================================================
 
-addRoute('GET', '/game-data', (req, res) => {
-    sendJson(res, 200, readJson('game-data.json'));
+// Helper: convert storage row to API response format
+const toCacheApi = (cache) => ({
+    id: cache.CacheId,
+    name: cache.Title || '',
+    clue: cache.Clue || '',
+    coordinates: { latitude: cache.Latitude, longitude: cache.Longitude },
+    radius: cache.TriggerMeters,
+    groupId: cache.Gid,
+    subgroupId: cache.SGid,
+    Claims: cache.Claims || [],
 });
 
-addRoute('GET', '/game-data/:gid', (req, res, params) => {
-    const rows = readJson('game-data.json');
-    const row = rows.find((r) => String(r.Gid) === params.gid);
-    if (!row) return sendJson(res, 404, { message: 'Game data not found' });
-    sendJson(res, 200, row);
+// GET /caches  — list caches for a group (optional SGid filter)
+addRoute('GET', '/caches', (req, res, params, query) => {
+    let rows = readJson('caches.json');
+    if (query.Gid) rows = rows.filter((r) => String(r.Gid) === query.Gid);
+    if (query.SGid) rows = rows.filter((r) => String(r.SGid) === query.SGid);
+    sendJson(res, 200, rows.map(toCacheApi));
 });
 
-// ======================================================================
-//  CACHES  (nested under game-data)  CRUDL
-// ======================================================================
+// POST /caches  — create a new cache
+addRoute('POST', '/caches', async (req, res) => {
+    const payload = await parseBody(req);
+    const rows = readJson('caches.json');
 
-// Helper: convert storage cache to API response format
-const toCacheApi = (cache, gid) => {
-    // Migrate old single-claim format to Claims array
-    let claims = cache.Claims || [];
-    if (claims.length === 0 && cache.ClaimedByUid) {
-        claims = [{ Uid: cache.ClaimedByUid, Tid: cache.ClaimedByTid || null, ClaimedAt: null }];
-    }
-    return {
-        id: cache.CacheId,
-        coordinates: { latitude: cache.Latitude, longitude: cache.Longitude },
-        radius: cache.TriggerMeters,
-        clue: cache.Title,
-        groupId: Number(gid),
-        subgroupId: cache.SGid,
-        Claims: claims,
+    const cache = {
+        CacheId: nextId(rows, 'CacheId'),
+        Gid: payload.Gid,
+        SGid: payload.SGid || null,
+        Title: payload.Title || '',
+        Clue: payload.Clue || '',
+        Latitude: payload.Latitude || 0,
+        Longitude: payload.Longitude || 0,
+        TriggerMeters: payload.TriggerMeters || 20,
+        Claims: [],
     };
-};
 
-// Helper: convert API payload to storage cache format
-const toCacheStorage = (data, cacheId) => ({
-    CacheId: cacheId,
-    Title: data.clue || data.Title || '',
-    Latitude: data.latitude != null ? data.latitude : (data.Latitude || 0),
-    Longitude: data.longitude != null ? data.longitude : (data.Longitude || 0),
-    TriggerMeters: data.radius || data.TriggerMeters || 20,
-    SGid: data.subgroupId != null ? data.subgroupId : (data.SGid || null),
+    rows.push(cache);
+    writeJson('caches.json', rows);
+    sendJson(res, 201, toCacheApi(cache));
 });
 
-// GET /game-data/:gid/caches  — list caches for a group
-addRoute('GET', '/game-data/:gid/caches', (req, res, params, query) => {
-    const rows = readJson('game-data.json');
-    const entry = rows.find((r) => String(r.Gid) === params.gid);
-    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
+// POST /caches/reset  — clear all claims for every cache in a game
+addRoute('POST', '/caches/reset', async (req, res, params, query) => {
+    const rows = readJson('caches.json');
+    const gid = query.Gid;
+    if (!gid) return sendJson(res, 400, { message: 'Gid query parameter required' });
 
-    let caches = (entry.GeoCaches || []).map((c) => toCacheApi(c, params.gid));
-    if (query.SGid) caches = caches.filter((c) => String(c.subgroupId) === query.SGid);
-    sendJson(res, 200, caches);
+    for (const cache of rows) {
+        if (String(cache.Gid) === gid) cache.Claims = [];
+    }
+
+    writeJson('caches.json', rows);
+    sendJson(res, 200, { message: 'Game reset successfully' });
 });
 
-// GET /game-data/:gid/caches/:cacheId  — read single cache
-addRoute('GET', '/game-data/:gid/caches/:cacheId', (req, res, params) => {
-    const rows = readJson('game-data.json');
-    const entry = rows.find((r) => String(r.Gid) === params.gid);
-    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
+// POST /caches/reset-player/:uid  — remove all claims by a specific user
+addRoute('POST', '/caches/reset-player/:uid', async (req, res, params, query) => {
+    const rows = readJson('caches.json');
+    const gid = query.Gid;
+    if (!gid) return sendJson(res, 400, { message: 'Gid query parameter required' });
 
-    const cache = (entry.GeoCaches || []).find((c) => c.CacheId === params.cacheId);
-    if (!cache) return sendJson(res, 404, { message: 'Cache not found' });
-    sendJson(res, 200, toCacheApi(cache, params.gid));
+    const uid = Number(params.uid);
+    for (const cache of rows) {
+        if (String(cache.Gid) === gid && cache.Claims) {
+            cache.Claims = cache.Claims.filter((c) => c.Uid !== uid);
+        }
+    }
+
+    writeJson('caches.json', rows);
+    sendJson(res, 200, { message: 'Player progress reset' });
 });
 
-// POST /game-data/:gid/caches  — create a new cache
-addRoute('POST', '/game-data/:gid/caches', async (req, res, params) => {
+// GET /caches/:id  — read a single cache
+addRoute('GET', '/caches/:id', (req, res, params) => {
+    const rows = readJson('caches.json');
+    const row = rows.find((r) => String(r.CacheId) === params.id);
+    if (!row) return sendJson(res, 404, { message: 'Cache not found' });
+    sendJson(res, 200, toCacheApi(row));
+});
+
+// PUT /caches/:id  — update a cache
+addRoute('PUT', '/caches/:id', async (req, res, params) => {
     const payload = await parseBody(req);
-    const rows = readJson('game-data.json');
-    const entry = rows.find((r) => String(r.Gid) === params.gid);
-    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
-
-    const existingIds = (entry.GeoCaches || []).map((c) => {
-        const num = parseInt(String(c.CacheId).replace(/\D/g, ''), 10);
-        return isNaN(num) ? 0 : num;
-    });
-    const nextNum = existingIds.length > 0 ? Math.max(...existingIds) + 1 : 1;
-    const cacheId = `C${nextNum}`;
-
-    const stored = { ...toCacheStorage(payload, cacheId), Claims: [] };
-    if (!entry.GeoCaches) entry.GeoCaches = [];
-    entry.GeoCaches.push(stored);
-    writeJson('game-data.json', rows);
-    sendJson(res, 201, toCacheApi(stored, params.gid));
-});
-
-// PUT /game-data/:gid/caches/:cacheId  — update a cache
-addRoute('PUT', '/game-data/:gid/caches/:cacheId', async (req, res, params) => {
-    const payload = await parseBody(req);
-    const rows = readJson('game-data.json');
-    const entry = rows.find((r) => String(r.Gid) === params.gid);
-    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
-
-    const idx = (entry.GeoCaches || []).findIndex((c) => c.CacheId === params.cacheId);
+    const rows = readJson('caches.json');
+    const idx = rows.findIndex((r) => String(r.CacheId) === params.id);
     if (idx === -1) return sendJson(res, 404, { message: 'Cache not found' });
 
-    const existing = entry.GeoCaches[idx];
-    const updated = { ...existing, ...toCacheStorage(payload, params.cacheId) };
-    // Preserve claims — property updates must not overwrite the Claims array
-    updated.Claims = existing.Claims || [];
-    entry.GeoCaches[idx] = updated;
-    writeJson('game-data.json', rows);
-    sendJson(res, 200, toCacheApi(updated, params.gid));
+    const existing = rows[idx];
+    rows[idx] = {
+        ...existing,
+        Title: payload.Title != null ? payload.Title : existing.Title,
+        Clue: payload.Clue != null ? payload.Clue : existing.Clue,
+        Latitude: payload.Latitude != null ? payload.Latitude : existing.Latitude,
+        Longitude: payload.Longitude != null ? payload.Longitude : existing.Longitude,
+        TriggerMeters: payload.TriggerMeters != null ? payload.TriggerMeters : existing.TriggerMeters,
+        SGid: payload.SGid != null ? payload.SGid : existing.SGid,
+        // Preserve CacheId, Gid and Claims — updates must not overwrite these
+        CacheId: existing.CacheId,
+        Gid: existing.Gid,
+        Claims: existing.Claims || [],
+    };
+
+    writeJson('caches.json', rows);
+    sendJson(res, 200, toCacheApi(rows[idx]));
 });
 
-// DELETE /game-data/:gid/caches/:cacheId  — delete a cache
-addRoute('DELETE', '/game-data/:gid/caches/:cacheId', (req, res, params) => {
-    const rows = readJson('game-data.json');
-    const entry = rows.find((r) => String(r.Gid) === params.gid);
-    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
-
-    const idx = (entry.GeoCaches || []).findIndex((c) => c.CacheId === params.cacheId);
+// DELETE /caches/:id  — delete a cache
+addRoute('DELETE', '/caches/:id', (req, res, params) => {
+    const rows = readJson('caches.json');
+    const idx = rows.findIndex((r) => String(r.CacheId) === params.id);
     if (idx === -1) return sendJson(res, 404, { message: 'Cache not found' });
-
-    entry.GeoCaches.splice(idx, 1);
-    writeJson('game-data.json', rows);
+    rows.splice(idx, 1);
+    writeJson('caches.json', rows);
     sendJson(res, 204, null);
 });
 
-// POST /game-data/:gid/caches/:cacheId/claim  — claim a cache (multi-team)
-addRoute('POST', '/game-data/:gid/caches/:cacheId/claim', async (req, res, params) => {
+// POST /caches/:id/claim  — claim a cache (team-aware: prevents same team from claiming again)
+addRoute('POST', '/caches/:id/claim', async (req, res, params) => {
     const payload = await parseBody(req);
-    const rows = readJson('game-data.json');
-    const entry = rows.find((r) => String(r.Gid) === params.gid);
-    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
-
-    const cache = (entry.GeoCaches || []).find((c) => c.CacheId === params.cacheId);
+    const rows = readJson('caches.json');
+    const cache = rows.find((r) => String(r.CacheId) === params.id);
     if (!cache) return sendJson(res, 404, { message: 'Cache not found' });
 
     if (!cache.Claims) cache.Claims = [];
@@ -814,42 +805,8 @@ addRoute('POST', '/game-data/:gid/caches/:cacheId/claim', async (req, res, param
         ClaimedAt: new Date().toISOString(),
     });
 
-    writeJson('game-data.json', rows);
-    sendJson(res, 200, toCacheApi(cache, params.gid));
-});
-
-// POST /game-data/:gid/reset  — reset all cache claims for a game
-addRoute('POST', '/game-data/:gid/reset', async (req, res, params) => {
-    const rows = readJson('game-data.json');
-    const entry = rows.find((r) => String(r.Gid) === params.gid);
-    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
-
-    for (const cache of (entry.GeoCaches || [])) {
-        cache.Claims = [];
-        // Clean up legacy fields
-        delete cache.ClaimedByUid;
-        delete cache.ClaimedByTid;
-    }
-
-    writeJson('game-data.json', rows);
-    sendJson(res, 200, { message: 'Game reset successfully' });
-});
-
-// POST /game-data/:gid/reset-player/:uid  — remove all claims by a specific user
-addRoute('POST', '/game-data/:gid/reset-player/:uid', async (req, res, params) => {
-    const rows = readJson('game-data.json');
-    const entry = rows.find((r) => String(r.Gid) === params.gid);
-    if (!entry) return sendJson(res, 404, { message: 'Game data not found' });
-
-    const uid = Number(params.uid);
-    for (const cache of (entry.GeoCaches || [])) {
-        if (cache.Claims) {
-            cache.Claims = cache.Claims.filter((c) => c.Uid !== uid);
-        }
-    }
-
-    writeJson('game-data.json', rows);
-    sendJson(res, 200, { message: 'Player progress reset' });
+    writeJson('caches.json', rows);
+    sendJson(res, 200, toCacheApi(cache));
 });
 
 // ======================================================================

@@ -9,7 +9,7 @@ const useGameHook = () => {
   const subgroupMembershipsEndpoint = `${API_BASE_URL}/subgroup-memberships`;
   const teamsEndpoint = `${API_BASE_URL}/teams`;
   const teamMembersEndpoint = `${API_BASE_URL}/team-members`;
-  const gameDataEndpoint = `${API_BASE_URL}/game-data`;
+  const cachesEndpoint = `${API_BASE_URL}/caches`;
   const adminWaitlistEndpoint = `${API_BASE_URL}/admin-waitlist`;
 
   //   Handlers -------------------
@@ -41,9 +41,30 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  // Subgroups
   const getSubgroups = async (gid) => {
     const response = await API.get(`${subgroupsEndpoint}?Gid=${gid}`);
     return response.isSuccess ? response.result : [];
+  };
+
+  const getSubgroup = async (sgid) => {
+    const response = await API.get(`${subgroupsEndpoint}/${sgid}`);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const createSubgroup = async (payload) => {
+    const response = await API.post(subgroupsEndpoint, payload);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const updateSubgroup = async (sgid, data) => {
+    const response = await API.put(`${subgroupsEndpoint}/${sgid}`, data);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const deleteSubgroup = async (sgid) => {
+    const response = await API.delete(`${subgroupsEndpoint}/${sgid}`);
+    return response.isSuccess;
   };
 
   // Subgroup memberships
@@ -78,6 +99,16 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  const updateTeam = async (tid, data) => {
+    const response = await API.put(`${teamsEndpoint}/${tid}`, data);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const deleteTeam = async (tid) => {
+    const response = await API.delete(`${teamsEndpoint}/${tid}`);
+    return response.isSuccess;
+  };
+
   const joinTeamByCode = async (payload) => {
     const response = await API.post(teamMembersEndpoint, payload);
     return response.isSuccess ? response.result : null;
@@ -94,10 +125,10 @@ const useGameHook = () => {
     return response.isSuccess;
   };
 
-  // Caches
+  // Caches (standalone resource)
   const getCaches = async (gid, sgid = null) => {
-    let url = `${gameDataEndpoint}/${gid}/caches`;
-    if (sgid !== null) url += `?SGid=${sgid}`;
+    let url = `${cachesEndpoint}?Gid=${gid}`;
+    if (sgid !== null) url += `&SGid=${sgid}`;
     const response = await API.get(url);
     return response.isSuccess ? response.result : [];
   };
@@ -105,41 +136,46 @@ const useGameHook = () => {
   const upsertCache = async (payload) => {
     if (payload.cacheId) {
       const response = await API.put(
-        `${gameDataEndpoint}/${payload.gid}/caches/${payload.cacheId}`,
+        `${cachesEndpoint}/${payload.cacheId}`,
         payload,
       );
       return response.isSuccess ? response.result : null;
     }
-    const response = await API.post(
-      `${gameDataEndpoint}/${payload.gid}/caches`,
-      payload,
-    );
+    const response = await API.post(cachesEndpoint, {
+      Gid: payload.gid,
+      SGid: payload.subgroupId,
+      Title: payload.name,
+      Clue: payload.clue,
+      Latitude: payload.latitude,
+      Longitude: payload.longitude,
+      TriggerMeters: payload.radius,
+    });
     return response.isSuccess ? response.result : null;
   };
 
-  // Claim a cache via the multi-team claim endpoint
+  // Claim a cache — team-aware: prevents same team from claiming again
   const claimCache = async (payload) => {
     const response = await API.post(
-      `${gameDataEndpoint}/${payload.gid}/caches/${payload.cacheId}/claim`,
+      `${cachesEndpoint}/${payload.cacheId}/claim`,
       {Uid: payload.uid, Tid: payload.tid},
     );
     return response.isSuccess ? response.result : null;
   };
 
   const deleteCache = async (gid, cacheId) => {
-    const response = await API.delete(`${gameDataEndpoint}/${gid}/caches/${cacheId}`);
+    const response = await API.delete(`${cachesEndpoint}/${cacheId}`);
     return response.isSuccess;
   };
 
-  // Game reset — clear all claims for a game
+  // Game reset — remove all caches for a game
   const resetGame = async (gid) => {
-    const response = await API.post(`${gameDataEndpoint}/${gid}/reset`, {});
+    const response = await API.post(`${cachesEndpoint}/reset?Gid=${gid}`, {});
     return response.isSuccess;
   };
 
   // Player progress reset — clear all claims by a specific user
   const resetPlayerProgress = async (gid, uid) => {
-    const response = await API.post(`${gameDataEndpoint}/${gid}/reset-player/${uid}`, {});
+    const response = await API.post(`${cachesEndpoint}/reset-player/${uid}?Gid=${gid}`, {});
     return response.isSuccess;
   };
 
@@ -170,12 +206,18 @@ const useGameHook = () => {
     getLobby,
     updateGroup,
     getSubgroups,
+    getSubgroup,
+    createSubgroup,
+    updateSubgroup,
+    deleteSubgroup,
     joinPrivateGame,
     getGroupMembers,
     removeMember,
     getTeams,
     getTeam,
     createTeam,
+    updateTeam,
+    deleteTeam,
     joinTeamByCode,
     getTeamMembers,
     leaveTeam,

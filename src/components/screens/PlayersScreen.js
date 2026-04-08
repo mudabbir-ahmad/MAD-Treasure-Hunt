@@ -10,7 +10,7 @@ const PlayersScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser} = useGameHook();
+    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser, getAdminWaitlist} = useGameHook();
 
 //   State ----------------------
 
@@ -22,9 +22,11 @@ const PlayersScreen = () => {
     const loadData = useCallback(async () => {
         if (!session.currentGid) { setLoading(false); return; }
 
-        // Get all non-admin players
+        // Get ALL members (including admins)
         const allMembers = await getGroupMembers(session.currentGid);
-        const nonAdminMembers = (allMembers || []).filter((m) => !m.IsAcceptedAdmin);
+
+        // Get admin waitlist entries
+        const waitlist = await getAdminWaitlist(session.currentGid);
 
         // Build team lookup: { Uid -> { teamCode, teamName, isLeader } }
         const allTeams = await getTeams(session.currentGid);
@@ -40,18 +42,40 @@ const PlayersScreen = () => {
             }
         }
 
-        // Build player list
+        // Build player list — include admins with tags
         const playerList = [];
-        for (const m of nonAdminMembers) {
+        for (const m of (allMembers || [])) {
+            // Skip the current admin viewing the list
+            if (m.Uid === session.currentUid) continue;
             const user = await getUser(m.Uid);
             if (user) {
+                let adminTag = null;
+                if (m.IsAcceptedAdmin) adminTag = '[ADMIN]';
                 playerList.push({
                     ...user,
                     membershipId: m.id,
                     team: teamInfoByUid[m.Uid] || null,
+                    adminTag,
                 });
             }
         }
+
+        // Include waitlisted users who are not yet group members
+        for (const w of (waitlist || [])) {
+            if (playerList.some((p) => p.Uid === w.Uid)) continue;
+            if (w.Uid === session.currentUid) continue;
+            const user = await getUser(w.Uid);
+            if (user) {
+                playerList.push({
+                    ...user,
+                    membershipId: null,
+                    team: null,
+                    adminTag: '[Admin Awaiting Response]',
+                    waitlistId: w.id,
+                });
+            }
+        }
+
         setPlayers(playerList);
         setLoading(false);
     }, [session.currentGid]);
@@ -106,7 +130,14 @@ const PlayersScreen = () => {
                 {players.map((player) => (
                     <Card key={player.Uid}>
                         <View style={styles.playerRow}>
-                            <Text style={styles.playerName} numberOfLines={1}>{player.username}</Text>
+                            <Text style={styles.playerName} numberOfLines={1}>
+                                {player.username}
+                                {player.adminTag && (
+                                    <Text style={player.adminTag === '[ADMIN]' ? styles.adminBadge : styles.waitlistBadge}>
+                                        {' '}{player.adminTag}
+                                    </Text>
+                                )}
+                            </Text>
                             <View style={styles.playerMeta}>
                                 {player.team?.isLeader && (
                                     <Text style={styles.leaderBadge}>(Team Leader)</Text>
@@ -117,18 +148,22 @@ const PlayersScreen = () => {
                             </View>
                         </View>
                         <View style={styles.actionRow}>
-                            <Button
-                                label="Reset Progress"
-                                onClick={() => handleResetPlayerProgress(player)}
-                                styleButton={styles.resetButton}
-                                styleLabel={styles.actionLabel}
-                            />
-                            <Button
-                                label="Kick"
-                                onClick={() => handleRemovePlayer(player.membershipId)}
-                                styleButton={styles.removeButton}
-                                styleLabel={styles.actionLabel}
-                            />
+                            {!player.adminTag && (
+                                <Button
+                                    label="Reset Progress"
+                                    onClick={() => handleResetPlayerProgress(player)}
+                                    styleButton={styles.resetButton}
+                                    styleLabel={styles.actionLabel}
+                                />
+                            )}
+                            {player.membershipId && (
+                                <Button
+                                    label="Kick"
+                                    onClick={() => handleRemovePlayer(player.membershipId)}
+                                    styleButton={styles.removeButton}
+                                    styleLabel={styles.actionLabel}
+                                />
+                            )}
                         </View>
                     </Card>
                 ))}
@@ -164,6 +199,8 @@ const styles = StyleSheet.create({
     playerMeta: {flexDirection: 'row', alignItems: 'center', gap: 6},
     leaderBadge: {fontSize: 11, color: '#2563eb', fontWeight: '700'},
     teamCodeBadge: {fontSize: 12, fontWeight: '700', color: '#16a34a', letterSpacing: 1},
+    adminBadge: {fontSize: 12, fontWeight: '700', color: '#dc2626'},
+    waitlistBadge: {fontSize: 11, fontWeight: '600', color: '#f59e0b'},
     actionRow: {flexDirection: 'row', gap: 8},
     resetButton: {backgroundColor: '#f59e0b', borderColor: '#f59e0b', minHeight: 36, flex: 1, paddingHorizontal: 10},
     removeButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 1, paddingHorizontal: 10},

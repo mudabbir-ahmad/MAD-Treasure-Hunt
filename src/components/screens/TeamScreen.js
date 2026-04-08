@@ -11,7 +11,7 @@ const TeamScreen = () => {
 
     const session = getSession();
     const isAdmin = session.isAcceptedAdmin;
-    const {getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser, getAdminWaitlist} = useGameHook();
+    const {getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser, updateTeam, getAdminWaitlist} = useGameHook();
 
 //   State ----------------------
 
@@ -22,6 +22,8 @@ const TeamScreen = () => {
     const [memberNames, setMemberNames] = useState({});
     const [loading, setLoading] = useState(true);
     const [onAdminWaitlist, setOnAdminWaitlist] = useState(false);
+    const [editingName, setEditingName] = useState(false);
+    const [teamNameDraft, setTeamNameDraft] = useState('');
 
 //   Handlers -------------------
 
@@ -74,7 +76,7 @@ const TeamScreen = () => {
 
     const handleCreateTeam = async () => {
         if (!session.currentGid) return;
-        const result = await createTeam({Gid: session.currentGid, TeamName: 'My Team'});
+        const result = await createTeam({Gid: session.currentGid, SGid: session.currentSGid, TeamName: 'My Team'});
         if (!result) return;
         const membership = await joinTeamByCode({Tid: result.Tid, Uid: session.currentUid});
         if (membership) {
@@ -98,6 +100,16 @@ const TeamScreen = () => {
     const handleKickMember = async (member) => {
         await leaveTeam(member.id);
         await loadTeamData(activeTid);
+    };
+
+    const handleRenameTeam = async () => {
+        const trimmed = teamNameDraft.trim();
+        if (!trimmed || !activeTid) return;
+        const result = await updateTeam(activeTid, {TeamName: trimmed});
+        if (result) {
+            setTeam(result);
+            setEditingName(false);
+        }
     };
 
     // Check if current user is the team leader
@@ -166,9 +178,51 @@ const TeamScreen = () => {
                 <Text style={styles.teamCodeLabel}>Team Code:</Text>
                 <Text style={styles.teamCodeValue}>{team.JoinCode}</Text>
             </View>
+
+            {/* Team name display / edit */}
+            <View style={styles.teamNameSection}>
+                {editingName ? (
+                    <View style={styles.renameRow}>
+                        <TextInput
+                            style={styles.renameInput}
+                            value={teamNameDraft}
+                            onChangeText={setTeamNameDraft}
+                            placeholder="Team name"
+                            placeholderTextColor="#9ca3af"
+                            autoFocus
+                        />
+                        <Button
+                            label="Save"
+                            onClick={handleRenameTeam}
+                            styleButton={styles.renameSaveButton}
+                            styleLabel={styles.renameSaveLabel}
+                        />
+                        <Button
+                            label="Cancel"
+                            onClick={() => setEditingName(false)}
+                            styleButton={styles.renameCancelButton}
+                            styleLabel={styles.renameCancelLabel}
+                        />
+                    </View>
+                ) : (
+                    <View style={styles.renameRow}>
+                        <Text style={styles.teamNameText}>{team.TeamName || 'Unnamed Team'}</Text>
+                        {isCurrentUserLeader && (
+                            <Button
+                                label="Rename"
+                                onClick={() => { setTeamNameDraft(team.TeamName || ''); setEditingName(true); }}
+                                styleButton={styles.renameButton}
+                                styleLabel={styles.renameLabel}
+                            />
+                        )}
+                    </View>
+                )}
+            </View>
+
             <ScrollView style={styles.memberList}>
                 {members.map((m) => (
-                    <Card key={m.id}>
+                    // Highlight the current user's card so they can identify themselves
+                    <Card key={m.id} style={m.Uid === session.currentUid ? styles.selfCard : undefined}>
                         <View style={styles.memberRow}>
                             <View style={styles.memberInfo}>
                                 <Text style={styles.memberName}>
@@ -190,15 +244,16 @@ const TeamScreen = () => {
                 {members.length === 0 && (
                     <Text style={styles.emptyText}>No members yet.</Text>
                 )}
+                {/* Leave button lives inside the scroll so it is never obscured by the bottom nav bar */}
+                <View style={styles.leaveWrap}>
+                    <Button
+                        label="Leave Team"
+                        onClick={handleLeaveTeam}
+                        styleButton={styles.leaveButton}
+                        styleLabel={styles.leaveLabel}
+                    />
+                </View>
             </ScrollView>
-            <View style={styles.leaveWrap}>
-                <Button
-                    label="Leave Team"
-                    onClick={handleLeaveTeam}
-                    styleButton={styles.leaveButton}
-                    styleLabel={styles.leaveLabel}
-                />
-            </View>
         </Screen>
     );
 };
@@ -240,6 +295,27 @@ const styles = StyleSheet.create({
     },
     teamCodeLabel: {color: '#d1d5db', fontSize: 15, fontWeight: '600'},
     teamCodeValue: {color: '#ffffff', fontSize: 17, fontWeight: '700', letterSpacing: 2},
+    // Team name / rename section
+    teamNameSection: {paddingHorizontal: 15, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#e5e7eb'},
+    teamNameText: {fontSize: 18, fontWeight: '700', color: '#1f2937', flex: 1},
+    renameRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+    renameInput: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        fontSize: 16,
+        color: '#1f2937',
+        backgroundColor: '#ffffff',
+    },
+    renameButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', flex: 0, minHeight: 36, paddingHorizontal: 14},
+    renameLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    renameSaveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a', flex: 0, minHeight: 36, paddingHorizontal: 12},
+    renameSaveLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    renameCancelButton: {backgroundColor: '#6b7280', borderColor: '#6b7280', flex: 0, minHeight: 36, paddingHorizontal: 12},
+    renameCancelLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     memberList: {flex: 1, paddingHorizontal: 15, paddingTop: 10},
     memberRow: {
         flexDirection: 'row',
@@ -252,9 +328,11 @@ const styles = StyleSheet.create({
     kickButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 0, paddingHorizontal: 14},
     kickLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 30, fontSize: 14},
-    leaveWrap: {paddingHorizontal: 15, paddingVertical: 10},
+    leaveWrap: {paddingHorizontal: 0, paddingTop: 10, paddingBottom: 16},
     leaveButton: {backgroundColor: '#dc2626', borderColor: '#dc2626'},
     leaveLabel: {color: '#ffffff', fontWeight: '600'},
+    // Current user self-highlight (light green card)
+    selfCard: {backgroundColor: '#dcfce7', borderColor: '#86efac'},
 });
 
 export default TeamScreen;

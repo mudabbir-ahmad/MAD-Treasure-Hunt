@@ -1,7 +1,8 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Screen from '../layout/Screen';
 import Card from '../UI/Card';
+import {Button} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession} from '../../hooks/SessionStore';
 
@@ -10,7 +11,7 @@ const LeaderboardScreen = () => {
 
     const session = getSession();
     const isAdmin = session.isAcceptedAdmin;
-    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser} = useGameHook();
+    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress} = useGameHook();
 
 //   State ----------------------
 
@@ -21,6 +22,7 @@ const LeaderboardScreen = () => {
     const [playerRankings, setPlayerRankings] = useState([]);
     const [myTeamRanking, setMyTeamRanking] = useState([]);
     const [expandedTeam, setExpandedTeam] = useState(null);
+    const [totalCacheCount, setTotalCacheCount] = useState(0);
 
 //   Handlers -------------------
 
@@ -32,6 +34,8 @@ const LeaderboardScreen = () => {
         setTeamsEnabled(isTeams);
 
         const caches = await getCaches(session.currentGid, null);
+        const total = (caches || []).length;
+        setTotalCacheCount(total);
 
         if (isTeams) {
             // Build team rankings
@@ -98,6 +102,37 @@ const LeaderboardScreen = () => {
 
     useEffect(() => { loadData(); }, [loadData]);
 
+    // Admin handler: delete a team and reload
+    const handleDeleteTeam = (team) => {
+        Alert.alert('Delete Team', `Delete "${team.name}" and kick all its members?`, [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Delete',
+                style: 'destructive',
+                onPress: async () => {
+                    await deleteTeam(team.tid);
+                    await loadData();
+                },
+            },
+        ]);
+    };
+
+    // Admin handler: reset a single player's progress
+    const handleResetPlayer = (player) => {
+        Alert.alert('Reset Progress', `Reset all cache claims for ${player.name}?`, [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Reset',
+                style: 'destructive',
+                onPress: async () => {
+                    await resetPlayerProgress(session.currentGid, player.uid);
+                    Alert.alert('Done', `Progress for ${player.name} has been reset.`);
+                    await loadData();
+                },
+            },
+        ]);
+    };
+
 //   View -----------------------
 
     if (loading) {
@@ -116,34 +151,94 @@ const LeaderboardScreen = () => {
         );
     }
 
-    // Helper: render an expandable team card
+    // Helper: render an expandable team card (admin version with delete + reset)
+    const renderAdminTeamCard = (team, index) => (
+        <Card key={team.tid}>
+            <Pressable onPress={() => setExpandedTeam(expandedTeam === team.tid ? null : team.tid)}>
+                <View style={styles.rankRow}>
+                    <Text style={styles.rank}>#{index + 1}</Text>
+                    <Text style={styles.rankName}>{team.name} ({team.code})</Text>
+                    <Text style={styles.score}>{team.totalCaches}/{totalCacheCount}</Text>
+                </View>
+            </Pressable>
+            {expandedTeam === team.tid && (
+                <View>
+                    {team.members.map((m) => (
+                        // Highlight the current user's row so they can identify themselves
+                        <View key={m.uid} style={[styles.subRow, m.uid === session.currentUid && styles.selfSubRow]}>
+                            <Text style={[styles.subName, {flex: 1}]}>
+                                {m.name}{m.isLeader ? ' (Team Leader)' : ''}
+                            </Text>
+                            <Text style={styles.subScore}>{m.caches}/{totalCacheCount}</Text>
+                            <Pressable
+                                style={styles.resetMiniButton}
+                                onPress={() => handleResetPlayer(m)}
+                            >
+                                <Text style={styles.resetMiniLabel}>Reset</Text>
+                            </Pressable>
+                        </View>
+                    ))}
+                    <View style={styles.deleteTeamWrap}>
+                        <Button
+                            label="Delete Team"
+                            onClick={() => handleDeleteTeam(team)}
+                            styleButton={styles.deleteTeamButton}
+                            styleLabel={styles.deleteTeamLabel}
+                        />
+                    </View>
+                </View>
+            )}
+        </Card>
+    );
+
+    // Helper: render an expandable team card (player version)
     const renderTeamCard = (team, index) => (
         <Pressable key={team.tid} onPress={() => setExpandedTeam(expandedTeam === team.tid ? null : team.tid)}>
             <Card>
                 <View style={styles.rankRow}>
                     <Text style={styles.rank}>#{index + 1}</Text>
-                    <Text style={styles.rankName}>{team.name}</Text>
-                    <Text style={styles.score}>{team.totalCaches} cache(s)</Text>
+                    <Text style={styles.rankName}>{team.name} ({team.code})</Text>
+                    <Text style={styles.score}>{team.totalCaches}/{totalCacheCount}</Text>
                 </View>
                 {expandedTeam === team.tid && team.members.map((m) => (
-                    <View key={m.uid} style={styles.subRow}>
+                    // Highlight the current user's row so they can identify themselves
+                    <View key={m.uid} style={[styles.subRow, m.uid === session.currentUid && styles.selfSubRow]}>
                         <Text style={styles.subName}>
                             {m.name}{m.isLeader ? ' (Team Leader)' : ''}
                         </Text>
-                        <Text style={styles.subScore}>{m.caches}</Text>
+                        <Text style={styles.subScore}>{m.caches}/{totalCacheCount}</Text>
                     </View>
                 ))}
             </Card>
         </Pressable>
     );
 
-    // Helper: render a simple player card
-    const renderPlayerCard = (player, index) => (
-        <Card key={player.uid}>
+    // Helper: render an admin player card (with reset button)
+    const renderAdminPlayerCard = (player, index) => (
+        // Highlight the current user's card so they can identify themselves
+        <Card key={player.uid} style={player.uid === session.currentUid ? styles.selfCard : undefined}>
             <View style={styles.rankRow}>
                 <Text style={styles.rank}>#{index + 1}</Text>
                 <Text style={styles.rankName}>{player.name}</Text>
-                <Text style={styles.score}>{player.caches} cache(s)</Text>
+                <Text style={styles.score}>{player.caches}/{totalCacheCount}</Text>
+                <Pressable
+                    style={styles.resetMiniButton}
+                    onPress={() => handleResetPlayer(player)}
+                >
+                    <Text style={styles.resetMiniLabel}>Reset</Text>
+                </Pressable>
+            </View>
+        </Card>
+    );
+
+    // Helper: render a simple player card
+    const renderPlayerCard = (player, index) => (
+        // Highlight the current user's card so they can identify themselves
+        <Card key={player.uid} style={player.uid === session.currentUid ? styles.selfCard : undefined}>
+            <View style={styles.rankRow}>
+                <Text style={styles.rank}>#{index + 1}</Text>
+                <Text style={styles.rankName}>{player.name}</Text>
+                <Text style={styles.score}>{player.caches}/{totalCacheCount}</Text>
             </View>
         </Card>
     );
@@ -155,7 +250,7 @@ const LeaderboardScreen = () => {
             return (
                 <Screen style={styles.container}>
                     <ScrollView style={styles.listSection}>
-                        {teamRankings.map((team, index) => renderTeamCard(team, index))}
+                        {teamRankings.map((team, index) => renderAdminTeamCard(team, index))}
                         {teamRankings.length === 0 && (
                             <Text style={styles.emptyText}>No teams yet.</Text>
                         )}
@@ -164,11 +259,11 @@ const LeaderboardScreen = () => {
             );
         }
 
-        // Teams disabled: show player list
+        // Teams disabled: show player list with reset buttons
         return (
             <Screen style={styles.container}>
                 <ScrollView style={styles.listSection}>
-                    {playerRankings.map((player, index) => renderPlayerCard(player, index))}
+                    {playerRankings.map((player, index) => renderAdminPlayerCard(player, index))}
                     {playerRankings.length === 0 && (
                         <Text style={styles.emptyText}>No players yet.</Text>
                     )}
@@ -208,13 +303,14 @@ const LeaderboardScreen = () => {
                 ) : (
                     <ScrollView style={styles.listSection}>
                         {myTeamRanking.map((m, index) => (
-                            <Card key={m.uid}>
+                            // Highlight the current user's card so they can identify themselves
+                            <Card key={m.uid} style={m.uid === session.currentUid ? styles.selfCard : undefined}>
                                 <View style={styles.rankRow}>
                                     <Text style={styles.rank}>#{index + 1}</Text>
                                     <Text style={styles.rankName}>
                                         {m.name}{m.isLeader ? ' (Team Leader)' : ''}
                                     </Text>
-                                    <Text style={styles.score}>{m.caches} cache(s)</Text>
+                                    <Text style={styles.score}>{m.caches}/{totalCacheCount}</Text>
                                 </View>
                             </Card>
                         ))}
@@ -271,15 +367,31 @@ const styles = StyleSheet.create({
     score: {fontSize: 14, fontWeight: '600', color: '#16a34a'},
     subRow: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        alignItems: 'center',
         paddingLeft: 42,
         paddingVertical: 6,
         borderTopWidth: 1,
         borderTopColor: '#f3f4f6',
     },
     subName: {fontSize: 13, color: '#4b5563'},
-    subScore: {fontSize: 13, fontWeight: '600', color: '#16a34a'},
+    subScore: {fontSize: 13, fontWeight: '600', color: '#16a34a', marginRight: 8},
     emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 30, fontSize: 14},
+    // Admin delete team button
+    deleteTeamWrap: {marginTop: 8, paddingLeft: 42},
+    deleteTeamButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36},
+    deleteTeamLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    // Admin reset mini button (inline)
+    resetMiniButton: {
+        backgroundColor: '#f59e0b',
+        borderRadius: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        marginLeft: 6,
+    },
+    resetMiniLabel: {color: '#ffffff', fontWeight: '600', fontSize: 12},
+    // Current user self-highlight (light green card / sub-row)
+    selfCard: {backgroundColor: '#dcfce7', borderColor: '#86efac'},
+    selfSubRow: {backgroundColor: '#dcfce7'},
 });
 
 export default LeaderboardScreen;
