@@ -254,7 +254,7 @@ const GameSettingsScreen = ({navigation}) => {
                                     </View>
                                     <View style={styles.deptCardActions}>
                                         <Button
-                                            label="Open Department Game Settings"
+                                            label="Department Game"
                                             onClick={() => handleEnterDepartment(sg)}
                                             styleButton={styles.deptOpenButton}
                                             styleLabel={styles.deptBtnLabel}

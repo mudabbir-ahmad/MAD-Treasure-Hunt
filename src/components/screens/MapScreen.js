@@ -16,7 +16,7 @@ import {getFovCone} from '../../utils/geoMath';
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
 
 
-const MapScreen = ({navigation}) => {
+const MapScreen = ({navigation, route}) => {
 //   Initialisation ------------
 
     const session = getSession();
@@ -25,6 +25,7 @@ const MapScreen = ({navigation}) => {
     // Stable ref to prevent infinite re-render loops
     const getCachesRef = useRef(getCaches);
     getCachesRef.current = getCaches;
+    const lastAppliedRouteDepartmentRef = useRef(null);
 
 //   State ----------------------
 
@@ -54,6 +55,8 @@ const MapScreen = ({navigation}) => {
     const [newCoord, setNewCoord] = useState(null);
     const [newName, setNewName] = useState('');
     const [newClue, setNewClue] = useState('');
+    const [selectedCacheSubgroupId, setSelectedCacheSubgroupId] = useState(null);
+    const [departmentDropdownOpen, setDepartmentDropdownOpen] = useState(false);
 
     const claimDistance = groupInfo?.CacheTriggerMeters || 20;
     const isPlayer = inGame && !isAdmin;
@@ -93,7 +96,36 @@ const MapScreen = ({navigation}) => {
     }, [inGame]);
 
     // Default member subgroup SGid for cache creation (first non-admin subgroup)
-    const defaultMemberSGid = subgroups.find((sg) => !sg.IsAdminGroup)?.SGid || null;
+    const departments = useMemo(
+        () => subgroups.filter((sg) => !sg.IsAdminGroup),
+        [subgroups],
+    );
+    const defaultMemberSGid = departments[0]?.SGid || null;
+    const departmentNamesById = useMemo(() => {
+        const map = {};
+        for (const subgroup of departments) {
+            map[String(subgroup.SGid)] = subgroup.SubGroupName || `Department ${subgroup.SGid}`;
+        }
+        return map;
+    }, [departments]);
+
+    useEffect(() => {
+        if (!isAdmin || departments.length === 0) return;
+        const routeSelectedSgid = route?.params?.selectedDepartmentSGid;
+        const hasRouteDepartment = departments.some((sg) => String(sg.SGid) === String(routeSelectedSgid));
+        const shouldApplyRouteDepartment =
+            hasRouteDepartment && String(lastAppliedRouteDepartmentRef.current) !== String(routeSelectedSgid);
+        if (shouldApplyRouteDepartment) {
+            setSelectedCacheSubgroupId(routeSelectedSgid);
+            lastAppliedRouteDepartmentRef.current = routeSelectedSgid;
+            return;
+        }
+
+        const currentStillValid = departments.some((sg) => String(sg.SGid) === String(selectedCacheSubgroupId));
+        if (!currentStillValid) {
+            setSelectedCacheSubgroupId(defaultMemberSGid);
+        }
+    }, [route?.params?.selectedDepartmentSGid, departments, isAdmin, selectedCacheSubgroupId, defaultMemberSGid]);
 
     const loadCaches = useCallback(async () => {
         const currentGid = getSession().currentGid;
@@ -234,7 +266,11 @@ const MapScreen = ({navigation}) => {
     const handleJoinDepartment = async () => {
         setJoinError('');
         if (!deptCode.trim()) return;
-        const result = await joinPrivateGame({JoinCode: deptCode.trim().toUpperCase(), Uid: session.currentUid});
+        const result = await joinPrivateGame({
+            JoinCode: deptCode.trim().toUpperCase(),
+            Uid: session.currentUid,
+            ExpectedGid: matchedGroup.Gid,
+        });
         if (!result) {
             setJoinError('Invalid department code. Check the code and try again.');
             return;
@@ -273,6 +309,8 @@ const MapScreen = ({navigation}) => {
         setNewCoord(fallback);
         setNewName('');
         setNewClue('');
+        if (!selectedCacheSubgroupId && defaultMemberSGid) setSelectedCacheSubgroupId(defaultMemberSGid);
+        setDepartmentDropdownOpen(false);
         setIsCreating(true);
     };
 
@@ -281,6 +319,8 @@ const MapScreen = ({navigation}) => {
         setNewCoord(cache.coordinates);
         setNewName(cache.name || '');
         setNewClue(cache.clue || '');
+        setSelectedCacheSubgroupId(cache.subgroupId || defaultMemberSGid);
+        setDepartmentDropdownOpen(false);
         setIsCreating(true);
     };
 
@@ -292,24 +332,28 @@ const MapScreen = ({navigation}) => {
 
     const handleSaveCache = async () => {
         if (!newCoord || !newClue.trim() || !session.currentGid) return;
+        const subgroupId = selectedCacheSubgroupId || defaultMemberSGid;
+        if (!subgroupId) return;
         const payload = {
             gid: session.currentGid,
             name: newName.trim(),
             latitude: newCoord.latitude,
             longitude: newCoord.longitude,
             clue: newClue.trim(),
-            subgroupId: defaultMemberSGid,
+            subgroupId,
         };
         if (editingCacheId) payload.cacheId = editingCacheId;
         await upsertCache(payload);
         setIsCreating(false);
         setEditingCacheId(null);
+        setDepartmentDropdownOpen(false);
         await loadCaches();
     };
 
     const handleCancelCreate = () => {
         setIsCreating(false);
         setEditingCacheId(null);
+        setDepartmentDropdownOpen(false);
     };
 
     const handleExpandMap = () => {
@@ -491,6 +535,32 @@ const MapScreen = ({navigation}) => {
                     </MapView>
                 </View>
                 <ScrollView style={styles.formSection}>
+                    <Text style={styles.departmentLabel}>Department</Text>
+                    <Pressable
+                        style={styles.departmentSelector}
+                        onPress={() => setDepartmentDropdownOpen((prev) => !prev)}
+                    >
+                        <Text style={styles.departmentSelectorText}>
+                            {departmentNamesById[String(selectedCacheSubgroupId)] || 'Select department'}
+                        </Text>
+                        <Text style={styles.departmentSelectorChevron}>{departmentDropdownOpen ? '▲' : '▼'}</Text>
+                    </Pressable>
+                    {departmentDropdownOpen && (
+                        <View style={styles.departmentMenu}>
+                            {departments.map((department) => (
+                                <Pressable
+                                    key={department.SGid}
+                                    style={styles.departmentOption}
+                                    onPress={() => {
+                                        setSelectedCacheSubgroupId(department.SGid);
+                                        setDepartmentDropdownOpen(false);
+                                    }}
+                                >
+                                    <Text style={styles.departmentOptionText}>{department.SubGroupName}</Text>
+                                </Pressable>
+                            ))}
+                        </View>
+                    )}
                     <TextInput
                         style={styles.formInput}
                         placeholder="Cache Name"
@@ -598,6 +668,7 @@ const MapScreen = ({navigation}) => {
                                 key={cache.id}
                                 cache={cache}
                                 isAdmin={true}
+                                departmentName={departmentNamesById[String(cache.subgroupId)] || 'Unassigned'}
                                 onEdit={handleEditCache}
                                 onDelete={handleDeleteCache}
                             />
@@ -754,6 +825,31 @@ const styles = StyleSheet.create({
         backgroundColor: '#ffffff',
         marginBottom: 10,
     },
+    departmentLabel: {fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6},
+    departmentSelector: {
+        borderWidth: 1,
+        borderColor: '#d1d5db',
+        borderRadius: 8,
+        backgroundColor: '#ffffff',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    departmentSelectorText: {color: '#1f2937', fontSize: 15, fontWeight: '500'},
+    departmentSelectorChevron: {color: '#6b7280', fontSize: 12, fontWeight: '700'},
+    departmentMenu: {
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        borderRadius: 8,
+        backgroundColor: '#ffffff',
+        marginBottom: 10,
+        overflow: 'hidden',
+    },
+    departmentOption: {paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6'},
+    departmentOptionText: {color: '#374151', fontSize: 14},
     coordRow: {flexDirection: 'row', gap: 10},
     coordField: {flex: 1},
     coordLabel: {fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4},

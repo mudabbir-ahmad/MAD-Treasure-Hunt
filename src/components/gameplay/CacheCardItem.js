@@ -2,7 +2,7 @@ import {StyleSheet, Text, View} from 'react-native';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
 
-const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete, onSelect, disabled}) => {
+const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete, onSelect, disabled, departmentName}) => {
 //   Initialisation -------------
 
     const displayName = cache.name || cache.clue || 'Unnamed Cache';
@@ -16,6 +16,9 @@ const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete,
             <View style={styles.topRow}>
                 <View style={styles.nameWrap}>
                     <Text style={[styles.name, isClaimed && styles.claimedText, disabled && styles.disabledText]} numberOfLines={1}>{displayName}</Text>
+                    {isAdmin && departmentName ? (
+                        <Text style={styles.departmentText} numberOfLines={1}>Department: {departmentName}</Text>
+                    ) : null}
                     {cache.name ? (
                         <Text style={styles.clue} numberOfLines={1}>{cache.clue}</Text>
                     ) : null}
@@ -87,6 +90,7 @@ const styles = StyleSheet.create({
         marginBottom: 8,
     },
     clue: {fontSize: 13, color: '#6b7280', marginTop: 2},
+    departmentText: {fontSize: 13, color: '#2563eb', marginTop: 2, fontWeight: '600'},
     nameWrap: {flex: 1, marginRight: 8},
     name: {fontSize: 15, fontWeight: '600', color: '#1f2937'},
     claimedText: {color: '#9ca3af'},

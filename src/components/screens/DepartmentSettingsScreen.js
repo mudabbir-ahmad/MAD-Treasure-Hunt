@@ -69,7 +69,10 @@ const DepartmentSettingsScreen = ({route, navigation}) => {
     };
 
     const handleManageCaches = () => {
-        navigation.navigate('MapScreen');
+        navigation.navigate('MapScreen', {
+            selectedDepartmentSGid: SGid,
+            selectedDepartmentName: deptName || null,
+        });
     };
 
 //   View -----------------------

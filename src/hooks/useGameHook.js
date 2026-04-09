@@ -43,7 +43,9 @@ const useGameHook = () => {
 
   // Look up a group by its Organisation Join Code
   const getGroupByOrgCode = async (code) => {
-    const response = await API.get(`${groupsEndpoint}?OrgJoinCode=${code}`);
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    if (!normalizedCode) return null;
+    const response = await API.get(`${groupsEndpoint}?OrgJoinCode=${encodeURIComponent(normalizedCode)}`);
     if (response.isSuccess && response.result.length > 0) return response.result[0];
     return null;
   };
@@ -76,7 +78,14 @@ const useGameHook = () => {
 
   // Subgroup members
   const joinPrivateGame = async (payload) => {
-    const response = await API.post(subgroupMembersEndpoint, payload);
+    const data = {
+      JoinCode: payload.JoinCode,
+      Uid: payload.Uid,
+    };
+    if (payload.ExpectedGid !== undefined && payload.ExpectedGid !== null) {
+      data.ExpectedGid = payload.ExpectedGid;
+    }
+    const response = await API.post(subgroupMembersEndpoint, data);
     return response.isSuccess ? response.result : null;
   };
 
