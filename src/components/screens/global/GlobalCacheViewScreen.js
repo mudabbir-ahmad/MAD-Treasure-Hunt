@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import {useEffect, useState} from "react";
+import {ActivityIndicator, Alert, StyleSheet, Text, View} from "react-native";
 import Screen from "../../layout/Screen";
-import { Button, ButtonTray } from "../../UI/Button";
+import {Button, ButtonTray} from "../../UI/Button";
 import Card from "../../UI/Card";
 import useGlobalHook from "../../../hooks/useGlobalHook";
-import { getSession } from "../../../hooks/SessionStore";
+import {getSession} from "../../../hooks/SessionStore";
+import {GAME_MODE} from "../../../utils/gameConstants";
 
 const GlobalCacheViewScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
@@ -59,6 +60,12 @@ const GlobalCacheViewScreen = ({ navigation, route }) => {
       ],
     );
   };
+
+  useEffect(() => {
+    if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
+      navigation.replace("MapScreen");
+    }
+  }, [navigation, session.currentGameMode, session.isBusiness]);
 
   // View --------------------------------
 

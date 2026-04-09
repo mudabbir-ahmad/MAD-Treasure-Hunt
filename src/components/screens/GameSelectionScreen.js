@@ -1,8 +1,8 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import {ScrollView, StyleSheet, Text, View} from "react-native";
 import Screen from "../layout/Screen";
 import Card from "../UI/Card";
-import { Button, ButtonTray } from "../UI/Button";
-import { getSession } from "../../hooks/SessionStore";
+import {Button, ButtonTray} from "../UI/Button";
+import {getSession} from "../../hooks/SessionStore";
 
 const GameSelectionScreen = ({ navigation }) => {
   // Initialisations ---------------------
@@ -32,10 +32,6 @@ const GameSelectionScreen = ({ navigation }) => {
 
   const handleOpenGame = () => {
     navigation.navigate("TeamScreen");
-  };
-
-  const handleExplore = () => {
-    navigation.navigate("GlobalEventsScreen");
   };
 
   // View --------------------------------
@@ -77,16 +73,8 @@ const GameSelectionScreen = ({ navigation }) => {
         <View style={styles.sectionBlock}>
           <Text style={styles.blockTitle}>Global Mode</Text>
           <Text style={styles.supportText}>
-            Explore all visible caches and live activity from the map.
+            Individual users can enter GLOBAL in the game join field to switch to Global mode.
           </Text>
-          <ButtonTray>
-            <Button
-              label="Explore"
-              onClick={handleExplore}
-              styleButton={styles.neutralButton}
-              styleLabel={styles.neutralButtonLabel}
-            />
-          </ButtonTray>
         </View>
       </ScrollView>
     </Screen>
@@ -169,15 +157,6 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontWeight: "600",
     fontSize: 14,
-  },
-  neutralButton: {
-    backgroundColor: "#374151",
-    borderColor: "#374151",
-    maxWidth: 180,
-  },
-  neutralButtonLabel: {
-    color: "#ffffff",
-    fontWeight: "600",
   },
 });
 

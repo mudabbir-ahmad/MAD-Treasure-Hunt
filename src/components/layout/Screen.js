@@ -1,11 +1,11 @@
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, View } from "react-native";
-import { useNavigation, useRoute } from "@react-navigation/native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import TopNavbar from "./TopNavbar";
-import BottomNavbar from "./BottomNavbar";
+import {StatusBar} from 'expo-status-bar';
+import {StyleSheet, View} from 'react-native';
+import {useNavigation, useRoute} from '@react-navigation/native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import TopNavbar from './TopNavbar';
+import BottomNavbar from './BottomNavbar';
 
-const Screen = ({ children, style, showBack = false }) => {
+const Screen = ({children, style, showBack = false}) => {
   //   Initialisation -------------
 
   const navigation = useNavigation();
@@ -13,26 +13,25 @@ const Screen = ({ children, style, showBack = false }) => {
   const insets = useSafeAreaInsets();
 
   const titleMap = {
-    LeaderboardScreen: "Leaderboard",
-    TeamScreen: "Current Team",
-    MapScreen: "Map",
-    GameSettingsScreen: "Game Settings",
-    GameSelectionScreen: "Games",
-    DepartmentSettingsScreen: "Department Settings",
-    PlayersScreen: "Players",
-    ExpandedMapScreen: "Map View",
-    GlobalEventsScreen: "Global Events",
-    GlobalMapScreen: "Global Map",
-    GlobalCacheViewScreen: "Cache Details",
-    GlobalLeaderboardScreen: "Global Leaderboard",
+    LeaderboardScreen: 'Leaderboard',
+    TeamScreen: 'Current Team',
+    MapScreen: 'Map',
+    GameSettingsScreen: 'Game Settings',
+    GameSelectionScreen: 'Games',
+    DepartmentSettingsScreen: 'Department Settings',
+    PlayersScreen: 'Players',
+    ExpandedMapScreen: 'Map View',
+    GlobalEventsScreen: 'Global Events',
+    GlobalMapScreen: 'Global Map',
+    GlobalCacheViewScreen: 'Cache Details',
+    GlobalLeaderboardScreen: 'Global Leaderboard',
   };
 
   //   State ----------------------
 
   const routeName = route.name;
-  const isAuthScreen =
-    routeName === "LoginScreen" || routeName === "RegisterScreen";
-  const pageTitle = titleMap[routeName] || "Treasure Hunt";
+  const isAuthScreen = routeName === 'LoginScreen' || routeName === 'RegisterScreen';
+  const pageTitle = titleMap[routeName] || 'Treasure Hunt';
 
   //   Handlers -------------------
   //   View -----------------------
@@ -56,9 +55,12 @@ const Screen = ({ children, style, showBack = false }) => {
       )}
       <View style={[styles.content, style]}>{children}</View>
       {!isAuthScreen && (
-        <BottomNavbar navigation={navigation} routeName={routeName} />
+        <BottomNavbar
+          navigation={navigation}
+          routeName={routeName}
+          routeParams={route.params}
+        />
       )}
-      {!isAuthScreen && <BottomNavbar navigation={navigation} routeName={routeName} routeParams={route.params} />}
       <StatusBar style="light" />
     </View>
   );

@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
-import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import {useEffect, useState} from "react";
+import {ActivityIndicator, View} from "react-native";
+import {NavigationContainer} from "@react-navigation/native";
+import {createNativeStackNavigator} from "@react-navigation/native-stack";
+import {SafeAreaProvider} from "react-native-safe-area-context";
 import LoginScreen from "./src/components/screens/LoginScreen";
 import RegisterScreen from "./src/components/screens/RegisterScreen";
 import TeamScreen from "./src/components/screens/TeamScreen";
@@ -12,12 +12,11 @@ import GameSettingsScreen from "./src/components/screens/GameSettingsScreen";
 import DepartmentSettingsScreen from "./src/components/screens/DepartmentSettingsScreen";
 import PlayersScreen from "./src/components/screens/PlayersScreen";
 import ExpandedMapScreen from "./src/components/screens/ExpandedMapScreen";
-import GameSelectionScreen from "./src/components/screens/GameSelectionScreen";
 import GlobalEventsScreen from "./src/components/screens/global/GlobalEventsScreen";
 import GlobalMapScreen from "./src/components/screens/global/GlobalMapScreen";
 import GlobalCacheViewScreen from "./src/components/screens/global/GlobalCacheViewScreen";
 import GlobalLeaderboardScreen from "./src/components/screens/global/GlobalLeaderboardScreen";
-import { loadSession } from "./src/hooks/SessionStore";
+import {loadSession} from "./src/hooks/SessionStore";
 
 const RootStack = createNativeStackNavigator();
 const AuthStackNav = createNativeStackNavigator();
@@ -26,7 +25,7 @@ const AdminStackNav = createNativeStackNavigator();
 
 const screenOptions = {
   headerShown: false,
-  contentStyle: { backgroundColor: "#ffffff" },
+  contentStyle: { backgroundColor: "#1e1e2e" },
 };
 
 const AuthStack = () => (
@@ -40,10 +39,6 @@ const AuthStack = () => (
 
 const GameStack = () => (
   <GameStackNav.Navigator screenOptions={screenOptions}>
-    <GameStackNav.Screen
-      name="GameSelectionScreen"
-      component={GameSelectionScreen}
-    />
     <GameStackNav.Screen name="MapScreen" component={MapScreen} />
     <GameStackNav.Screen name="TeamScreen" component={TeamScreen} />
     <GameStackNav.Screen
@@ -74,12 +69,12 @@ const GameStack = () => (
 const AdminStack = () => (
   <AdminStackNav.Navigator screenOptions={screenOptions}>
     <AdminStackNav.Screen
-      name="GameSelectionScreen"
-      component={GameSelectionScreen}
-    />
-    <AdminStackNav.Screen
       name="GameSettingsScreen"
       component={GameSettingsScreen}
+    />
+    <AdminStackNav.Screen
+      name="DepartmentSettingsScreen"
+      component={DepartmentSettingsScreen}
     />
     <AdminStackNav.Screen name="MapScreen" component={MapScreen} />
     <AdminStackNav.Screen
@@ -106,15 +101,6 @@ const AdminStack = () => (
       component={GlobalLeaderboardScreen}
     />
   </AdminStackNav.Navigator>
-    <AdminStackNav.Navigator screenOptions={screenOptions}>
-        <AdminStackNav.Screen name="GameSettingsScreen" component={GameSettingsScreen}/>
-        <AdminStackNav.Screen name="DepartmentSettingsScreen" component={DepartmentSettingsScreen}/>
-        <AdminStackNav.Screen name="MapScreen" component={MapScreen}/>
-        <AdminStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
-        <AdminStackNav.Screen name="PlayersScreen" component={PlayersScreen}/>
-        <AdminStackNav.Screen name="ExpandedMapScreen" component={ExpandedMapScreen}/>
-        <AdminStackNav.Screen name="TeamScreen" component={TeamScreen}/>
-    </AdminStackNav.Navigator>
 );
 
 export const App = () => {

@@ -1,22 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import {useCallback, useEffect, useState} from "react";
+import {ActivityIndicator, ScrollView, StyleSheet, Text, View,} from "react-native";
 import Screen from "../../layout/Screen";
-import { Button, ButtonTray } from "../../UI/Button";
+import {Button, ButtonTray} from "../../UI/Button";
 import Card from "../../UI/Card";
 import FindList from "../../../entity/find/FindList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
-import { getSession } from "../../../hooks/SessionStore";
+import {getSession} from "../../../hooks/SessionStore";
+import {GAME_MODE} from "../../../utils/gameConstants";
 
 const GlobalLeaderboardScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
 
-  const { eventId } = route.params;
+  const eventId = route?.params?.eventId ?? getSession().currentGlobalEventId;
   const { getFindsByEvent, getCachesByEvent, getPlayersByEvent } =
     useGlobalHook();
   const session = getSession();
@@ -79,11 +74,19 @@ const GlobalLeaderboardScreen = ({ navigation, route }) => {
     const ranked = Object.values(pointsMap).sort((a, b) => b.points - a.points);
     setRankings(ranked);
     setIsLoading(false);
-  }, [eventId]);
+  }, [eventId, getFindsByEvent, getCachesByEvent, getPlayersByEvent]);
 
   useEffect(() => {
+    if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
+      navigation.replace("MapScreen");
+      return;
+    }
+    if (!eventId) {
+      navigation.replace("GlobalEventsScreen");
+      return;
+    }
     loadData();
-  }, [loadData]);
+  }, [eventId, loadData, navigation, session.currentGameMode, session.isBusiness]);
 
   // View --------------------------------
 

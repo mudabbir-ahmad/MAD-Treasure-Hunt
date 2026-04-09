@@ -5,14 +5,25 @@ import * as Location from 'expo-location';
 import {useFocusEffect} from '@react-navigation/native';
 import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
+import CodeJoinRow from '../UI/CodeJoinRow';
 import PendingApprovalView from '../UI/PendingApprovalView';
 import CacheCardItem from '../gameplay/CacheCardItem';
 import ClaimTimerView from '../gameplay/ClaimTimerView';
 import PlayerMapView from '../gameplay/PlayerMapView';
+import Card from '../UI/Card';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
-import {getSession, setPendingAdmin, setSelectedCache, setSessionGroup, setSessionTeam, setSessionUser} from '../../hooks/SessionStore';
+import {
+    getSession,
+    setPendingAdmin,
+    setSelectedCache,
+    setSessionGroup,
+    setSessionMode,
+    setSessionTeam,
+    setSessionUser
+} from '../../hooks/SessionStore';
 import {getFovCone} from '../../utils/geoMath';
+import {GAME_MODE} from '../../utils/gameConstants';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
 
@@ -20,11 +31,17 @@ const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.
 const MapScreen = ({navigation, route}) => {
   const session = getSession();
   const isBusiness = Boolean(session.isBusiness);
-  const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, joinTeamByCode, createPrivateGame, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
+  const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, joinTeamByCode, createPrivateGame, getGroups, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
 
   // Stable ref to prevent infinite re-render loops
   const getCachesRef = useRef(getCaches);
   getCachesRef.current = getCaches;
+  const getLobbyRef = useRef(getLobby);
+  getLobbyRef.current = getLobby;
+  const getSubgroupsRef = useRef(getSubgroups);
+  getSubgroupsRef.current = getSubgroups;
+  const getGroupsRef = useRef(getGroups);
+  getGroupsRef.current = getGroups;
   const lastAppliedRouteDepartmentRef = useRef(null);
 
   const [inGame, setInGame] = useState(Boolean(session.currentGid));
@@ -39,6 +56,8 @@ const MapScreen = ({navigation, route}) => {
   const [selectedCacheId, setSelectedCacheIdState] = useState(session.selectedCacheId);
   const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
   const [subgroups, setSubgroups] = useState([]);
+  const [availableGames, setAvailableGames] = useState([]);
+  const [gamesLoading, setGamesLoading] = useState(false);
 
   // Business join flow state
   const [joinStep, setJoinStep] = useState(null);
@@ -87,9 +106,26 @@ const MapScreen = ({navigation, route}) => {
 
   useEffect(() => {
     if (!session.currentGid) return;
-    getLobby(session.currentGid).then(setGroupInfo);
-    getSubgroups(session.currentGid).then(setSubgroups);
-  }, [inGame]);
+    getLobbyRef.current(session.currentGid).then(setGroupInfo);
+    getSubgroupsRef.current(session.currentGid).then(setSubgroups);
+  }, [inGame, session.currentGid]);
+
+  useEffect(() => {
+    const loadAvailableGames = async () => {
+      if (inGame || session.isBusiness) {
+        setAvailableGames([]);
+        return;
+      }
+
+      setGamesLoading(true);
+      const groups = await getGroupsRef.current();
+      const individualGames = (groups || []).filter((group) => !group.BusinessOrSchoolName);
+      setAvailableGames(individualGames);
+      setGamesLoading(false);
+    };
+
+    loadAvailableGames();
+  }, [inGame, session.isBusiness]);
 
   // Default member subgroup SGid for cache creation (first non-admin subgroup)
   const departments = useMemo(
@@ -153,7 +189,7 @@ const MapScreen = ({navigation, route}) => {
         const firstId = activeCachesForPlayer[0].id;
         setSelectedCacheIdState(firstId);
         setSelectedCache(firstId);
-    }, [activeCachesForPlayer, isPlayer]);
+    }, [activeCachesForPlayer, isPlayer, selectedCacheId]);
 
     // Location tracking
     useEffect(() => {
@@ -198,9 +234,12 @@ const MapScreen = ({navigation, route}) => {
 
     const handleJoinGame = async () => {
         if (!gameCode.trim()) return;
-        const result = await joinPrivateGame({JoinCode: gameCode.trim().toUpperCase(), Uid: session.currentUid});
+        const code = gameCode.trim().toUpperCase();
+
+        const result = await joinPrivateGame({JoinCode: code, Uid: session.currentUid});
         if (!result) return;
         setSessionGroup(result.Gid, result.SGid);
+        setSessionMode(GAME_MODE.REGULAR);
         setPendingAdmin(false);
 
         const freshUser = await getUser(session.currentUid);
@@ -214,6 +253,11 @@ const MapScreen = ({navigation, route}) => {
         navigation.navigate('TeamScreen');
     };
 
+    const handleEnterGlobal = () => {
+        setSessionMode(GAME_MODE.GLOBAL);
+        navigation.navigate('GlobalEventsScreen');
+    };
+
     const handleCreateGame = async () => {
         const result = await createPrivateGame({
             GroupName: 'My Game',
@@ -222,6 +266,7 @@ const MapScreen = ({navigation, route}) => {
             MaxMemberSubgroups: 1,
         });
         if (!result) return;
+        setSessionMode(GAME_MODE.REGULAR);
         setPendingAdmin(false);
         const freshUser = await getUser(session.currentUid);
         if (freshUser) {
@@ -243,6 +288,7 @@ const MapScreen = ({navigation, route}) => {
             isBusiness: true,
         });
         if (!result) return;
+        setSessionMode(GAME_MODE.REGULAR);
         setPendingAdmin(false);
         const freshUser = await getUser(session.currentUid);
         if (freshUser) {
@@ -305,6 +351,7 @@ const MapScreen = ({navigation, route}) => {
             return;
         }
         setSessionGroup(result.Gid, result.SGid);
+        setSessionMode(GAME_MODE.REGULAR);
         setPendingAdmin(false);
         const freshUser = await getUser(session.currentUid);
         if (freshUser) {
@@ -332,7 +379,7 @@ const MapScreen = ({navigation, route}) => {
             setTimeout(() => setClaimedPopupVisible(false), 3000);
         }
         await loadCaches();
-    }, [session.currentGid, session.currentUid, session.currentTid, effectiveSGid, loadCaches]);
+    }, [session.currentGid, session.currentUid, session.currentTid, effectiveSGid, claimCache, setIsClaiming, loadCaches]);
 
     const handleCreateCachePress = () => {
         const fallback = userLocation || {latitude: mapRegion.latitude, longitude: mapRegion.longitude};
@@ -421,22 +468,12 @@ const MapScreen = ({navigation, route}) => {
                 <Screen style={styles.center}>
                     <Text style={styles.bizTitle}>Join {matchedGroup.BusinessOrSchoolName || 'Company'}</Text>
                     <Text style={styles.bizSubtitle}>Enter your department code to join</Text>
-                    <View style={styles.inputRow}>
-                        <TextInput
-                            style={styles.codeInput}
-                            placeholder="Department Code"
-                            placeholderTextColor="#9ca3af"
-                            value={deptCode}
-                            onChangeText={(text) => setDeptCode(text.toUpperCase())}
-                            autoCapitalize="characters"
-                        />
-                        <Button
-                            label="Join"
-                            onClick={handleJoinDepartment}
-                            styleButton={styles.joinButton}
-                            styleLabel={styles.joinLabel}
-                        />
-                    </View>
+                    <CodeJoinRow
+                        value={deptCode}
+                        onChange={setDeptCode}
+                        placeholder="Department Code"
+                        onSubmit={handleJoinDepartment}
+                    />
                     {joinError ? <Text style={styles.joinError}>{joinError}</Text> : null}
                     <View style={styles.fullRow}>
                         <ButtonTray>
@@ -457,22 +494,13 @@ const MapScreen = ({navigation, route}) => {
             <Screen style={styles.center}>
                 <Text style={styles.bizTitle}>Welcome</Text>
                 <Text style={styles.bizSubtitle}>Set up your organisation or join an existing one</Text>
-                <View style={styles.inputRow}>
-                    <TextInput
-                        style={styles.codeInput}
-                            placeholder="Company Code"
-                        placeholderTextColor="#9ca3af"
-                        value={orgCode}
-                        onChangeText={(text) => setOrgCode(text.toUpperCase())}
-                        autoCapitalize="characters"
-                    />
-                    <Button
-                        label="Join Company"
-                        onClick={handleVerifyOrgCode}
-                        styleButton={styles.joinButton}
-                        styleLabel={styles.joinLabel}
-                    />
-                </View>
+                <CodeJoinRow
+                    value={orgCode}
+                    onChange={setOrgCode}
+                    placeholder="Company Code"
+                    buttonLabel="Join Company"
+                    onSubmit={handleVerifyOrgCode}
+                />
                 {joinError ? <Text style={styles.joinError}>{joinError}</Text> : null}
                 <View style={styles.fullRow}>
                     <ButtonTray>
@@ -492,23 +520,23 @@ const MapScreen = ({navigation, route}) => {
     if (!inGame) {
         return (
             <Screen style={styles.center}>
-                <View style={styles.inputRow}>
-                    <TextInput
-                        style={styles.codeInput}
-                        placeholder="Enter Game Code"
-                        placeholderTextColor="#9ca3af"
-                        value={gameCode}
-                        onChangeText={(text) => setGameCode(text.toUpperCase())}
-                        autoCapitalize="characters"
-                    />
-                    <Button
-                        label="Join"
-                        onClick={handleJoinGame}
-                        styleButton={styles.joinButton}
-                        styleLabel={styles.joinLabel}
-                    />
+                <View style={[styles.fullRow, styles.globalButtonRow]}>
+                    <ButtonTray>
+                        <Button
+                            label="Join Global Game"
+                            onClick={handleEnterGlobal}
+                            styleButton={styles.globalJoinButton}
+                            styleLabel={styles.globalJoinLabel}
+                        />
+                    </ButtonTray>
                 </View>
-                <View style={styles.fullRow}>
+                <CodeJoinRow
+                    value={gameCode}
+                    onChange={setGameCode}
+                    placeholder="Enter Game Code"
+                    onSubmit={handleJoinGame}
+                />
+                <View style={[styles.fullRow, styles.createGameRow]}>
                     <ButtonTray>
                         <Button
                             label="Create a Game"
@@ -517,6 +545,23 @@ const MapScreen = ({navigation, route}) => {
                             styleLabel={styles.createLabel}
                         />
                     </ButtonTray>
+                </View>
+                <View style={[styles.fullRow, styles.availableGamesRow]}>
+                    <Text style={styles.availableGamesTitle}>Available Individual Games</Text>
+                    {gamesLoading ? (
+                        <Text style={styles.availableGamesBody}>Loading games...</Text>
+                    ) : availableGames.length === 0 ? (
+                        <Text style={styles.availableGamesBody}>No individual games available right now.</Text>
+                    ) : (
+                        <ScrollView style={styles.availableGamesList} contentContainerStyle={styles.availableGamesContent}>
+                            {availableGames.map((group) => (
+                                <Card key={group.Gid} style={styles.availableGameCard}>
+                                    <Text style={styles.availableGameName}>{group.GroupName || `Game ${group.Gid}`}</Text>
+                                    <Text style={styles.availableGameMeta}>Game ID: {group.Gid}</Text>
+                                </Card>
+                            ))}
+                        </ScrollView>
+                    )}
                 </View>
             </Screen>
         );
@@ -794,20 +839,19 @@ const styles = StyleSheet.create({
     mapContainer: {height: 200},
     error: {color: '#D92800', fontSize: 15},
     loadingText: {color: '#6c7086', fontSize: 14, marginTop: 10},
-    inputRow: {flexDirection: 'row', gap: 10, marginBottom: 15, width: '100%', paddingHorizontal: 20},
     fullRow: {width: '100%', paddingHorizontal: 20},
-    codeInput: {
-        flex: 1,
-        borderWidth: 1,
-        borderColor: '#45475a',
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        fontSize: 16,
-        color: '#cdd6f4',
-        backgroundColor: '#313244',
-    }, joinButton: {backgroundColor: '#bd93f9', borderColor: '#bd93f9', flex: 0, paddingHorizontal: 20},
-    joinLabel: {color: '#1e1e2e', fontWeight: '600'},
+    globalButtonRow: {marginBottom: 12},
+    createGameRow: {marginBottom: 12},
+    availableGamesRow: {paddingTop: 4},
+    globalJoinButton: {backgroundColor: '#bd93f9', borderColor: '#bd93f9'},
+    globalJoinLabel: {color: '#1e1e2e', fontWeight: '600'},
+    availableGamesTitle: {color: '#cdd6f4', fontSize: 16, fontWeight: '700', marginBottom: 8},
+    availableGamesBody: {color: '#bac2de', fontSize: 14, marginBottom: 6},
+    availableGamesList: {maxHeight: 220},
+    availableGamesContent: {paddingBottom: 10},
+    availableGameCard: {marginBottom: 8},
+    availableGameName: {color: '#cdd6f4', fontSize: 15, fontWeight: '700', marginBottom: 3},
+    availableGameMeta: {color: '#bac2de', fontSize: 12},
     createButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1'},
     createLabel: {color: '#1e1e2e', fontWeight: '600'},
     bizTitle: {fontSize: 22, fontWeight: '700', color: '#cdd6f4', marginBottom: 6, textAlign: 'center'},

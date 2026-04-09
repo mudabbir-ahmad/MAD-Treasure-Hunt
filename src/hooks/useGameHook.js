@@ -31,6 +31,11 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  const getGroups = async () => {
+    const response = await API.get(groupsEndpoint);
+    return response.isSuccess ? response.result : [];
+  };
+
   const getLobby = async (gid) => {
     const response = await API.get(`${groupsEndpoint}/${gid}`);
     return response.isSuccess ? response.result : null;
@@ -250,6 +255,7 @@ const useGameHook = () => {
     getUser,
     updateUser,
     createPrivateGame,
+    getGroups,
     getLobby,
     updateGroup,
     getGroupByOrgCode,

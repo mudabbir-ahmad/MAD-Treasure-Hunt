@@ -36,6 +36,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     gap: 5,
+    marginHorizontal: 4,
   },
   label: {
     fontSize: 16,

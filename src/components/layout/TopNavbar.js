@@ -16,7 +16,8 @@ const TopNavbar = ({title, showBack, navigation}) => {
 
     const handleLogout = () => {
         clearSession();
-        navigation.reset({
+        const rootNav = navigation.getParent() || navigation;
+        rootNav.reset({
             index: 0,
             routes: [{name: 'Auth', params: {screen: 'LoginScreen'}}],
         });

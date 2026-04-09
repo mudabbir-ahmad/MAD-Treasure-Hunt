@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import {useCallback, useEffect, useState} from "react";
+import {ActivityIndicator, StyleSheet, Text, View} from "react-native";
+import MapView, {Marker} from "react-native-maps";
 import * as Location from "expo-location";
 import Screen from "../../layout/Screen";
-import { Button, ButtonTray } from "../../UI/Button";
+import {Button, ButtonTray} from "../../UI/Button";
 import CacheList from "../../../entity/cache/CacheList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
-import { getSession } from "../../../hooks/SessionStore";
+import {getSession} from "../../../hooks/SessionStore";
+import {GAME_MODE} from "../../../utils/gameConstants";
 
 const DEFAULT_REGION = {
   latitude: 51.5074,
@@ -18,7 +19,7 @@ const DEFAULT_REGION = {
 const GlobalMapScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
 
-  const { eventId } = route.params;
+  const eventId = route?.params?.eventId ?? getSession().currentGlobalEventId;
   const { getCachesByEvent, getFindsByPlayer } = useGlobalHook();
   const session = getSession();
 
@@ -47,11 +48,19 @@ const GlobalMapScreen = ({ navigation, route }) => {
     setCaches(cacheData);
     setFoundCacheIds((findsData || []).map((f) => f.FindCacheID));
     setIsLoading(false);
-  }, [eventId]);
+  }, [eventId, getCachesByEvent, getFindsByPlayer, session.currentGlobalPlayerId]);
 
   useEffect(() => {
+    if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
+      navigation.replace("MapScreen");
+      return;
+    }
+    if (!eventId) {
+      navigation.replace("GlobalEventsScreen");
+      return;
+    }
     loadData();
-  }, [loadData]);
+  }, [eventId, loadData, navigation, session.currentGameMode, session.isBusiness]);
 
   useEffect(() => {
     let sub;

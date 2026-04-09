@@ -15,11 +15,12 @@ const LoginScreen = ({ navigation }) => {
     if (!user) {
       return;
     }
+    const rootNav = navigation.getParent() || navigation;
     if (user.IsAcceptedAdmin) {
-      navigation.reset({ index: 0, routes: [{ name: 'Admin' }] });
+      rootNav.reset({ index: 0, routes: [{ name: 'Admin' }] });
       return;
     }
-    navigation.reset({ index: 0, routes: [{ name: 'Game' }] });
+    rootNav.reset({ index: 0, routes: [{ name: 'Game' }] });
   };
 
   return (
@@ -58,7 +59,7 @@ const LoginScreen = ({ navigation }) => {
           />
         </ButtonTray>
 
-        <Pressable onPress={() => navigation.navigate('Auth', { screen: 'RegisterScreen' })}>
+        <Pressable onPress={() => navigation.navigate('RegisterScreen')}>
           <Text style={styles.linkText}>Create new account</Text>
         </Pressable>
       </View>

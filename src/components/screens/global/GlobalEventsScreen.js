@@ -1,16 +1,27 @@
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {ActivityIndicator, StyleSheet, Text, View} from "react-native";
 import Screen from "../../layout/Screen";
-import { Button, ButtonTray } from "../../UI/Button";
+import {Button, ButtonTray} from "../../UI/Button";
 import EventList from "../../../entity/event/EventList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
-import { getSession, setGlobalSession } from "../../../hooks/SessionStore";
+import {getSession, setGlobalSession} from "../../../hooks/SessionStore";
+import {GAME_MODE} from "../../../utils/gameConstants";
 
 const GlobalEventsScreen = ({ navigation }) => {
   // Initialisations ---------------------
 
   const { getPublicEvents, getPlayersByEvent, joinEvent } = useGlobalHook();
   const session = getSession();
+  const globalApiRef = useRef({
+    getPublicEvents,
+    getPlayersByEvent,
+    joinEvent,
+  });
+  globalApiRef.current = {
+    getPublicEvents,
+    getPlayersByEvent,
+    joinEvent,
+  };
 
   // State -------------------------------
 
@@ -24,21 +35,25 @@ const GlobalEventsScreen = ({ navigation }) => {
   const loadEvents = useCallback(async () => {
     setIsLoading(true);
     setError("");
-    const data = await getPublicEvents();
+    const data = await globalApiRef.current.getPublicEvents();
     setEvents(data);
     setIsLoading(false);
   }, []);
 
   useEffect(() => {
+    if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
+      navigation.replace("MapScreen");
+      return;
+    }
     loadEvents();
-  }, [loadEvents]);
+  }, [loadEvents, navigation, session.currentGameMode, session.isBusiness]);
 
   const handleSelect = async (event) => {
     setError("");
     setJoining(event.EventID);
 
     // Check if already a player
-    const players = await getPlayersByEvent(event.EventID);
+    const players = await globalApiRef.current.getPlayersByEvent(event.EventID);
     const existing = (players || []).find(
       (p) => p.PlayerUserID === session.currentUid,
     );
@@ -48,7 +63,7 @@ const GlobalEventsScreen = ({ navigation }) => {
       navigation.navigate("GlobalMapScreen", { eventId: event.EventID });
     } else {
       // Join the event
-      const player = await joinEvent({
+      const player = await globalApiRef.current.joinEvent({
         PlayerUserID: session.currentUid,
         PlayerEventID: event.EventID,
       });
