@@ -41,6 +41,13 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  // Look up a group by its Organisation Join Code
+  const getGroupByOrgCode = async (code) => {
+    const response = await API.get(`${groupsEndpoint}?OrgJoinCode=${code}`);
+    if (response.isSuccess && response.result.length > 0) return response.result[0];
+    return null;
+  };
+
   // Subgroups
   const getSubgroups = async (gid) => {
     const response = await API.get(`${subgroupsEndpoint}?Gid=${gid}`);
@@ -106,6 +113,11 @@ const useGameHook = () => {
 
   const deleteTeam = async (tid) => {
     const response = await API.delete(`${teamsEndpoint}/${tid}`);
+    return response.isSuccess;
+  };
+
+  const disbandTeams = async (gid) => {
+    const response = await API.post(`${teamsEndpoint}/disband?Gid=${gid}`, {});
     return response.isSuccess;
   };
 
@@ -175,6 +187,11 @@ const useGameHook = () => {
     return response.isSuccess;
   };
 
+  const resetTeamProgress = async (gid, tid) => {
+    const response = await API.post(`${cachesEndpoint}/reset-team/${tid}?Gid=${gid}`, {});
+    return response.isSuccess;
+  };
+
   // Admin waitlist
   const getAdminWaitlist = async (gid, uid = null) => {
     let url = `${adminWaitlistEndpoint}?Gid=${gid}`;
@@ -201,6 +218,7 @@ const useGameHook = () => {
     createPrivateGame,
     getLobby,
     updateGroup,
+    getGroupByOrgCode,
     getSubgroups,
     getSubgroup,
     createSubgroup,
@@ -214,6 +232,7 @@ const useGameHook = () => {
     createTeam,
     updateTeam,
     deleteTeam,
+    disbandTeams,
     joinTeamByCode,
     getTeamMembers,
     leaveTeam,
@@ -223,6 +242,7 @@ const useGameHook = () => {
     deleteCache,
     resetGame,
     resetPlayerProgress,
+    resetTeamProgress,
     getAdminWaitlist,
     approveAdmin,
     rejectAdmin,

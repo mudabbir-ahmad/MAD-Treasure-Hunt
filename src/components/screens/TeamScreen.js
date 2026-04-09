@@ -11,7 +11,7 @@ const TeamScreen = () => {
 
     const session = getSession();
     const isAdmin = session.isAcceptedAdmin;
-    const {getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser, updateTeam, getAdminWaitlist} = useGameHook();
+    const {getLobby, getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser, updateTeam, getAdminWaitlist} = useGameHook();
 
 //   State ----------------------
 
@@ -21,6 +21,7 @@ const TeamScreen = () => {
     const [members, setMembers] = useState([]);
     const [memberNames, setMemberNames] = useState({});
     const [loading, setLoading] = useState(true);
+    const [teamsDisabled, setTeamsDisabled] = useState(false);
     const [onAdminWaitlist, setOnAdminWaitlist] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [teamNameDraft, setTeamNameDraft] = useState('');
@@ -42,8 +43,16 @@ const TeamScreen = () => {
 
     useEffect(() => {
         const load = async () => {
-            // Check if the user is on the admin waitlist
-            if (session.currentGid && !activeTid) {
+            if (!session.currentGid) { setLoading(false); return; }
+
+            const group = await getLobby(session.currentGid);
+            if (group && !group.TeamsEnabled) {
+                setTeamsDisabled(true);
+                setLoading(false);
+                return;
+            }
+
+            if (!activeTid) {
                 const waitlist = await getAdminWaitlist(session.currentGid, session.currentUid);
                 if (waitlist.length > 0) {
                     setOnAdminWaitlist(true);
@@ -122,6 +131,17 @@ const TeamScreen = () => {
         return (
             <Screen style={styles.center}>
                 <ActivityIndicator size="large"/>
+            </Screen>
+        );
+    }
+
+    if (teamsDisabled) {
+        return (
+            <Screen style={styles.center}>
+                <View style={styles.disabledWrap}>
+                    <Text style={styles.disabledTitle}>Teams Disabled</Text>
+                    <Text style={styles.disabledBody}>The admin has not enabled teams for this game.</Text>
+                </View>
             </Screen>
         );
     }
@@ -270,6 +290,9 @@ const TeamScreen = () => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     container: {padding: 0},
+    disabledWrap: {paddingHorizontal: 30, alignItems: 'center', opacity: 0.45},
+    disabledTitle: {fontSize: 20, fontWeight: '700', color: '#6b7280', marginBottom: 10, textAlign: 'center'},
+    disabledBody: {fontSize: 15, color: '#9ca3af', textAlign: 'center'},
     // Shown when the user has not yet joined a game
     notInGameText: {color: '#6b7280', fontSize: 15, fontWeight: '600', marginBottom: 16, textAlign: 'center', paddingHorizontal: 20},
     inputDisabled: {backgroundColor: '#f3f4f6', opacity: 0.5},

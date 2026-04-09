@@ -20,7 +20,7 @@ const MapScreen = ({navigation}) => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser, getSubgroups} = useGameHook();
+    const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
 
     // Stable ref to prevent infinite re-render loops
     const getCachesRef = useRef(getCaches);
@@ -40,6 +40,13 @@ const MapScreen = ({navigation}) => {
     const [selectedCacheId, setSelectedCacheIdState] = useState(session.selectedCacheId);
     const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
     const [subgroups, setSubgroups] = useState([]);
+
+    // Business join flow state
+    const [joinStep, setJoinStep] = useState(null); // null | 'orgCode' | 'deptCode'
+    const [orgCode, setOrgCode] = useState('');
+    const [deptCode, setDeptCode] = useState('');
+    const [matchedGroup, setMatchedGroup] = useState(null);
+    const [joinError, setJoinError] = useState('');
 
     // Admin cache creation / editing state
     const [isCreating, setIsCreating] = useState(false);
@@ -190,6 +197,60 @@ const MapScreen = ({navigation}) => {
         }
     };
 
+    // Business — create a new company
+    const handleCreateCompany = async () => {
+        const result = await createPrivateGame({
+            GroupName: 'My Company',
+            BusinessOrSchoolName: 'My Company',
+            CreatedByUid: session.currentUid,
+            TeamsEnabled: false,
+            MaxMemberSubgroups: 1,
+            isBusiness: true,
+        });
+        if (!result) return;
+        const freshUser = await getUser(session.currentUid);
+        if (freshUser) {
+            setSessionUser(freshUser);
+            setInGame(true);
+            setIsAdmin(true);
+            navigation.reset({index: 0, routes: [{name: 'Admin'}]});
+        }
+    };
+
+    // Business — verify the org code
+    const handleVerifyOrgCode = async () => {
+        setJoinError('');
+        if (!orgCode.trim()) return;
+        const group = await getGroupByOrgCode(orgCode.trim().toUpperCase());
+        if (!group) {
+            setJoinError('Organisation not found. Check your code and try again.');
+            return;
+        }
+        setMatchedGroup(group);
+        setJoinStep('deptCode');
+    };
+
+    // Business — join a department within the matched org
+    const handleJoinDepartment = async () => {
+        setJoinError('');
+        if (!deptCode.trim()) return;
+        const result = await joinPrivateGame({JoinCode: deptCode.trim().toUpperCase(), Uid: session.currentUid});
+        if (!result) {
+            setJoinError('Invalid department code. Check the code and try again.');
+            return;
+        }
+        setSessionGroup(result.Gid, result.SGid);
+        const freshUser = await getUser(session.currentUid);
+        if (freshUser) {
+            setSessionUser(freshUser);
+            setSessionTeam(freshUser.TGid ?? null);
+        }
+        setInGame(true);
+        setIsAdmin(false);
+        setJoinStep(null);
+        navigation.navigate('TeamScreen');
+    };
+
     const handleClaim = useCallback(async (cacheId) => {
         if (!session.currentGid) return;
         const result = await claimCache({
@@ -275,7 +336,112 @@ const MapScreen = ({navigation}) => {
 
 //   View -----------------------
 
-    // Not in a game
+    // Not in a game — Business flow
+    if (!inGame && session.isBusiness) {
+        // Step 2: Enter department code
+        if (joinStep === 'deptCode' && matchedGroup) {
+            return (
+                <Screen style={styles.center}>
+                    <Text style={styles.bizTitle}>Join {matchedGroup.BusinessOrSchoolName || 'Company'}</Text>
+                    <Text style={styles.bizSubtitle}>Enter your department code to join</Text>
+                    <View style={styles.inputRow}>
+                        <TextInput
+                            style={styles.codeInput}
+                            placeholder="Department Code"
+                            placeholderTextColor="#9ca3af"
+                            value={deptCode}
+                            onChangeText={(text) => setDeptCode(text.toUpperCase())}
+                            autoCapitalize="characters"
+                        />
+                        <Button
+                            label="Join"
+                            onClick={handleJoinDepartment}
+                            styleButton={styles.joinButton}
+                            styleLabel={styles.joinLabel}
+                        />
+                    </View>
+                    {joinError ? <Text style={styles.joinError}>{joinError}</Text> : null}
+                    <View style={styles.fullRow}>
+                        <ButtonTray>
+                            <Button
+                                label="Back"
+                                onClick={() => { setJoinStep('orgCode'); setDeptCode(''); setJoinError(''); }}
+                                styleButton={styles.backButton}
+                                styleLabel={styles.backLabel}
+                            />
+                        </ButtonTray>
+                    </View>
+                </Screen>
+            );
+        }
+
+        // Step 1: Enter org code (or choose create / join)
+        if (joinStep === 'orgCode') {
+            return (
+                <Screen style={styles.center}>
+                    <Text style={styles.bizTitle}>Join a Company</Text>
+                    <Text style={styles.bizSubtitle}>Enter the organisation code provided by your company</Text>
+                    <View style={styles.inputRow}>
+                        <TextInput
+                            style={styles.codeInput}
+                            placeholder="Organisation Code"
+                            placeholderTextColor="#9ca3af"
+                            value={orgCode}
+                            onChangeText={(text) => setOrgCode(text.toUpperCase())}
+                            autoCapitalize="characters"
+                        />
+                        <Button
+                            label="Next"
+                            onClick={handleVerifyOrgCode}
+                            styleButton={styles.joinButton}
+                            styleLabel={styles.joinLabel}
+                        />
+                    </View>
+                    {joinError ? <Text style={styles.joinError}>{joinError}</Text> : null}
+                    <View style={styles.fullRow}>
+                        <ButtonTray>
+                            <Button
+                                label="Back"
+                                onClick={() => { setJoinStep(null); setOrgCode(''); setJoinError(''); }}
+                                styleButton={styles.backButton}
+                                styleLabel={styles.backLabel}
+                            />
+                        </ButtonTray>
+                    </View>
+                </Screen>
+            );
+        }
+
+        // Default: Create company or Join company choice
+        return (
+            <Screen style={styles.center}>
+                <Text style={styles.bizTitle}>Welcome</Text>
+                <Text style={styles.bizSubtitle}>Set up your organisation or join an existing one</Text>
+                <View style={styles.fullRow}>
+                    <ButtonTray>
+                        <Button
+                            label="Create Company"
+                            onClick={handleCreateCompany}
+                            styleButton={styles.createButton}
+                            styleLabel={styles.createLabel}
+                        />
+                    </ButtonTray>
+                </View>
+                <View style={styles.fullRow}>
+                    <ButtonTray>
+                        <Button
+                            label="Join Company"
+                            onClick={() => setJoinStep('orgCode')}
+                            styleButton={styles.joinButton}
+                            styleLabel={styles.joinLabel}
+                        />
+                    </ButtonTray>
+                </View>
+            </Screen>
+        );
+    }
+
+    // Not in a game — Individual flow
     if (!inGame) {
         return (
             <Screen style={styles.center}>
@@ -567,6 +733,12 @@ const styles = StyleSheet.create({
     joinLabel: {color: '#ffffff', fontWeight: '600'},
     createButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
     createLabel: {color: '#ffffff', fontWeight: '600'},
+    // Business join flow styles
+    bizTitle: {fontSize: 22, fontWeight: '700', color: '#1f2937', marginBottom: 6, textAlign: 'center'},
+    bizSubtitle: {fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 20, paddingHorizontal: 20},
+    joinError: {color: '#dc2626', textAlign: 'center', marginTop: 8, marginBottom: 4, fontSize: 14, paddingHorizontal: 20},
+    backButton: {backgroundColor: '#6b7280', borderColor: '#6b7280'},
+    backLabel: {color: '#ffffff', fontWeight: '600'},
     warning: {
         color: '#dc2626',
         fontWeight: 'bold',

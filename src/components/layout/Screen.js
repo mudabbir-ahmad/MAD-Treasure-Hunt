@@ -17,6 +17,7 @@ const Screen = ({ children, style, showBack = false }) => {
     TeamScreen: "Current Team",
     MapScreen: "Map",
     GameSettingsScreen: "Game Settings",
+    DepartmentSettingsScreen: "Department Settings",
     PlayersScreen: "Players",
     ExpandedMapScreen: "Map View",
   };

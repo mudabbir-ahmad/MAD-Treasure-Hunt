@@ -6,11 +6,11 @@ import {Button, ButtonTray} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession, setSessionTeamsEnabled} from '../../hooks/SessionStore';
 
-const GameSettingsScreen = () => {
+const GameSettingsScreen = ({navigation}) => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getLobby, updateGroup, getSubgroups, createSubgroup, updateSubgroup, deleteSubgroup, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser} = useGameHook();
+    const {getLobby, updateGroup, getSubgroups, createSubgroup, updateSubgroup, deleteSubgroup, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser, disbandTeams} = useGameHook();
     const isBusiness = Boolean(session.isBusiness);
 
 //   State ----------------------
@@ -18,17 +18,18 @@ const GameSettingsScreen = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [groupName, setGroupName] = useState('');
+    const [businessName, setBusinessName] = useState('');
     const [teamsEnabled, setTeamsEnabled] = useState(session.teamsEnabled);
+    const [serverTeamsEnabled, setServerTeamsEnabled] = useState(session.teamsEnabled);
     const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
     const [adminJoinCode, setAdminJoinCode] = useState('');
+    const [orgJoinCode, setOrgJoinCode] = useState('');
     const [memberJoinCode, setMemberJoinCode] = useState('');
     const [waitlist, setWaitlist] = useState([]);
     const [waitlistNames, setWaitlistNames] = useState({});
     // Business subgroup management
     const [subgroupList, setSubgroupList] = useState([]);
     const [newDeptName, setNewDeptName] = useState('');
-    const [editingSGid, setEditingSGid] = useState(null);
-    const [editDeptTrigger, setEditDeptTrigger] = useState('20');
 
 //   Handlers -------------------
 
@@ -62,12 +63,14 @@ const GameSettingsScreen = () => {
             const group = await getLobby(session.currentGid);
             if (group) {
                 setGroupName(group.GroupName || '');
+                setBusinessName(group.BusinessOrSchoolName || '');
                 const serverTeams = Boolean(group.TeamsEnabled);
                 setTeamsEnabled(serverTeams);
-                // Keep session in sync so the toggle survives app reloads
+                setServerTeamsEnabled(serverTeams);
                 setSessionTeamsEnabled(serverTeams);
                 setCacheTriggerMeters(String(group.CacheTriggerMeters || 20));
                 setAdminJoinCode(group.AdminJoinCode || '');
+                setOrgJoinCode(group.OrgJoinCode || '');
             }
             await loadSubgroups();
             await loadWaitlist();
@@ -76,17 +79,49 @@ const GameSettingsScreen = () => {
         load();
     }, []);
 
-    const handleSave = async () => {
-        if (!session.currentGid) return;
+    // --- Individual save ---
+    const saveSettings = async () => {
         setSaving(true);
         const result = await updateGroup(session.currentGid, {
             GroupName: groupName.trim(),
             TeamsEnabled: teamsEnabled,
             CacheTriggerMeters: parseInt(cacheTriggerMeters) || 20,
         });
-        // Persist the new toggle value so the session reflects it after a reload
-        if (result) setSessionTeamsEnabled(teamsEnabled);
+        if (result) {
+            if (serverTeamsEnabled && !teamsEnabled) {
+                await disbandTeams(session.currentGid);
+            }
+            setSessionTeamsEnabled(teamsEnabled);
+            setServerTeamsEnabled(teamsEnabled);
+        }
         setSaving(false);
+    };
+
+    const handleSave = async () => {
+        if (!session.currentGid) return;
+        // Business save — only save business name
+        if (isBusiness) {
+            setSaving(true);
+            await updateGroup(session.currentGid, {
+                BusinessOrSchoolName: businessName.trim(),
+                GroupName: businessName.trim(),
+            });
+            setSaving(false);
+            return;
+        }
+        // Individual save — check teams toggle
+        if (serverTeamsEnabled && !teamsEnabled) {
+            Alert.alert(
+                'Disable Teams',
+                'This will disband all existing teams and remove all players from their teams. Continue?',
+                [
+                    {text: 'Cancel', style: 'cancel'},
+                    {text: 'Disable', style: 'destructive', onPress: saveSettings},
+                ],
+            );
+            return;
+        }
+        await saveSettings();
     };
 
     const handleResetGame = () => {
@@ -115,21 +150,16 @@ const GameSettingsScreen = () => {
 
     // Business — create a new department (subgroup)
     const handleCreateDepartment = async () => {
-        if (!newDeptName.trim() || !session.currentGid) return;
+        const deptCount = subgroupList.filter((sg) => !sg.IsAdminGroup).length;
+        const name = newDeptName.trim() || `Department ${deptCount + 1}`;
+        if (!session.currentGid) return;
         await createSubgroup({
-            SubGroupName: newDeptName.trim(),
+            SubGroupName: name,
             Gid: session.currentGid,
             IsAdminGroup: false,
-            CacheTriggerMeters: parseInt(cacheTriggerMeters) || 20,
+            CacheTriggerMeters: 20,
         });
         setNewDeptName('');
-        await loadSubgroups();
-    };
-
-    // Business — save per-subgroup trigger distance
-    const handleSaveDeptTrigger = async (sgid) => {
-        await updateSubgroup(sgid, {CacheTriggerMeters: parseInt(editDeptTrigger) || 20});
-        setEditingSGid(null);
         await loadSubgroups();
     };
 
@@ -146,6 +176,11 @@ const GameSettingsScreen = () => {
                 },
             },
         ]);
+    };
+
+    // Business — navigate to department settings
+    const handleEnterDepartment = (sg) => {
+        navigation.navigate('DepartmentSettingsScreen', {SGid: sg.SGid, Gid: session.currentGid});
     };
 
 //   View -----------------------
@@ -169,6 +204,135 @@ const GameSettingsScreen = () => {
     // Filter subgroups for the department list (non-admin only)
     const departments = subgroupList.filter((sg) => !sg.IsAdminGroup);
 
+    // ===== Business Admin View =====
+    if (isBusiness) {
+        return (
+            <Screen>
+                <ScrollView contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>
+                    <Text style={styles.sectionTitle}>Business Settings</Text>
+
+                    <Text style={styles.label}>Business Name</Text>
+                    <TextInput
+                        style={styles.input}
+                        value={businessName}
+                        onChangeText={setBusinessName}
+                        placeholder="Enter business name"
+                        placeholderTextColor="#9ca3af"
+                    />
+
+                    <View style={styles.codeSection}>
+                        <Text style={styles.codeLabel}>Admin Join Code</Text>
+                        <Text style={styles.codeValue}>{adminJoinCode || '—'}</Text>
+                    </View>
+
+                    <View style={styles.codeSection}>
+                        <Text style={styles.codeLabel}>Organisation Join Code</Text>
+                        <Text style={styles.codeValue}>{orgJoinCode || '—'}</Text>
+                    </View>
+
+                    <View style={styles.saveWrap}>
+                        <ButtonTray>
+                            <Button
+                                label={saving ? 'Saving...' : 'Save Settings'}
+                                onClick={handleSave}
+                                styleButton={styles.saveButton}
+                                styleLabel={styles.saveLabel}
+                            />
+                        </ButtonTray>
+                    </View>
+
+                    {/* Departments List */}
+                    <View style={styles.deptSection}>
+                        <Text style={styles.sectionTitle}>Departments</Text>
+                        {departments.map((sg) => (
+                            <Card key={sg.SGid}>
+                                <View style={styles.deptRow}>
+                                    <View style={styles.deptInfo}>
+                                        <Text style={styles.deptName}>{sg.SubGroupName}</Text>
+                                        <Text style={styles.deptCode}>Join Code: {sg.JoinCode || '—'}</Text>
+                                    </View>
+                                    <View style={styles.deptActions}>
+                                        <Button
+                                            label="Delete"
+                                            onClick={() => handleDeleteDepartment(sg)}
+                                            styleButton={styles.deptDeleteButton}
+                                            styleLabel={styles.deptBtnLabel}
+                                        />
+                                        <Button
+                                            label="→"
+                                            onClick={() => handleEnterDepartment(sg)}
+                                            styleButton={styles.deptArrowButton}
+                                            styleLabel={styles.deptArrowLabel}
+                                        />
+                                    </View>
+                                </View>
+                            </Card>
+                        ))}
+                        {departments.length === 0 && (
+                            <Text style={styles.emptyText}>No departments yet.</Text>
+                        )}
+                        <View style={styles.createDeptRow}>
+                            <TextInput
+                                style={[styles.input, {flex: 1}]}
+                                value={newDeptName}
+                                onChangeText={setNewDeptName}
+                                placeholder="New department name"
+                                placeholderTextColor="#9ca3af"
+                            />
+                            <Button
+                                label="Add"
+                                onClick={handleCreateDepartment}
+                                styleButton={styles.createDeptButton}
+                                styleLabel={styles.createDeptLabel}
+                            />
+                        </View>
+                    </View>
+
+                    {/* Admin Waitlist */}
+                    {waitlist.length > 0 && (
+                        <View style={styles.waitlistSection}>
+                            <Text style={styles.sectionTitle}>Admin Waitlist</Text>
+                            {waitlist.map((entry) => (
+                                <Card key={entry.id}>
+                                    <View style={styles.waitlistRow}>
+                                        <Text style={styles.waitlistName}>
+                                            {waitlistNames[entry.Uid] || `User ${entry.Uid}`}
+                                        </Text>
+                                        <View style={styles.waitlistActions}>
+                                            <Button
+                                                label="Approve"
+                                                onClick={() => handleApproveAdmin(entry)}
+                                                styleButton={styles.approveButton}
+                                                styleLabel={styles.approveBtnLabel}
+                                            />
+                                            <Button
+                                                label="Reject"
+                                                onClick={() => handleRejectAdmin(entry)}
+                                                styleButton={styles.rejectButton}
+                                                styleLabel={styles.rejectBtnLabel}
+                                            />
+                                        </View>
+                                    </View>
+                                </Card>
+                            ))}
+                        </View>
+                    )}
+
+                    {/* Reset Entire Game */}
+                    <View style={styles.resetSection}>
+                        <Button
+                            label="Reset Entire Game"
+                            onClick={handleResetGame}
+                            styleButton={styles.resetButton}
+                            styleLabel={styles.resetLabel}
+                        />
+                    </View>
+                </ScrollView>
+            </Screen>
+        );
+    }
+
+    // ===== Individual Admin View =====
     return (
         <Screen>
             <ScrollView contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>
@@ -223,83 +387,6 @@ const GameSettingsScreen = () => {
                         />
                     </ButtonTray>
                 </View>
-
-                {/* Business: Departments / Subgroups management */}
-                {isBusiness && (
-                    <View style={styles.deptSection}>
-                        <Text style={styles.sectionTitle}>Departments</Text>
-                        {departments.map((sg) => (
-                            <Card key={sg.SGid}>
-                                <View style={styles.deptRow}>
-                                    <View style={styles.deptInfo}>
-                                        <Text style={styles.deptName}>{sg.SubGroupName}</Text>
-                                        <Text style={styles.deptCode}>Join Code: {sg.JoinCode || '—'}</Text>
-                                        <Text style={styles.deptTrigger}>Claim Distance: {sg.CacheTriggerMeters || 20}m</Text>
-                                    </View>
-                                    <View style={styles.deptActions}>
-                                        <Button
-                                            label="Edit"
-                                            onClick={() => { setEditingSGid(sg.SGid); setEditDeptTrigger(String(sg.CacheTriggerMeters || 20)); }}
-                                            styleButton={styles.deptEditButton}
-                                            styleLabel={styles.deptBtnLabel}
-                                        />
-                                        <Button
-                                            label="Delete"
-                                            onClick={() => handleDeleteDepartment(sg)}
-                                            styleButton={styles.deptDeleteButton}
-                                            styleLabel={styles.deptBtnLabel}
-                                        />
-                                    </View>
-                                </View>
-                                {editingSGid === sg.SGid && (
-                                    <View style={styles.deptEditRow}>
-                                        <Text style={styles.label}>Claim Distance (metres)</Text>
-                                        <TextInput
-                                            style={styles.input}
-                                            value={editDeptTrigger}
-                                            onChangeText={setEditDeptTrigger}
-                                            keyboardType="numeric"
-                                            placeholder="20"
-                                            placeholderTextColor="#9ca3af"
-                                        />
-                                        <ButtonTray>
-                                            <Button
-                                                label="Save"
-                                                onClick={() => handleSaveDeptTrigger(sg.SGid)}
-                                                styleButton={styles.deptSaveButton}
-                                                styleLabel={styles.deptBtnLabel}
-                                            />
-                                            <Button
-                                                label="Cancel"
-                                                onClick={() => setEditingSGid(null)}
-                                                styleButton={styles.deptCancelButton}
-                                                styleLabel={styles.deptBtnLabel}
-                                            />
-                                        </ButtonTray>
-                                    </View>
-                                )}
-                            </Card>
-                        ))}
-                        {departments.length === 0 && (
-                            <Text style={styles.emptyText}>No departments yet.</Text>
-                        )}
-                        <View style={styles.createDeptRow}>
-                            <TextInput
-                                style={[styles.input, {flex: 1}]}
-                                value={newDeptName}
-                                onChangeText={setNewDeptName}
-                                placeholder="New department name"
-                                placeholderTextColor="#9ca3af"
-                            />
-                            <Button
-                                label="Add"
-                                onClick={handleCreateDepartment}
-                                styleButton={styles.createDeptButton}
-                                styleLabel={styles.createDeptLabel}
-                            />
-                        </View>
-                    </View>
-                )}
 
                 {/* Admin Waitlist */}
                 {waitlist.length > 0 && (
@@ -388,18 +475,15 @@ const styles = StyleSheet.create({
     saveLabel: {color: '#ffffff', fontWeight: '600'},
     // Department / subgroup styles
     deptSection: {marginTop: 30},
-    deptRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'},
+    deptRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
     deptInfo: {flex: 1},
     deptName: {fontSize: 15, fontWeight: '700', color: '#1f2937'},
     deptCode: {fontSize: 13, fontWeight: '600', color: '#2563eb', marginTop: 2, letterSpacing: 1},
-    deptTrigger: {fontSize: 12, color: '#6b7280', marginTop: 2},
     deptActions: {flexDirection: 'row', gap: 6},
-    deptEditButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', minHeight: 36, flex: 0, paddingHorizontal: 10},
     deptDeleteButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 0, paddingHorizontal: 10},
     deptBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
-    deptEditRow: {marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#e5e7eb'},
-    deptSaveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
-    deptCancelButton: {backgroundColor: '#6b7280', borderColor: '#6b7280'},
+    deptArrowButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', minHeight: 36, flex: 0, paddingHorizontal: 14},
+    deptArrowLabel: {color: '#ffffff', fontWeight: '700', fontSize: 18},
     createDeptRow: {flexDirection: 'row', gap: 10, marginTop: 12, alignItems: 'center'},
     createDeptButton: {backgroundColor: '#16a34a', borderColor: '#16a34a', flex: 0, paddingHorizontal: 16},
     createDeptLabel: {color: '#ffffff', fontWeight: '600'},

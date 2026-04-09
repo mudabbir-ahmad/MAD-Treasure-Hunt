@@ -11,7 +11,7 @@ const LeaderboardScreen = () => {
 
     const session = getSession();
     const isAdmin = session.isAcceptedAdmin;
-    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress} = useGameHook();
+    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress, resetTeamProgress} = useGameHook();
 
 //   State ----------------------
 
@@ -133,6 +133,21 @@ const LeaderboardScreen = () => {
         ]);
     };
 
+    const handleResetTeam = (team) => {
+        Alert.alert('Reset Team Progress', `Reset all cache claims for team "${team.name}"?`, [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Reset',
+                style: 'destructive',
+                onPress: async () => {
+                    await resetTeamProgress(session.currentGid, team.tid);
+                    Alert.alert('Done', `Progress for team "${team.name}" has been reset.`);
+                    await loadData();
+                },
+            },
+        ]);
+    };
+
 //   View -----------------------
 
     if (loading) {
@@ -179,6 +194,12 @@ const LeaderboardScreen = () => {
                         </View>
                     ))}
                     <View style={styles.deleteTeamWrap}>
+                        <Button
+                            label="Reset Team Progress"
+                            onClick={() => handleResetTeam(team)}
+                            styleButton={styles.resetTeamButton}
+                            styleLabel={styles.deleteTeamLabel}
+                        />
                         <Button
                             label="Delete Team"
                             onClick={() => handleDeleteTeam(team)}
@@ -377,8 +398,9 @@ const styles = StyleSheet.create({
     subScore: {fontSize: 13, fontWeight: '600', color: '#16a34a', marginRight: 8},
     emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 30, fontSize: 14},
     // Admin delete team button
-    deleteTeamWrap: {marginTop: 8, paddingLeft: 42},
-    deleteTeamButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36},
+    deleteTeamWrap: {marginTop: 8, paddingLeft: 42, flexDirection: 'row', gap: 8},
+    resetTeamButton: {backgroundColor: '#f59e0b', borderColor: '#f59e0b', minHeight: 36, flex: 1},
+    deleteTeamButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 1},
     deleteTeamLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     // Admin reset mini button (inline)
     resetMiniButton: {
