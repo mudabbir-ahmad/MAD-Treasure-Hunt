@@ -18,6 +18,7 @@ const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.
 
 const MapScreen = ({navigation, route}) => {
   const session = getSession();
+  const isBusiness = Boolean(session.isBusiness);
   const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
 
   // Stable ref to prevent infinite re-render loops
@@ -102,6 +103,10 @@ const MapScreen = ({navigation, route}) => {
     }
     return map;
   }, [departments]);
+  const routeDepartmentSGid = route?.params?.selectedDepartmentSGid;
+  const effectiveSGid = isBusiness
+      ? (isAdmin ? (selectedCacheSubgroupId ?? routeDepartmentSGid ?? defaultMemberSGid ?? null) : (session.currentSGid ?? null))
+      : null;
 
     useEffect(() => {
         if (!isAdmin || departments.length === 0) return;
@@ -127,9 +132,9 @@ const MapScreen = ({navigation, route}) => {
             setCacheRecords([]);
             return;
         }
-        const rows = await getCachesRef.current(currentGid, null);
+        const rows = await getCachesRef.current(currentGid, effectiveSGid ?? null);
         setCacheRecords(rows || []);
-    }, []);
+    }, [effectiveSGid]);
 
     // Run once on mount
     useEffect(() => { loadCaches(); }, [loadCaches]);
@@ -288,6 +293,7 @@ const MapScreen = ({navigation, route}) => {
             cacheId,
             uid: session.currentUid,
             tid: session.currentTid,
+            sgid: effectiveSGid,
         });
         setIsClaiming(false);
         if (result) {
@@ -295,7 +301,7 @@ const MapScreen = ({navigation, route}) => {
             setTimeout(() => setClaimedPopupVisible(false), 3000);
         }
         await loadCaches();
-    }, [session.currentGid, session.currentUid, session.currentTid, loadCaches]);
+    }, [session.currentGid, session.currentUid, session.currentTid, effectiveSGid, loadCaches]);
 
     const handleCreateCachePress = () => {
         const fallback = userLocation || {latitude: mapRegion.latitude, longitude: mapRegion.longitude};

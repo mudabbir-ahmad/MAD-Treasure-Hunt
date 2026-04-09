@@ -184,9 +184,13 @@ const useGameHook = () => {
   };
 
   const claimCache = async (payload) => {
+    let url = `${cachesEndpoint}/${payload.cacheId}/claim`;
+    if (payload.sgid !== null && payload.sgid !== undefined) {
+      url += `?SGid=${payload.sgid}`;
+    }
     const response = await API.post(
-      `${cachesEndpoint}/${payload.cacheId}/claim`,
-      {Uid: payload.uid, Tid: payload.tid},
+      url,
+      {Uid: payload.uid, Tid: payload.tid, SGid: payload.sgid},
     );
     return response.isSuccess ? response.result : null;
   };
@@ -205,13 +209,17 @@ const useGameHook = () => {
   };
 
   // Player progress reset — clear all claims by a specific user
-  const resetPlayerProgress = async (gid, uid) => {
-    const response = await API.post(`${cachesEndpoint}/reset-player/${uid}?Gid=${gid}`, {});
+  const resetPlayerProgress = async (gid, uid, sgid = null) => {
+    let url = `${cachesEndpoint}/reset-player/${uid}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.post(url, {});
     return response.isSuccess;
   };
 
-  const resetTeamProgress = async (gid, tid) => {
-    const response = await API.post(`${cachesEndpoint}/reset-team/${tid}?Gid=${gid}`, {});
+  const resetTeamProgress = async (gid, tid, sgid = null) => {
+    let url = `${cachesEndpoint}/reset-team/${tid}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.post(url, {});
     return response.isSuccess;
   };
 

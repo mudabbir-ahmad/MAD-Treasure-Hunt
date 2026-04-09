@@ -13,6 +13,9 @@ const LeaderboardScreen = ({navigation, route}) => {
     const isAdmin = session.isAcceptedAdmin;
     const isBusiness = Boolean(session.isBusiness);
     const selectedDepartment = route?.params?.department || null;
+    const effectiveSGid = isBusiness
+        ? ((isAdmin && selectedDepartment?.SGid) ? selectedDepartment.SGid : (isAdmin ? null : session.currentSGid))
+        : null;
     const {getLobby, getSubgroup, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress, resetTeamProgress, getSubgroups} = useGameHook();
 
 //   State ----------------------
@@ -33,10 +36,6 @@ const LeaderboardScreen = ({navigation, route}) => {
         if (!session.currentGid) { setLoading(false); return; }
 
         const group = await getLobby(session.currentGid);
-
-        const effectiveSGid = isBusiness
-            ? ((isAdmin && selectedDepartment?.SGid) ? selectedDepartment.SGid : (isAdmin ? null : session.currentSGid))
-            : null;
 
         let isTeams = Boolean(group?.TeamsEnabled);
         if (effectiveSGid !== null && effectiveSGid !== undefined) {
@@ -117,7 +116,7 @@ const LeaderboardScreen = ({navigation, route}) => {
         }
 
         setLoading(false);
-    }, [session.currentGid, session.currentTid, session.currentSGid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid]);
+    }, [session.currentGid, session.currentTid, session.currentSGid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid, effectiveSGid]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -144,7 +143,7 @@ const LeaderboardScreen = ({navigation, route}) => {
                 text: 'Reset',
                 style: 'destructive',
                 onPress: async () => {
-                    await resetPlayerProgress(session.currentGid, player.uid);
+                    await resetPlayerProgress(session.currentGid, player.uid, effectiveSGid);
                     Alert.alert('Done', `Progress for ${player.name} has been reset.`);
                     await loadData();
                 },
@@ -159,7 +158,7 @@ const LeaderboardScreen = ({navigation, route}) => {
                 text: 'Reset',
                 style: 'destructive',
                 onPress: async () => {
-                    await resetTeamProgress(session.currentGid, team.tid);
+                    await resetTeamProgress(session.currentGid, team.tid, effectiveSGid);
                     Alert.alert('Done', `Progress for team "${team.name}" has been reset.`);
                     await loadData();
                 },

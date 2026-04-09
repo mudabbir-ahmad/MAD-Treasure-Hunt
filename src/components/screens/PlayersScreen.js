@@ -14,6 +14,9 @@ const PlayersScreen = ({navigation, route}) => {
     const isBusiness = Boolean(session.isBusiness);
     const isAdmin = Boolean(session.isAcceptedAdmin);
     const selectedDepartment = route?.params?.department || null;
+    const effectiveSGid = isBusiness
+        ? ((isAdmin && selectedDepartment?.SGid) ? selectedDepartment.SGid : (isAdmin ? null : session.currentSGid))
+        : null;
 
 //   State ----------------------
 
@@ -25,10 +28,6 @@ const PlayersScreen = ({navigation, route}) => {
 
     const loadData = useCallback(async () => {
         if (!session.currentGid) { setLoading(false); return; }
-
-        const effectiveSGid = isBusiness
-            ? ((isAdmin && selectedDepartment?.SGid) ? selectedDepartment.SGid : (isAdmin ? null : session.currentSGid))
-            : null;
 
         if (isBusiness && isAdmin && !selectedDepartment) {
             const sgs = await getSubgroups(session.currentGid);
@@ -122,7 +121,7 @@ const PlayersScreen = ({navigation, route}) => {
 
         setPlayers(playerList);
         setLoading(false);
-    }, [session.currentGid, session.currentUid, session.currentSGid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid]);
+    }, [session.currentGid, session.currentUid, session.currentSGid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid, effectiveSGid]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -141,7 +140,7 @@ const PlayersScreen = ({navigation, route}) => {
                     text: 'Reset',
                     style: 'destructive',
                     onPress: async () => {
-                        await resetPlayerProgress(session.currentGid, player.Uid);
+                        await resetPlayerProgress(session.currentGid, player.Uid, effectiveSGid);
                         Alert.alert('Done', `Progress for ${player.username} has been reset.`);
                     },
                 },
