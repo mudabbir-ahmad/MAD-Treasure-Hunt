@@ -91,13 +91,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#313244',
   },
   errorText: {
-    color: '#f38ba8',
+    color: '#D92800',
     textAlign: 'center',
     marginTop: 5,
   },
   submitButton: {
-    backgroundColor: '#89b4fa',
-    borderColor: '#89b4fa',
+    backgroundColor: '#bd93f9',
+    borderColor: '#bd93f9',
   },
   submitText: {
     color: '#1e1e2e',
@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     textAlign: 'center',
-    color: '#89b4fa',
+    color: '#bd93f9',
     fontWeight: '600',
     paddingVertical: 10,
   },

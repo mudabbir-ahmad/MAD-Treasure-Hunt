@@ -103,7 +103,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 12,
-        borderRadius: 8,
         marginHorizontal: 4,
     },
     tabActive: {
@@ -122,7 +121,7 @@ const styles = StyleSheet.create({
         color: '#cdd6f4',
     },
     tabTextLeave: {
-        color: '#f38ba8',
+        color: '#D92800',
     },
 });
 

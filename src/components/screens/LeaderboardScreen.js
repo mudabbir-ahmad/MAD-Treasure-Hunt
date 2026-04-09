@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     container: {padding: 0},
     body: {color: '#bac2de', fontSize: 15},
     departmentTitle: {fontSize: 20, fontWeight: '700', color: '#cdd6f4', paddingHorizontal: 15, paddingTop: 15, marginBottom: 6},
-    openLabel: {fontSize: 13, fontWeight: '700', color: '#89b4fa'},
+    openLabel: {fontSize: 13, fontWeight: '700', color: '#bd93f9'},
     tabRow: {
         flexDirection: 'row',
         borderBottomWidth: 1,
@@ -426,10 +426,10 @@ const styles = StyleSheet.create({
     },
     tabButtonActive: {
         borderBottomWidth: 2,
-        borderBottomColor: '#89b4fa',
+        borderBottomColor: '#bd93f9',
     },
     tabLabel: {fontSize: 15, fontWeight: '600', color: '#6c7086'},
-    tabLabelActive: {color: '#89b4fa'},
+    tabLabelActive: {color: '#bd93f9'},
     listSection: {flex: 1, paddingHorizontal: 15, paddingTop: 10},
     rankRow: {
         flexDirection: 'row',
@@ -452,10 +452,10 @@ const styles = StyleSheet.create({
     emptyText: {color: '#6c7086', textAlign: 'center', marginTop: 30, fontSize: 14},
     deleteTeamWrap: {marginTop: 8, paddingLeft: 42, flexDirection: 'row', gap: 8},
     resetTeamButton: {backgroundColor: '#f4a460', borderColor: '#f4a460', minHeight: 36, flex: 1},
-    deleteTeamButton: {backgroundColor: '#f38ba8', borderColor: '#f38ba8', minHeight: 36, flex: 1},
+    deleteTeamButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1},
     deleteTeamLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
     resetMiniButton: {
-        backgroundColor: '#f4a460',
+        backgroundColor: '#86efac',
         borderRadius: 6,
         paddingHorizontal: 10,
         paddingVertical: 4,

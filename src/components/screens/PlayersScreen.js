@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingTop: 15,
     },
-    openLabel: {fontSize: 13, fontWeight: '700', color: '#89b4fa'},
+    openLabel: {fontSize: 13, fontWeight: '700', color: '#bd93f9'},
     listSection: {flex: 1, paddingHorizontal: 15},
     emptyText: {color: '#6c7086', textAlign: 'center', marginTop: 30, fontSize: 14},
     playerRow: {
@@ -307,18 +307,18 @@ const styles = StyleSheet.create({
     },
     playerName: {fontSize: 15, fontWeight: '600', color: '#cdd6f4', flex: 1},
     playerMeta: {flexDirection: 'row', alignItems: 'center', gap: 6},
-    leaderBadge: {fontSize: 11, color: '#89b4fa', fontWeight: '700'},
+    leaderBadge: {fontSize: 11, color: '#bd93f9', fontWeight: '700'},
     teamCodeBadge: {fontSize: 12, fontWeight: '700', color: '#a6e3a1', letterSpacing: 1},
-    adminBadge: {fontSize: 12, fontWeight: '700', color: '#f38ba8'},
+    adminBadge: {fontSize: 12, fontWeight: '700', color: '#D92800'},
     waitlistBadge: {fontSize: 11, fontWeight: '600', color: '#f4a460'},
     actionRow: {flexDirection: 'row', gap: 8},
-    resetButton: {backgroundColor: '#f4a460', borderColor: '#f4a460', minHeight: 36, flex: 1, paddingHorizontal: 10},
-    removeButton: {backgroundColor: '#f38ba8', borderColor: '#f38ba8', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    resetButton: {backgroundColor: '#86efac', borderColor: '#86efac', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    removeButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1, paddingHorizontal: 10},
     actionLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
     departmentName: {fontSize: 14, color: '#6c7086', fontStyle: 'italic'},
-    waitlistCard: {backgroundColor: 'rgba(243, 139, 168, 0.15)', borderColor: '#f38ba8'},
+    waitlistCard: {backgroundColor: 'rgba(217, 40, 0, 0.15)', borderColor: '#D92800'},
     approveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1', minHeight: 36, flex: 1, paddingHorizontal: 10},
-    denyButton: {backgroundColor: '#f38ba8', borderColor: '#f38ba8', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    denyButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1, paddingHorizontal: 10},
 });
 
 export default PlayersScreen;

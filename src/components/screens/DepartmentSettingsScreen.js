@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     codeLabel: {fontSize: 14, fontWeight: '600', color: '#bac2de'},
-    codeValue: {fontSize: 16, fontWeight: '700', color: '#89b4fa', letterSpacing: 2},
+    codeValue: {fontSize: 16, fontWeight: '700', color: '#bd93f9', letterSpacing: 2},
     toggleRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -213,10 +213,10 @@ const styles = StyleSheet.create({
     saveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1'},
     saveLabel: {color: '#1e1e2e', fontWeight: '600'},
     mapWrap: {marginTop: 16},
-    mapButton: {backgroundColor: '#89b4fa', borderColor: '#89b4fa'},
+    mapButton: {backgroundColor: '#bd93f9', borderColor: '#bd93f9'},
     mapLabel: {color: '#1e1e2e', fontWeight: '600'},
     resetWrap: {marginTop: 30},
-    resetButton: {backgroundColor: '#f38ba8', borderColor: '#f38ba8'},
+    resetButton: {backgroundColor: '#86efac', borderColor: '#86efac'},
     resetLabel: {color: '#1e1e2e', fontWeight: '600'},
 });
 
