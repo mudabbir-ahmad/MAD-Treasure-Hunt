@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import Screen from '../layout/Screen';
@@ -12,6 +12,21 @@ const GameSettingsScreen = ({navigation}) => {
 
     const session = getSession();
     const {getLobby, updateGroup, getSubgroups, createSubgroup, deleteSubgroup, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser, disbandTeams} = useGameHook();
+    const gameApiRef = useRef({
+        getLobby,
+        getSubgroups,
+        getAdminWaitlist,
+        getUser,
+    });
+    gameApiRef.current = {
+        getLobby,
+        getSubgroups,
+        getAdminWaitlist,
+        getUser,
+    };
+    const isMountedRef = useRef(true);
+    const isRefreshingRef = useRef(false);
+    const hasHydratedRef = useRef(false);
 
 //   State ----------------------
 
@@ -34,56 +49,73 @@ const GameSettingsScreen = ({navigation}) => {
 
 //   Handlers -------------------
 
-    const loadWaitlist = useCallback(async (gid) => {
-        if (!gid) return;
-        const rows = await getAdminWaitlist(gid);
-        setWaitlist(rows || []);
-        const names = {};
-        for (const entry of (rows || [])) {
-            const u = await getUser(entry.Uid);
-            if (u) names[entry.Uid] = u.username;
+    useEffect(() => () => {
+        isMountedRef.current = false;
+    }, []);
+
+    const refreshSettings = useCallback(async ({showLoader = false} = {}) => {
+        const activeSession = getSession();
+        if (!activeSession.currentGid) {
+            if (isMountedRef.current) setLoading(false);
+            return;
         }
-        setWaitlistNames(names);
-    }, [getAdminWaitlist, getUser]);
 
-    const loadSubgroups = useCallback(async (gid) => {
-        if (!gid) return;
-        const sgs = await getSubgroups(gid);
-        setSubgroupList(sgs || []);
-        // Set the default member join code from first non-admin subgroup
-        const memberSg = (sgs || []).find((sg) => !sg.IsAdminGroup);
-        if (memberSg) setMemberJoinCode(memberSg.JoinCode || '');
-    }, [getSubgroups]);
+        // Guard against re-entrant focus refresh calls.
+        if (isRefreshingRef.current) return;
+        isRefreshingRef.current = true;
 
-    const loadSettings = useCallback(async () => {
-            const activeSession = getSession();
-            if (!activeSession.currentGid) {
-                setLoading(false);
-                return;
-            }
-            const group = await getLobby(activeSession.currentGid);
+        if (showLoader && isMountedRef.current) setLoading(true);
+
+        try {
+            const [group, sgs, waitlistRows] = await Promise.all([
+                gameApiRef.current.getLobby(activeSession.currentGid),
+                gameApiRef.current.getSubgroups(activeSession.currentGid),
+                gameApiRef.current.getAdminWaitlist(activeSession.currentGid),
+            ]);
+
+            if (!isMountedRef.current) return;
+
             if (group) {
                 setGroupName(group.GroupName || '');
                 setBusinessName(group.BusinessOrSchoolName || '');
-                setIsBusinessGroup(Boolean(group.BusinessOrSchoolName || group.OrgJoinCode));
+                // Organisation mode is based on organisation profile data, not generic org join code presence.
+                setIsBusinessGroup(Boolean(group.BusinessOrSchoolName));
+
                 const serverTeams = Boolean(group.TeamsEnabled);
                 setTeamsEnabled(serverTeams);
                 setServerTeamsEnabled(serverTeams);
                 setSessionTeamsEnabled(serverTeams);
+
                 setCacheTriggerMeters(String(group.CacheTriggerMeters || 20));
                 setAdminJoinCode(group.AdminJoinCode || '');
                 setOrgJoinCode(group.OrgJoinCode || '');
             }
-            await loadSubgroups(activeSession.currentGid);
-            await loadWaitlist(activeSession.currentGid);
-            setLoading(false);
-    }, [getLobby, loadSubgroups, loadWaitlist]);
+
+            setSubgroupList(sgs || []);
+            const memberSg = (sgs || []).find((sg) => !sg.IsAdminGroup);
+            setMemberJoinCode(memberSg?.JoinCode || '');
+
+            setWaitlist(waitlistRows || []);
+            const names = {};
+            for (const entry of (waitlistRows || [])) {
+                const user = await gameApiRef.current.getUser(entry.Uid);
+                if (user) names[entry.Uid] = user.username;
+            }
+            if (!isMountedRef.current) return;
+            setWaitlistNames(names);
+            hasHydratedRef.current = true;
+        } finally {
+            if (isMountedRef.current && (showLoader || !hasHydratedRef.current)) {
+                setLoading(false);
+            }
+            isRefreshingRef.current = false;
+        }
+    }, []);
 
     useFocusEffect(
         useCallback(() => {
-            setLoading(true);
-            loadSettings();
-        }, [loadSettings]),
+            refreshSettings({showLoader: !hasHydratedRef.current});
+        }, [refreshSettings]),
     );
 
     // --- Individual save ---
@@ -147,12 +179,12 @@ const GameSettingsScreen = ({navigation}) => {
 
     const handleApproveAdmin = async (entry) => {
         await approveAdmin(entry.id);
-        await loadWaitlist();
+        await refreshSettings();
     };
 
     const handleRejectAdmin = async (entry) => {
         await rejectAdmin(entry.id);
-        await loadWaitlist();
+        await refreshSettings();
     };
 
     // Business — create a new department (subgroup)
@@ -167,7 +199,7 @@ const GameSettingsScreen = ({navigation}) => {
             CacheTriggerMeters: 20,
         });
         setNewDeptName('');
-        await loadSubgroups();
+        await refreshSettings();
     };
 
     // Business — delete a department
@@ -179,7 +211,7 @@ const GameSettingsScreen = ({navigation}) => {
                 style: 'destructive',
                 onPress: async () => {
                     await deleteSubgroup(sg.SGid);
-                    await loadSubgroups();
+                    await refreshSettings();
                 },
             },
         ]);
@@ -393,7 +425,7 @@ const GameSettingsScreen = ({navigation}) => {
                 </View>
 
                 <View style={styles.codeSection}>
-                    <Text style={styles.codeLabel}>Player Join Code</Text>
+                    <Text style={styles.codeLabel}>Game Join Code</Text>
                     <Text style={styles.codeValue}>{memberJoinCode || '—'}</Text>
                 </View>
 
