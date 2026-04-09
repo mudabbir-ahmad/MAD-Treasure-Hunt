@@ -6,12 +6,14 @@ import {Button} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession} from '../../hooks/SessionStore';
 
-const LeaderboardScreen = () => {
+const LeaderboardScreen = ({navigation, route}) => {
 //   Initialisation ------------
 
     const session = getSession();
     const isAdmin = session.isAcceptedAdmin;
-    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress} = useGameHook();
+    const isBusiness = Boolean(session.isBusiness);
+    const selectedDepartment = route?.params?.department || null;
+    const {getLobby, getSubgroup, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress, resetTeamProgress, getSubgroups} = useGameHook();
 
 //   State ----------------------
 
@@ -23,6 +25,7 @@ const LeaderboardScreen = () => {
     const [myTeamRanking, setMyTeamRanking] = useState([]);
     const [expandedTeam, setExpandedTeam] = useState(null);
     const [totalCacheCount, setTotalCacheCount] = useState(0);
+    const [departmentList, setDepartmentList] = useState([]);
 
 //   Handlers -------------------
 
@@ -30,16 +33,32 @@ const LeaderboardScreen = () => {
         if (!session.currentGid) { setLoading(false); return; }
 
         const group = await getLobby(session.currentGid);
-        const isTeams = Boolean(group?.TeamsEnabled);
+
+        const effectiveSGid = isBusiness
+            ? ((isAdmin && selectedDepartment?.SGid) ? selectedDepartment.SGid : (isAdmin ? null : session.currentSGid))
+            : null;
+
+        let isTeams = Boolean(group?.TeamsEnabled);
+        if (effectiveSGid !== null && effectiveSGid !== undefined) {
+            const subgroup = await getSubgroup(effectiveSGid);
+            if (subgroup) isTeams = Boolean(subgroup.TeamsEnabled);
+        }
         setTeamsEnabled(isTeams);
 
-        const caches = await getCaches(session.currentGid, null);
+        if (isBusiness && isAdmin && !selectedDepartment) {
+            const sgs = await getSubgroups(session.currentGid);
+            setDepartmentList((sgs || []).filter((sg) => !sg.IsAdminGroup));
+            setLoading(false);
+            return;
+        }
+
+        const caches = await getCaches(session.currentGid, effectiveSGid ?? null);
         const total = (caches || []).length;
         setTotalCacheCount(total);
 
         if (isTeams) {
             // Build team rankings
-            const teams = await getTeams(session.currentGid);
+            const teams = await getTeams(session.currentGid, effectiveSGid ?? null);
             const teamData = [];
 
             for (const team of (teams || [])) {
@@ -80,9 +99,9 @@ const LeaderboardScreen = () => {
             }
         } else {
             // Build player rankings (no teams)
-            const allMembers = await getGroupMembers(session.currentGid);
+            const scopedMembers = await getGroupMembers(session.currentGid, effectiveSGid ?? null);
             const playerData = [];
-            for (const m of (allMembers || []).filter((mem) => !mem.IsAcceptedAdmin)) {
+            for (const m of (scopedMembers || []).filter((mem) => !mem.IsAcceptedAdmin)) {
                 const user = await getUser(m.Uid);
                 const count = (caches || []).filter((c) =>
                     (c.Claims || []).some((cl) => cl.Uid === m.Uid)
@@ -98,7 +117,7 @@ const LeaderboardScreen = () => {
         }
 
         setLoading(false);
-    }, [session.currentGid, session.currentTid]);
+    }, [session.currentGid, session.currentTid, session.currentSGid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -133,6 +152,21 @@ const LeaderboardScreen = () => {
         ]);
     };
 
+    const handleResetTeam = (team) => {
+        Alert.alert('Reset Team Progress', `Reset all cache claims for team "${team.name}"?`, [
+            {text: 'Cancel', style: 'cancel'},
+            {
+                text: 'Reset',
+                style: 'destructive',
+                onPress: async () => {
+                    await resetTeamProgress(session.currentGid, team.tid);
+                    Alert.alert('Done', `Progress for team "${team.name}" has been reset.`);
+                    await loadData();
+                },
+            },
+        ]);
+    };
+
 //   View -----------------------
 
     if (loading) {
@@ -147,6 +181,32 @@ const LeaderboardScreen = () => {
         return (
             <Screen style={styles.center}>
                 <Text style={styles.body}>Join a game to view the leaderboard.</Text>
+            </Screen>
+        );
+    }
+
+    if (isBusiness && isAdmin && !selectedDepartment) {
+        return (
+            <Screen style={styles.container}>
+                <Text style={styles.departmentTitle}>Departments</Text>
+                <ScrollView style={styles.listSection}>
+                    {departmentList.map((department) => (
+                        <Pressable
+                            key={department.SGid}
+                            onPress={() => navigation.navigate('LeaderboardScreen', {department})}
+                        >
+                            <Card>
+                                <View style={styles.rankRow}>
+                                    <Text style={styles.rankName}>{department.SubGroupName}</Text>
+                                    <Text style={styles.openLabel}>Open</Text>
+                                </View>
+                            </Card>
+                        </Pressable>
+                    ))}
+                    {departmentList.length === 0 && (
+                        <Text style={styles.emptyText}>No departments yet.</Text>
+                    )}
+                </ScrollView>
             </Screen>
         );
     }
@@ -180,10 +240,16 @@ const LeaderboardScreen = () => {
                     ))}
                     <View style={styles.deleteTeamWrap}>
                         <Button
+                            label="Reset Team Progress"
+                            onClick={() => handleResetTeam(team)}
+                            styleButton={styles.resetTeamButton}
+                            styleLabel={styles.deleteTeamLabel}
+                        />
+                        <Button
                             label="Delete Team"
                             onClick={() => handleDeleteTeam(team)}
                             styleButton={styles.deleteTeamButton}
-                            styleLabel={styles.deleteTeamLabel}
+                            styleLabel={styles.deleteTeamDeleteLabel}
                         />
                     </View>
                 </View>
@@ -248,7 +314,10 @@ const LeaderboardScreen = () => {
         // Teams enabled: show team list (no tabs for admin)
         if (teamsEnabled) {
             return (
-                <Screen style={styles.container}>
+                <Screen style={styles.container} showBack={Boolean(selectedDepartment)}>
+                    {selectedDepartment && (
+                        <Text style={styles.departmentTitle}>{selectedDepartment.SubGroupName}</Text>
+                    )}
                     <ScrollView style={styles.listSection}>
                         {teamRankings.map((team, index) => renderAdminTeamCard(team, index))}
                         {teamRankings.length === 0 && (
@@ -261,7 +330,10 @@ const LeaderboardScreen = () => {
 
         // Teams disabled: show player list with reset buttons
         return (
-            <Screen style={styles.container}>
+            <Screen style={styles.container} showBack={Boolean(selectedDepartment)}>
+                {selectedDepartment && (
+                    <Text style={styles.departmentTitle}>{selectedDepartment.SubGroupName}</Text>
+                )}
                 <ScrollView style={styles.listSection}>
                     {playerRankings.map((player, index) => renderAdminPlayerCard(player, index))}
                     {playerRankings.length === 0 && (
@@ -339,11 +411,13 @@ const LeaderboardScreen = () => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     container: {padding: 0},
-    body: {color: '#4b5563', fontSize: 15},
+    body: {color: '#bac2de', fontSize: 15},
+    departmentTitle: {fontSize: 20, fontWeight: '700', color: '#cdd6f4', paddingHorizontal: 15, paddingTop: 15, marginBottom: 6},
+    openLabel: {fontSize: 13, fontWeight: '700', color: '#bd93f9'},
     tabRow: {
         flexDirection: 'row',
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        borderBottomColor: '#45475a',
     },
     tabButton: {
         flex: 1,
@@ -352,46 +426,45 @@ const styles = StyleSheet.create({
     },
     tabButtonActive: {
         borderBottomWidth: 2,
-        borderBottomColor: '#2563eb',
+        borderBottomColor: '#bd93f9',
     },
-    tabLabel: {fontSize: 15, fontWeight: '600', color: '#6b7280'},
-    tabLabelActive: {color: '#2563eb'},
+    tabLabel: {fontSize: 15, fontWeight: '600', color: '#6c7086'},
+    tabLabelActive: {color: '#bd93f9'},
     listSection: {flex: 1, paddingHorizontal: 15, paddingTop: 10},
     rankRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
     },
-    rank: {fontSize: 16, fontWeight: '700', color: '#374151', width: 32},
-    rankName: {flex: 1, fontSize: 15, fontWeight: '600', color: '#1f2937'},
-    score: {fontSize: 14, fontWeight: '600', color: '#16a34a'},
+    rank: {fontSize: 16, fontWeight: '700', color: '#bac2de', width: 32},
+    rankName: {flex: 1, fontSize: 15, fontWeight: '600', color: '#cdd6f4'},
+    score: {fontSize: 14, fontWeight: '600', color: '#a6e3a1'},
     subRow: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingLeft: 42,
         paddingVertical: 6,
         borderTopWidth: 1,
-        borderTopColor: '#f3f4f6',
+        borderTopColor: '#45475a',
     },
-    subName: {fontSize: 13, color: '#4b5563'},
-    subScore: {fontSize: 13, fontWeight: '600', color: '#16a34a', marginRight: 8},
-    emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 30, fontSize: 14},
-    // Admin delete team button
-    deleteTeamWrap: {marginTop: 8, paddingLeft: 42},
-    deleteTeamButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36},
-    deleteTeamLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
-    // Admin reset mini button (inline)
+    subName: {fontSize: 13, color: '#bac2de'},
+    subScore: {fontSize: 13, fontWeight: '600', color: '#a6e3a1', marginRight: 8},
+    emptyText: {color: '#6c7086', textAlign: 'center', marginTop: 30, fontSize: 14},
+    deleteTeamWrap: {marginTop: 8, paddingLeft: 42, flexDirection: 'row', gap: 8},
+    resetTeamButton: {backgroundColor: '#f4a460', borderColor: '#f4a460', minHeight: 36, flex: 1},
+    deleteTeamButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1},
+    deleteTeamLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
+    deleteTeamDeleteLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     resetMiniButton: {
-        backgroundColor: '#f59e0b',
+        backgroundColor: '#86efac',
         borderRadius: 6,
         paddingHorizontal: 10,
         paddingVertical: 4,
         marginLeft: 6,
     },
-    resetMiniLabel: {color: '#ffffff', fontWeight: '600', fontSize: 12},
-    // Current user self-highlight (light green card / sub-row)
-    selfCard: {backgroundColor: '#dcfce7', borderColor: '#86efac'},
-    selfSubRow: {backgroundColor: '#dcfce7'},
+    resetMiniLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 12},
+    selfCard: {backgroundColor: 'rgba(166, 227, 161, 0.15)', borderColor: '#a6e3a1'},
+    selfSubRow: {backgroundColor: 'rgba(166, 227, 161, 0.15)'},
 });
 
 export default LeaderboardScreen;

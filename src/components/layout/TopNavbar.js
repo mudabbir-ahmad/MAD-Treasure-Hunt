@@ -47,12 +47,12 @@ const styles = StyleSheet.create({
     container: {
         minHeight: 56,
         borderBottomWidth: 1,
-        borderBottomColor: '#333333',
+        borderBottomColor: '#45475a',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 12,
-        backgroundColor: '#000000',
+        backgroundColor: '#313244',
         zIndex: 10,
     },
     leftSlot: {

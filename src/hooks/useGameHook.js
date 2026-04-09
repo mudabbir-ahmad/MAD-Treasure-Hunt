@@ -41,6 +41,15 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  // Look up a group by its Organisation Join Code
+  const getGroupByOrgCode = async (code) => {
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    if (!normalizedCode) return null;
+    const response = await API.get(`${groupsEndpoint}?OrgJoinCode=${encodeURIComponent(normalizedCode)}`);
+    if (response.isSuccess && response.result.length > 0) return response.result[0];
+    return null;
+  };
+
   // Subgroups
   const getSubgroups = async (gid) => {
     const response = await API.get(`${subgroupsEndpoint}?Gid=${gid}`);
@@ -69,12 +78,21 @@ const useGameHook = () => {
 
   // Subgroup members
   const joinPrivateGame = async (payload) => {
-    const response = await API.post(subgroupMembersEndpoint, payload);
+    const data = {
+      JoinCode: payload.JoinCode,
+      Uid: payload.Uid,
+    };
+    if (payload.ExpectedGid !== undefined && payload.ExpectedGid !== null) {
+      data.ExpectedGid = payload.ExpectedGid;
+    }
+    const response = await API.post(subgroupMembersEndpoint, data);
     return response.isSuccess ? response.result : null;
   };
 
-  const getGroupMembers = async (gid) => {
-    const response = await API.get(`${subgroupMembersEndpoint}?Gid=${gid}`);
+  const getGroupMembers = async (gid, sgid = null) => {
+    let url = `${subgroupMembersEndpoint}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.get(url);
     return response.isSuccess ? response.result : [];
   };
 
@@ -84,8 +102,10 @@ const useGameHook = () => {
   };
 
   // Teams
-  const getTeams = async (gid) => {
-    const response = await API.get(`${teamsEndpoint}?Gid=${gid}`);
+  const getTeams = async (gid, sgid = null) => {
+    let url = `${teamsEndpoint}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.get(url);
     return response.isSuccess ? response.result : [];
   };
 
@@ -109,8 +129,21 @@ const useGameHook = () => {
     return response.isSuccess;
   };
 
+  const disbandTeams = async (gid) => {
+    const response = await API.post(`${teamsEndpoint}/disband?Gid=${gid}`, {});
+    return response.isSuccess;
+  };
+
   const joinTeamByCode = async (payload) => {
-    const response = await API.post(teamMembersEndpoint, payload);
+    const data = {
+      Uid: payload.Uid,
+    };
+    if (payload.JoinCode !== undefined) data.JoinCode = payload.JoinCode;
+    if (payload.Tid !== undefined) data.Tid = payload.Tid;
+    if (payload.ExpectedSGid !== undefined && payload.ExpectedSGid !== null) {
+      data.ExpectedSGid = payload.ExpectedSGid;
+    }
+    const response = await API.post(teamMembersEndpoint, data);
     return response.isSuccess ? response.result : null;
   };
 
@@ -163,15 +196,22 @@ const useGameHook = () => {
     return response.isSuccess;
   };
 
-  // Game reset — remove all caches for a game
-  const resetGame = async (gid) => {
-    const response = await API.post(`${cachesEndpoint}/reset?Gid=${gid}`, {});
+  // Game reset — remove all caches for a game (optionally scoped to a subgroup)
+  const resetGame = async (gid, sgid = null) => {
+    let url = `${cachesEndpoint}/reset?Gid=${gid}`;
+    if (sgid !== null) url += `&SGid=${sgid}`;
+    const response = await API.post(url, {});
     return response.isSuccess;
   };
 
   // Player progress reset — clear all claims by a specific user
   const resetPlayerProgress = async (gid, uid) => {
     const response = await API.post(`${cachesEndpoint}/reset-player/${uid}?Gid=${gid}`, {});
+    return response.isSuccess;
+  };
+
+  const resetTeamProgress = async (gid, tid) => {
+    const response = await API.post(`${cachesEndpoint}/reset-team/${tid}?Gid=${gid}`, {});
     return response.isSuccess;
   };
 
@@ -201,6 +241,7 @@ const useGameHook = () => {
     createPrivateGame,
     getLobby,
     updateGroup,
+    getGroupByOrgCode,
     getSubgroups,
     getSubgroup,
     createSubgroup,
@@ -214,6 +255,7 @@ const useGameHook = () => {
     createTeam,
     updateTeam,
     deleteTeam,
+    disbandTeams,
     joinTeamByCode,
     getTeamMembers,
     leaveTeam,
@@ -223,6 +265,7 @@ const useGameHook = () => {
     deleteCache,
     resetGame,
     resetPlayerProgress,
+    resetTeamProgress,
     getAdminWaitlist,
     approveAdmin,
     rejectAdmin,

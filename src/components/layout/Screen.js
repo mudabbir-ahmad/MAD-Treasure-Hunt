@@ -17,6 +17,7 @@ const Screen = ({ children, style, showBack = false }) => {
     TeamScreen: "Current Team",
     MapScreen: "Map",
     GameSettingsScreen: "Game Settings",
+    DepartmentSettingsScreen: "Department Settings",
     PlayersScreen: "Players",
     ExpandedMapScreen: "Map View",
   };
@@ -34,7 +35,7 @@ const Screen = ({ children, style, showBack = false }) => {
     <View style={[styles.screen, isAuthScreen && {paddingTop: insets.top, paddingBottom: insets.bottom}]}>
       {!isAuthScreen && <TopNavbar title={pageTitle} showBack={showBack} navigation={navigation} />}
       <View style={[styles.content, style]}>{children}</View>
-      {!isAuthScreen && <BottomNavbar navigation={navigation} routeName={routeName} />}
+      {!isAuthScreen && <BottomNavbar navigation={navigation} routeName={routeName} routeParams={route.params} />}
       <StatusBar style="light" />
     </View>
   );
@@ -43,13 +44,13 @@ const Screen = ({ children, style, showBack = false }) => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#1e1e2e',
   },
   content: {
     flex: 1,
     padding: 15,
     zIndex: 1,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
 });
 

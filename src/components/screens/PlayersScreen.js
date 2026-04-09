@@ -1,32 +1,57 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Screen from '../layout/Screen';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession} from '../../hooks/SessionStore';
 
-const PlayersScreen = () => {
+const PlayersScreen = ({navigation, route}) => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser, getAdminWaitlist, approveAdmin, rejectAdmin} = useGameHook();
+    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser, getAdminWaitlist, approveAdmin, rejectAdmin, getSubgroups} = useGameHook();
+    const isBusiness = Boolean(session.isBusiness);
+    const isAdmin = Boolean(session.isAcceptedAdmin);
+    const selectedDepartment = route?.params?.department || null;
 
 //   State ----------------------
 
     const [loading, setLoading] = useState(true);
     const [players, setPlayers] = useState([]);
+    const [departmentList, setDepartmentList] = useState([]);
 
 //   Handlers -------------------
 
     const loadData = useCallback(async () => {
         if (!session.currentGid) { setLoading(false); return; }
 
+        const effectiveSGid = isBusiness
+            ? ((isAdmin && selectedDepartment?.SGid) ? selectedDepartment.SGid : (isAdmin ? null : session.currentSGid))
+            : null;
+
+        if (isBusiness && isAdmin && !selectedDepartment) {
+            const sgs = await getSubgroups(session.currentGid);
+            setDepartmentList((sgs || []).filter((sg) => !sg.IsAdminGroup));
+            setPlayers([]);
+            setLoading(false);
+            return;
+        }
+
+        // Load subgroup names for department display (business accounts)
+        let subgroupNameMap = {};
+        if (isBusiness) {
+            const sgs = await getSubgroups(session.currentGid);
+            for (const sg of (sgs || [])) {
+                if (!sg.IsAdminGroup) subgroupNameMap[sg.SGid] = sg.SubGroupName;
+            }
+        }
+
         // Get ALL members (including admins)
-        const allMembers = await getGroupMembers(session.currentGid);
+        const allMembers = await getGroupMembers(session.currentGid, effectiveSGid ?? null);
 
         // Get admin waitlist entries
-        const waitlist = await getAdminWaitlist(session.currentGid);
+        const waitlist = effectiveSGid ? [] : await getAdminWaitlist(session.currentGid);
 
         // Deduplicate allMembers by Uid — a user may have two rows if they were a
         // regular member before being approved as an admin. Prefer the admin row.
@@ -36,7 +61,7 @@ const PlayersScreen = () => {
             .filter((m) => { if (seenUids.has(m.Uid)) return false; seenUids.add(m.Uid); return true; });
 
         // Build team lookup: { Uid -> { teamCode, teamName, isLeader } }
-        const allTeams = await getTeams(session.currentGid);
+        const allTeams = await getTeams(session.currentGid, effectiveSGid ?? null);
         const teamInfoByUid = {};
         for (const team of (allTeams || [])) {
             const tms = await getTeamMembers(team.Tid);
@@ -73,6 +98,7 @@ const PlayersScreen = () => {
                     team: teamInfoByUid[m.Uid] || null,
                     adminTag,
                     waitlistId,
+                    departmentName: subgroupNameMap[m.SGid] || null,
                 });
             }
         }
@@ -89,13 +115,14 @@ const PlayersScreen = () => {
                     team: null,
                     adminTag: '[Admin Awaiting Response]',
                     waitlistId: w.id,
+                    departmentName: null,
                 });
             }
         }
 
         setPlayers(playerList);
         setLoading(false);
-    }, [session.currentGid]);
+    }, [session.currentGid, session.currentUid, session.currentSGid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -152,8 +179,34 @@ const PlayersScreen = () => {
         );
     }
 
+    if (isBusiness && isAdmin && !selectedDepartment) {
+        return (
+            <Screen style={styles.container}>
+                <Text style={styles.sectionTitle}>Departments</Text>
+                <ScrollView style={styles.listSection}>
+                    {departmentList.map((department) => (
+                        <Pressable
+                            key={department.SGid}
+                            onPress={() => navigation.navigate('PlayersScreen', {department})}
+                        >
+                            <Card>
+                                <View style={styles.playerRow}>
+                                    <Text style={styles.playerName}>{department.SubGroupName}</Text>
+                                    <Text style={styles.openLabel}>Open</Text>
+                                </View>
+                            </Card>
+                        </Pressable>
+                    ))}
+                    {departmentList.length === 0 && (
+                        <Text style={styles.emptyText}>No departments yet.</Text>
+                    )}
+                </ScrollView>
+            </Screen>
+        );
+    }
+
     return (
-        <Screen style={styles.container}>
+        <Screen style={styles.container} showBack={Boolean(selectedDepartment)}>
             <Text style={styles.sectionTitle}>Players</Text>
             <ScrollView style={styles.listSection}>
                 {players.map((player) => (
@@ -165,6 +218,12 @@ const PlayersScreen = () => {
                                 {player.adminTag && (
                                     <Text style={player.adminTag === '[ADMIN]' ? styles.adminBadge : styles.waitlistBadge}>
                                         {' '}{player.adminTag}
+                                    </Text>
+                                )}
+                                {/* Show department name in brackets for non-admin players (org accounts) */}
+                                {!player.adminTag && player.departmentName && (
+                                    <Text style={styles.departmentName}>
+                                        {' '}({player.departmentName})
                                     </Text>
                                 )}
                             </Text>
@@ -209,7 +268,7 @@ const PlayersScreen = () => {
                                             label="Kick"
                                             onClick={() => handleRemovePlayer(player.membershipId)}
                                             styleButton={styles.removeButton}
-                                            styleLabel={styles.actionLabel}
+                                            styleLabel={styles.kickLabel}
                                         />
                                     )}
                                 </>
@@ -228,38 +287,39 @@ const PlayersScreen = () => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center', flex: 1},
     container: {padding: 0},
-    body: {color: '#4b5563', fontSize: 15},
+    body: {color: '#bac2de', fontSize: 15},
     sectionTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#1f2937',
+        color: '#cdd6f4',
         marginBottom: 12,
         paddingHorizontal: 15,
         paddingTop: 15,
     },
+    openLabel: {fontSize: 13, fontWeight: '700', color: '#bd93f9'},
     listSection: {flex: 1, paddingHorizontal: 15},
-    emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 30, fontSize: 14},
+    emptyText: {color: '#6c7086', textAlign: 'center', marginTop: 30, fontSize: 14},
     playerRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         marginBottom: 8,
     },
-    playerName: {fontSize: 15, fontWeight: '600', color: '#1f2937', flex: 1},
+    playerName: {fontSize: 15, fontWeight: '600', color: '#cdd6f4', flex: 1},
     playerMeta: {flexDirection: 'row', alignItems: 'center', gap: 6},
-    leaderBadge: {fontSize: 11, color: '#2563eb', fontWeight: '700'},
-    teamCodeBadge: {fontSize: 12, fontWeight: '700', color: '#16a34a', letterSpacing: 1},
-    adminBadge: {fontSize: 12, fontWeight: '700', color: '#dc2626'},
-    waitlistBadge: {fontSize: 11, fontWeight: '600', color: '#f59e0b'},
+    leaderBadge: {fontSize: 11, color: '#bd93f9', fontWeight: '700'},
+    teamCodeBadge: {fontSize: 12, fontWeight: '700', color: '#a6e3a1', letterSpacing: 1},
+    adminBadge: {fontSize: 12, fontWeight: '700', color: '#D92800'},
+    waitlistBadge: {fontSize: 11, fontWeight: '600', color: '#f4a460'},
     actionRow: {flexDirection: 'row', gap: 8},
-    resetButton: {backgroundColor: '#f59e0b', borderColor: '#f59e0b', minHeight: 36, flex: 1, paddingHorizontal: 10},
-    removeButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 1, paddingHorizontal: 10},
-    actionLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
-    // Waitlisted admin card tint — light red so they read as pending, not regular players
-    waitlistCard: {backgroundColor: '#FFD1DC', borderColor: '#fca5a5'},
-    // Approve / deny buttons for waitlisted admins
-    approveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a', minHeight: 36, flex: 1, paddingHorizontal: 10},
-    denyButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    resetButton: {backgroundColor: '#86efac', borderColor: '#86efac', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    removeButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    actionLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
+    kickLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    departmentName: {fontSize: 14, color: '#6c7086', fontStyle: 'italic'},
+    waitlistCard: {backgroundColor: 'rgba(217, 40, 0, 0.15)', borderColor: '#D92800'},
+    approveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    denyButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1, paddingHorizontal: 10},
 });
 
 export default PlayersScreen;
