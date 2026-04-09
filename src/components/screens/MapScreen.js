@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
@@ -10,7 +10,7 @@ import ClaimTimerView from '../gameplay/ClaimTimerView';
 import PlayerMapView from '../gameplay/PlayerMapView';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
-import {getSession, setSelectedCache, setSessionGroup, setSessionUser} from '../../hooks/SessionStore';
+import {getSession, setSelectedCache, setSessionGroup, setSessionTeam, setSessionUser} from '../../hooks/SessionStore';
 import {getFovCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
@@ -21,6 +21,11 @@ const MapScreen = ({navigation}) => {
 
     const session = getSession();
     const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser, getSubgroups} = useGameHook();
+
+    // Stable ref to getCaches so loadCaches never gets a new identity on re-render.
+    // This prevents the useEffect/useFocusEffect from looping infinitely.
+    const getCachesRef = useRef(getCaches);
+    getCachesRef.current = getCaches;
 
 //   State ----------------------
 
@@ -88,16 +93,17 @@ const MapScreen = ({navigation}) => {
     const defaultMemberSGid = subgroups.find((sg) => !sg.IsAdminGroup)?.SGid || null;
 
     // Always call getSession() fresh inside the callback so we never read a
-    // stale currentGid from the closure — matches the server's /caches endpoint
+    // stale currentGid from the closure — matches the server's /caches endpoint.
+    // Uses getCachesRef so this callback has a stable identity (no infinite loop).
     const loadCaches = useCallback(async () => {
         const currentGid = getSession().currentGid;
         if (!currentGid) {
             setCacheRecords([]);
             return;
         }
-        const rows = await getCaches(currentGid, null);
+        const rows = await getCachesRef.current(currentGid, null);
         setCacheRecords(rows || []);
-    }, [getCaches]);
+    }, []);
 
     // Run once on mount
     useEffect(() => { loadCaches(); }, [loadCaches]);
@@ -108,16 +114,16 @@ const MapScreen = ({navigation}) => {
         useCallback(() => { loadCaches(); }, [loadCaches])
     );
 
-    // Auto-select the first cache for the player when caches load and none is selected
+    // Auto-select the first unclaimed cache for the player when caches load
     useEffect(() => {
-        if (!isPlayer || cacheRecords.length === 0) return;
-        // If persisted selection still exists in the list, keep it
-        if (selectedCacheId && cacheRecords.some((c) => c.id === selectedCacheId)) return;
-        // Otherwise auto-select the first cache
-        const firstId = cacheRecords[0].id;
+        if (!isPlayer || activeCachesForPlayer.length === 0) return;
+        // If persisted selection still exists in the unclaimed list, keep it
+        if (selectedCacheId && activeCachesForPlayer.some((c) => c.id === selectedCacheId)) return;
+        // Otherwise auto-select the first unclaimed cache
+        const firstId = activeCachesForPlayer[0].id;
         setSelectedCacheIdState(firstId);
         setSelectedCache(firstId);
-    }, [cacheRecords, isPlayer]);
+    }, [activeCachesForPlayer, isPlayer]);
 
     // Location tracking
     useEffect(() => {
@@ -168,6 +174,15 @@ const MapScreen = ({navigation}) => {
         const result = await joinPrivateGame({JoinCode: gameCode.trim().toUpperCase(), Uid: session.currentUid});
         if (!result) return;
         setSessionGroup(result.Gid, result.SGid);
+
+        // Refresh user from server so we pick up any existing TGid
+        // (handles re-joining a game while still in a team)
+        const freshUser = await getUser(session.currentUid);
+        if (freshUser) {
+            setSessionUser(freshUser);
+            setSessionTeam(freshUser.TGid ?? null);
+        }
+
         setInGame(true);
         setIsAdmin(false);
         navigation.navigate('TeamScreen');
@@ -267,10 +282,17 @@ const MapScreen = ({navigation}) => {
         });
     };
 
-    // Player — select cache (persist selection)
+    // Player — select cache (persist selection); only allow selecting unclaimed caches
     const handleSelectCache = (cache) => {
         setSelectedCacheIdState(cache.id);
         setSelectedCache(cache.id);
+    };
+
+    // Helper — check whether a cache has been claimed by the current user's team (or user)
+    const isCacheClaimedByMe = (cache) => {
+        const claims = cache.Claims || [];
+        if (session.currentTid) return claims.some((c) => c.Tid === session.currentTid);
+        return claims.some((c) => c.Uid === session.currentUid);
     };
 
 //   View -----------------------
@@ -410,13 +432,14 @@ const MapScreen = ({navigation}) => {
     }
 
     // Admin — normal view (map + create button + cache list)
+    // Uses initialRegion so manual zoom/pan is not reset by location updates
     if (isAdmin) {
         return (
             <Screen style={styles.containerMap}>
                 <View style={styles.mapContainer}>
                     <MapView
                         style={{flex: 1}}
-                        region={mapRegion}
+                        initialRegion={mapRegion}
                         scrollEnabled={true}
                         zoomEnabled={true}
                         showsUserLocation
@@ -520,15 +543,19 @@ const MapScreen = ({navigation}) => {
             />
             <View style={styles.cacheSection}>
                 <ScrollView>
-                    {cacheRecords.map((cache) => (
-                        <CacheCardItem
-                            key={cache.id}
-                            cache={cache}
-                            isAdmin={false}
-                            isSelected={selectedCacheId === cache.id}
-                            onSelect={handleSelectCache}
-                        />
-                    ))}
+                    {cacheRecords.map((cache) => {
+                        const claimed = isCacheClaimedByMe(cache);
+                        return (
+                            <CacheCardItem
+                                key={cache.id}
+                                cache={cache}
+                                isAdmin={false}
+                                isClaimed={claimed}
+                                isSelected={!claimed && selectedCacheId === cache.id}
+                                onSelect={claimed ? undefined : handleSelectCache}
+                            />
+                        );
+                    })}
                     {cacheRecords.length === 0 && (
                         <Text style={styles.emptyText}>No caches available yet.</Text>
                     )}

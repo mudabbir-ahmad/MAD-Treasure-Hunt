@@ -2,12 +2,9 @@ import {StyleSheet, Text, View} from 'react-native';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
 
-const CacheCardItem = ({cache, isAdmin, isSelected, onEdit, onDelete, onSelect}) => {
+const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete, onSelect}) => {
 //   Initialisation -------------
 
-    const hasClaims = (cache.Claims || []).length > 0;
-    const statusText = hasClaims ? 'Claimed' : 'Available';
-    const statusColor = hasClaims ? '#9ca3af' : '#16a34a';
     const displayName = cache.name || cache.clue || 'Unnamed Cache';
 
 //   State ----------------------
@@ -15,15 +12,20 @@ const CacheCardItem = ({cache, isAdmin, isSelected, onEdit, onDelete, onSelect})
 //   View -----------------------
 
     return (
-        <Card style={isSelected ? styles.selectedCard : null}>
+        <Card style={[isSelected && styles.selectedCard, isClaimed && styles.claimedCard]}>
             <View style={styles.topRow}>
                 <View style={styles.nameWrap}>
-                    <Text style={styles.name} numberOfLines={1}>{displayName}</Text>
+                    <Text style={[styles.name, isClaimed && styles.claimedText]} numberOfLines={1}>{displayName}</Text>
                     {cache.name ? (
                         <Text style={styles.clue} numberOfLines={1}>{cache.clue}</Text>
                     ) : null}
                 </View>
-                <Text style={[styles.status, {color: statusColor}]}>{statusText}</Text>
+                {/* Players see team-specific claim status; admins see no status */}
+                {!isAdmin && (
+                    <Text style={[styles.status, {color: isClaimed ? '#9ca3af' : '#16a34a'}]}>
+                        {isClaimed ? 'Claimed' : 'Available'}
+                    </Text>
+                )}
             </View>
             <View style={styles.actions}>
                 {isAdmin ? (
@@ -41,6 +43,14 @@ const CacheCardItem = ({cache, isAdmin, isSelected, onEdit, onDelete, onSelect})
                             styleLabel={styles.btnLabel}
                         />
                     </>
+                ) : isClaimed ? (
+                    <Button
+                        label="Already Claimed"
+                        onClick={() => {}}
+                        disabled={true}
+                        styleButton={styles.claimedBtn}
+                        styleLabel={styles.claimedBtnLabel}
+                    />
                 ) : isSelected ? (
                     <Button
                         label="Cache Currently Selected"
@@ -71,6 +81,7 @@ const styles = StyleSheet.create({
     clue: {fontSize: 13, color: '#6b7280', marginTop: 2},
     nameWrap: {flex: 1, marginRight: 8},
     name: {fontSize: 15, fontWeight: '600', color: '#1f2937'},
+    claimedText: {color: '#9ca3af'},
     status: {fontSize: 13, fontWeight: '600'},
     actions: {flexDirection: 'row', gap: 8},
     editBtn: {
@@ -101,8 +112,17 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         flex: 1,
     },
+    claimedBtn: {
+        backgroundColor: '#d1d5db',
+        borderColor: '#d1d5db',
+        minHeight: 36,
+        paddingHorizontal: 14,
+        flex: 1,
+    },
+    claimedBtnLabel: {color: '#6b7280', fontWeight: '600', fontSize: 13},
     selectedBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     selectedCard: {borderColor: '#2563eb', borderWidth: 2},
+    claimedCard: {opacity: 0.5},
     btnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
 });
 

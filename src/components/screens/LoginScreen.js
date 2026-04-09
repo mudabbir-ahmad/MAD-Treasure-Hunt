@@ -5,7 +5,7 @@ import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
 
 const LoginScreen = ({ navigation }) => {
-//   Initialisation ------------->
+//   Initialisation -------------
 
   const { email, password, error, isLoading, setEmail, setPassword, login } = useAuthHook();
 
