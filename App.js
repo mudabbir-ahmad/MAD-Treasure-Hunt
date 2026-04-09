@@ -12,6 +12,10 @@ import GameSettingsScreen from "./src/components/screens/GameSettingsScreen";
 import PlayersScreen from "./src/components/screens/PlayersScreen";
 import ExpandedMapScreen from "./src/components/screens/ExpandedMapScreen";
 import GameSelectionScreen from "./src/components/screens/GameSelectionScreen";
+import GlobalEventsScreen from "./src/components/screens/global/GlobalEventsScreen";
+import GlobalMapScreen from "./src/components/screens/global/GlobalMapScreen";
+import GlobalCacheViewScreen from "./src/components/screens/global/GlobalCacheViewScreen";
+import GlobalLeaderboardScreen from "./src/components/screens/global/GlobalLeaderboardScreen";
 import { loadSession } from "./src/hooks/SessionStore";
 
 const RootStack = createNativeStackNavigator();
@@ -50,6 +54,19 @@ const GameStack = () => (
       name="ExpandedMapScreen"
       component={ExpandedMapScreen}
     />
+    <GameStackNav.Screen
+      name="GlobalEventsScreen"
+      component={GlobalEventsScreen}
+    />
+    <GameStackNav.Screen name="GlobalMapScreen" component={GlobalMapScreen} />
+    <GameStackNav.Screen
+      name="GlobalCacheViewScreen"
+      component={GlobalCacheViewScreen}
+    />
+    <GameStackNav.Screen
+      name="GlobalLeaderboardScreen"
+      component={GlobalLeaderboardScreen}
+    />
   </GameStackNav.Navigator>
 );
 
@@ -74,6 +91,19 @@ const AdminStack = () => (
       component={ExpandedMapScreen}
     />
     <AdminStackNav.Screen name="TeamScreen" component={TeamScreen} />
+    <AdminStackNav.Screen
+      name="GlobalEventsScreen"
+      component={GlobalEventsScreen}
+    />
+    <AdminStackNav.Screen name="GlobalMapScreen" component={GlobalMapScreen} />
+    <AdminStackNav.Screen
+      name="GlobalCacheViewScreen"
+      component={GlobalCacheViewScreen}
+    />
+    <AdminStackNav.Screen
+      name="GlobalLeaderboardScreen"
+      component={GlobalLeaderboardScreen}
+    />
   </AdminStackNav.Navigator>
 );
 

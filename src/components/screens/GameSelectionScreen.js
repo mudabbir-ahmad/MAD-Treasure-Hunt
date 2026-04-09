@@ -35,7 +35,7 @@ const GameSelectionScreen = ({ navigation }) => {
   };
 
   const handleExplore = () => {
-    navigation.navigate("MapScreen");
+    navigation.navigate("GlobalEventsScreen");
   };
 
   // View --------------------------------

@@ -20,6 +20,10 @@ const Screen = ({ children, style, showBack = false }) => {
     GameSelectionScreen: "Games",
     PlayersScreen: "Players",
     ExpandedMapScreen: "Map View",
+    GlobalEventsScreen: "Global Events",
+    GlobalMapScreen: "Global Map",
+    GlobalCacheViewScreen: "Cache Details",
+    GlobalLeaderboardScreen: "Global Leaderboard",
   };
 
   //   State ----------------------

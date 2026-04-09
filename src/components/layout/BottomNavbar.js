@@ -35,6 +35,11 @@ const BottomNavbar = ({ navigation, routeName }) => {
       route: "GameSelectionScreen",
       onPress: () => navigation.navigate("GameSelectionScreen"),
     },
+    {
+      label: "Global",
+      route: "GlobalEventsScreen",
+      onPress: () => navigation.navigate("GlobalEventsScreen"),
+    },
   ];
 
   const playerTabs = [
@@ -57,6 +62,11 @@ const BottomNavbar = ({ navigation, routeName }) => {
       label: "Games",
       route: "GameSelectionScreen",
       onPress: () => navigation.navigate("GameSelectionScreen"),
+    },
+    {
+      label: "Global",
+      route: "GlobalEventsScreen",
+      onPress: () => navigation.navigate("GlobalEventsScreen"),
     },
 
     { label: "Leave", route: "__leave__", onPress: () => handleLeaveGame() },

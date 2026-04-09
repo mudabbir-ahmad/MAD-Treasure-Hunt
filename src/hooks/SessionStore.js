@@ -1,8 +1,8 @@
 // --- Session Store (with AsyncStorage persistence) ---
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const STORAGE_KEY = '@mad_session';
+const STORAGE_KEY = "@mad_session";
 
 const session = {
   currentUid: null,
@@ -12,6 +12,9 @@ const session = {
   isBusiness: null,
   isAcceptedAdmin: false,
   teamsEnabled: false,
+  // Global gameplay
+  currentGlobalEventId: null,
+  currentGlobalPlayerId: null,
 };
 
 // --- Handlers ---
@@ -46,6 +49,18 @@ const setSessionTeamsEnabled = (val) => {
 
 const getSession = () => ({ ...session });
 
+const setGlobalSession = (eventId, playerId) => {
+  session.currentGlobalEventId = eventId ?? null;
+  session.currentGlobalPlayerId = playerId ?? null;
+  persistSession();
+};
+
+const clearGlobalSession = () => {
+  session.currentGlobalEventId = null;
+  session.currentGlobalPlayerId = null;
+  persistSession();
+};
+
 const clearSession = () => {
   session.currentUid = null;
   session.currentGid = null;
@@ -53,6 +68,8 @@ const clearSession = () => {
   session.currentTid = null;
   session.isBusiness = null;
   session.isAcceptedAdmin = false;
+  session.currentGlobalEventId = null;
+  session.currentGlobalPlayerId = null;
   AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
 };
 
@@ -85,4 +102,15 @@ const loadSession = async () => {
   return { ...session };
 };
 
-export { setSessionUser, setSessionGroup, setSessionTeam, setSessionTeamsEnabled, getSession, clearSession, clearGameSession, loadSession };
+export {
+  setSessionUser,
+  setSessionGroup,
+  setSessionTeam,
+  setSessionTeamsEnabled,
+  getSession,
+  clearSession,
+  clearGameSession,
+  loadSession,
+  setGlobalSession,
+  clearGlobalSession,
+};
