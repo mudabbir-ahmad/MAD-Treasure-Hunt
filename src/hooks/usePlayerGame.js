@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {isInClaimCone} from '../utils/geoMath';
 
-const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance, selectedCacheId) => {
+const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance, selectedCacheId, preferSelectedCache = true) => {
     const [visibleCaches, setVisibleCaches] = useState([]);
     const [isClaiming, setIsClaiming] = useState(false);
     const prevIdRef = useRef('');
@@ -17,7 +17,9 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
         }
 
         const caches = activeCaches || [];
-        let selected = selectedCacheId ? caches.find((c) => c.id === selectedCacheId) : null;
+        let selected = (preferSelectedCache && selectedCacheId)
+            ? caches.find((c) => c.id === selectedCacheId)
+            : null;
         let visible = selected && isInClaimCone(playerHeading, playerLocation, selected.coordinates, claimDistance);
 
         if (!visible) {
@@ -36,7 +38,7 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
             setVisibleCaches([]);
             setIsClaiming(false);
         }
-    }, [playerLocation, playerHeading, activeCaches, claimDistance, selectedCacheId]);
+    }, [playerLocation, playerHeading, activeCaches, claimDistance, selectedCacheId, preferSelectedCache]);
 
     return {visibleCaches, isClaiming, setIsClaiming};
 };
