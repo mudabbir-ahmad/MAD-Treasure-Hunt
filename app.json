@@ -44,14 +44,6 @@
       "eas": {
         "projectId": "c65a2849-f05d-48ef-9e36-950caa214a7d"
       }
-    },
-    "plugins": [
-      [
-        "react-native-maps",
-        {
-          "googleMapsApiKey": "AIzaSyA-G0tSzzcM5z6HyI23s8dzKDLCOrekhbw"
-        }
-      ]
-    ]
+    }
   }
 }
