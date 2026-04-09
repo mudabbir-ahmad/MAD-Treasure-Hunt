@@ -249,7 +249,7 @@ const LeaderboardScreen = ({navigation, route}) => {
                             label="Delete Team"
                             onClick={() => handleDeleteTeam(team)}
                             styleButton={styles.deleteTeamButton}
-                            styleLabel={styles.deleteTeamLabel}
+                            styleLabel={styles.deleteTeamDeleteLabel}
                         />
                     </View>
                 </View>
@@ -454,6 +454,7 @@ const styles = StyleSheet.create({
     resetTeamButton: {backgroundColor: '#f4a460', borderColor: '#f4a460', minHeight: 36, flex: 1},
     deleteTeamButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1},
     deleteTeamLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
+    deleteTeamDeleteLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     resetMiniButton: {
         backgroundColor: '#86efac',
         borderRadius: 6,

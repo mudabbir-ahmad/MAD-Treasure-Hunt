@@ -268,7 +268,7 @@ const PlayersScreen = ({navigation, route}) => {
                                             label="Kick"
                                             onClick={() => handleRemovePlayer(player.membershipId)}
                                             styleButton={styles.removeButton}
-                                            styleLabel={styles.actionLabel}
+                                            styleLabel={styles.kickLabel}
                                         />
                                     )}
                                 </>
@@ -315,6 +315,7 @@ const styles = StyleSheet.create({
     resetButton: {backgroundColor: '#86efac', borderColor: '#86efac', minHeight: 36, flex: 1, paddingHorizontal: 10},
     removeButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1, paddingHorizontal: 10},
     actionLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
+    kickLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     departmentName: {fontSize: 14, color: '#6c7086', fontStyle: 'italic'},
     waitlistCard: {backgroundColor: 'rgba(217, 40, 0, 0.15)', borderColor: '#D92800'},
     approveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1', minHeight: 36, flex: 1, paddingHorizontal: 10},
