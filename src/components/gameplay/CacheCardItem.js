@@ -2,7 +2,7 @@ import {StyleSheet, Text, View} from 'react-native';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
 
-const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete, onSelect}) => {
+const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete, onSelect, disabled}) => {
 //   Initialisation -------------
 
     const displayName = cache.name || cache.clue || 'Unnamed Cache';
@@ -12,16 +12,16 @@ const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete,
 //   View -----------------------
 
     return (
-        <Card style={[isSelected && styles.selectedCard, isClaimed && styles.claimedCard]}>
+        <Card style={[isSelected && styles.selectedCard, isClaimed && styles.claimedCard, disabled && styles.disabledCard]}>
             <View style={styles.topRow}>
                 <View style={styles.nameWrap}>
-                    <Text style={[styles.name, isClaimed && styles.claimedText]} numberOfLines={1}>{displayName}</Text>
+                    <Text style={[styles.name, isClaimed && styles.claimedText, disabled && styles.disabledText]} numberOfLines={1}>{displayName}</Text>
                     {cache.name ? (
                         <Text style={styles.clue} numberOfLines={1}>{cache.clue}</Text>
                     ) : null}
                 </View>
                 {/* Players see team-specific claim status; admins see no status */}
-                {!isAdmin && (
+                {!isAdmin && !disabled && (
                     <Text style={[styles.status, {color: isClaimed ? '#9ca3af' : '#16a34a'}]}>
                         {isClaimed ? 'Claimed' : 'Available'}
                     </Text>
@@ -43,6 +43,14 @@ const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete,
                             styleLabel={styles.btnLabel}
                         />
                     </>
+                ) : disabled ? (
+                    <Button
+                        label="Join a Team First"
+                        onClick={() => {}}
+                        disabled={true}
+                        styleButton={styles.claimedBtn}
+                        styleLabel={styles.claimedBtnLabel}
+                    />
                 ) : isClaimed ? (
                     <Button
                         label="Already Claimed"
@@ -123,6 +131,8 @@ const styles = StyleSheet.create({
     selectedBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
     selectedCard: {borderColor: '#2563eb', borderWidth: 2},
     claimedCard: {opacity: 0.5},
+    disabledCard: {opacity: 0.45},
+    disabledText: {color: '#9ca3af'},
     btnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
 });
 

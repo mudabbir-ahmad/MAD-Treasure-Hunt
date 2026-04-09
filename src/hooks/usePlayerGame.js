@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
-import {isInClaimCone} from '../utils/geoMath';
+import {isInClaimCone, isWithinRadius} from '../utils/geoMath';
 
 const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance) => {
 //   State ----------------------
@@ -11,7 +11,8 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
 //   Handlers -------------------
 
     useEffect(() => {
-        if (!playerLocation || playerHeading === null || playerHeading === undefined) {
+        // No location at all — clear everything
+        if (!playerLocation) {
             if (prevIdsRef.current !== '') {
                 prevIdsRef.current = '';
                 setVisibleCaches([]);
@@ -20,17 +21,24 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
             return;
         }
 
-        // Find all caches that fall inside the claim cone
-        const inCone = (activeCaches || []).filter((cache) =>
-            isInClaimCone(playerHeading, playerLocation, cache.coordinates, claimDistance)
+        const hasHeading = playerHeading !== null && playerHeading !== undefined;
+
+        // When heading is available use the full FOV cone check.
+        // When heading is NOT available (common on iOS / Apple Maps where the
+        // compass may be delayed or unavailable) fall back to proximity-only so
+        // iPhone users can still discover and claim caches within range.
+        const nearby = (activeCaches || []).filter((cache) =>
+            hasHeading
+                ? isInClaimCone(playerHeading, playerLocation, cache.coordinates, claimDistance)
+                : isWithinRadius(playerLocation, cache.coordinates, claimDistance),
         );
 
         // Only update state when the set of visible caches actually changes
-        const newIds = inCone.map((c) => c.id).join(',');
+        const newIds = nearby.map((c) => c.id).join(',');
         if (newIds !== prevIdsRef.current) {
             prevIdsRef.current = newIds;
-            setVisibleCaches(inCone);
-            setIsClaiming(inCone.length > 0);
+            setVisibleCaches(nearby);
+            setIsClaiming(nearby.length > 0);
         }
     }, [playerLocation, playerHeading, activeCaches, claimDistance]);
 

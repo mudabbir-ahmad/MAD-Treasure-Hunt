@@ -54,6 +54,9 @@ const MapScreen = ({navigation}) => {
 
     const isPlayer = inGame && !isAdmin;
 
+    // Teams are required but the player hasn't joined one — block all claiming
+    const requiresTeam = Boolean(isPlayer && groupInfo?.TeamsEnabled && !session.currentTid);
+
     // Stable empty array — avoids creating a new reference on every render
     // which would trigger an infinite re-render loop in usePlayerGame
     const EMPTY_CACHES = useMemo(() => [], []);
@@ -70,10 +73,11 @@ const MapScreen = ({navigation}) => {
         });
     }, [cacheRecords, isPlayer, session.currentTid, session.currentUid, EMPTY_CACHES]);
 
+    // When requiresTeam is true pass null/empty so usePlayerGame is inert
     const {visibleCaches, isClaiming, setIsClaiming} = usePlayerGame(
-        isPlayer ? userLocation : null,
-        isPlayer ? heading : null,
-        activeCachesForPlayer,
+        (isPlayer && !requiresTeam) ? userLocation : null,
+        (isPlayer && !requiresTeam) ? heading : null,
+        requiresTeam ? EMPTY_CACHES : activeCachesForPlayer,
         claimDistance,
     );
 
@@ -516,13 +520,12 @@ const MapScreen = ({navigation}) => {
     }
 
     // Player in game — use the first visible cache for the claim timer
-    const teamsWarning = groupInfo?.TeamsEnabled && !session.currentTid;
     const claimTarget = visibleCaches.length > 0 ? visibleCaches[0] : null;
 
     return (
         <Screen style={styles.containerMap}>
-            {teamsWarning && (
-                <Text style={styles.warning}>You are not in a team. Teams are required for this game!</Text>
+            {requiresTeam && (
+                <Text style={styles.warning}>You are not in a team. Join a team to start claiming caches!</Text>
             )}
             <View style={styles.mapContainer}>
                 <PlayerMapView
@@ -535,12 +538,14 @@ const MapScreen = ({navigation}) => {
                     <Text style={styles.expandIcon}>⛶</Text>
                 </Pressable>
             </View>
-            <ClaimTimerView
-                cache={claimTarget}
-                isClaiming={isClaiming}
-                onClaimSuccess={handleClaim}
-                showClaimedPopup={claimedPopupVisible}
-            />
+            {!requiresTeam && (
+                <ClaimTimerView
+                    cache={claimTarget}
+                    isClaiming={isClaiming}
+                    onClaimSuccess={handleClaim}
+                    showClaimedPopup={claimedPopupVisible}
+                />
+            )}
             <View style={styles.cacheSection}>
                 <ScrollView>
                     {cacheRecords.map((cache) => {
@@ -551,8 +556,9 @@ const MapScreen = ({navigation}) => {
                                 cache={cache}
                                 isAdmin={false}
                                 isClaimed={claimed}
-                                isSelected={!claimed && selectedCacheId === cache.id}
-                                onSelect={claimed ? undefined : handleSelectCache}
+                                isSelected={!claimed && !requiresTeam && selectedCacheId === cache.id}
+                                onSelect={(claimed || requiresTeam) ? undefined : handleSelectCache}
+                                disabled={requiresTeam}
                             />
                         );
                     })}

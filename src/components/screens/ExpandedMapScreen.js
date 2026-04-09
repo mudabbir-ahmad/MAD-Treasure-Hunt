@@ -1,9 +1,9 @@
 import React, {useEffect, useState} from 'react';
-import {StyleSheet, View} from 'react-native';
+import {Platform, StyleSheet, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import Screen from '../layout/Screen';
-import {getFovCone, isInClaimCone} from '../../utils/geoMath';
+import {getFovCone, isInClaimCone, isWithinRadius} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.01, longitudeDelta: 0.01};
 
@@ -66,13 +66,19 @@ const ExpandedMapScreen = ({route}) => {
 
 //   View -----------------------
 
-    const coneCoords = (userLocation && heading !== null)
+    const hasHeading = heading !== null;
+    const coneCoords = (userLocation && hasHeading)
         ? getFovCone(userLocation, heading)
         : null;
 
-    // For players, show caches that currently fall within the FOV cone
-    const visiblePlayerCaches = (!isAdmin && userLocation && heading !== null)
-        ? caches.filter((c) => isInClaimCone(heading, userLocation, c.coordinates, claimDistance))
+    // For players — when heading is available use FOV cone, otherwise fall back
+    // to proximity-only so the expanded map works on iPhones without compass data
+    const visiblePlayerCaches = (!isAdmin && userLocation)
+        ? caches.filter((c) =>
+            hasHeading
+                ? isInClaimCone(heading, userLocation, c.coordinates, claimDistance)
+                : isWithinRadius(userLocation, c.coordinates, claimDistance),
+        )
         : [];
 
     return (
@@ -89,8 +95,13 @@ const ExpandedMapScreen = ({route}) => {
                             <Marker
                                 coordinate={cache.coordinates}
                                 title={cache.name || cache.clue}
-                                pinColor="#2563eb"
-                            />
+                                anchor={{x: 0.5, y: 0.5}}
+                                tracksViewChanges={Platform.OS === 'ios'}
+                            >
+                                <View style={styles.adminMarkerOuter}>
+                                    <View style={styles.adminMarkerInner} />
+                                </View>
+                            </Marker>
                             <Circle
                                 center={cache.coordinates}
                                 radius={claimDistance}
@@ -99,14 +110,19 @@ const ExpandedMapScreen = ({route}) => {
                             />
                         </React.Fragment>
                     ))}
-                    {/* Players only see caches that are inside the FOV cone */}
+                    {/* Players — custom View markers for Apple Maps compatibility */}
                     {!isAdmin && visiblePlayerCaches.map((cache) => (
                         <React.Fragment key={cache.id}>
                             <Marker
                                 coordinate={cache.coordinates}
                                 title={cache.clue}
-                                pinColor="#facc15"
-                            />
+                                anchor={{x: 0.5, y: 0.5}}
+                                tracksViewChanges={Platform.OS === 'ios'}
+                            >
+                                <View style={styles.cacheMarkerOuter}>
+                                    <View style={styles.cacheMarkerInner} />
+                                </View>
+                            </Marker>
                             <Circle
                                 center={cache.coordinates}
                                 radius={claimDistance}
@@ -124,6 +140,15 @@ const ExpandedMapScreen = ({route}) => {
                             strokeWidth={1}
                         />
                     )}
+                    {/* Proximity circle when heading is unavailable (iOS fallback) */}
+                    {!isAdmin && userLocation && !hasHeading && claimDistance > 0 && (
+                        <Circle
+                            center={userLocation}
+                            radius={claimDistance}
+                            fillColor="rgba(66,133,244,0.12)"
+                            strokeColor="rgba(66,133,244,0.40)"
+                        />
+                    )}
                 </MapView>
             </View>
         </Screen>
@@ -133,6 +158,20 @@ const ExpandedMapScreen = ({route}) => {
 const styles = StyleSheet.create({
     container: {padding: 0},
     mapWrap: {flex: 1},
+    // Admin cache markers — blue dot
+    adminMarkerOuter: {width: 26, height: 26, alignItems: 'center', justifyContent: 'center'},
+    adminMarkerInner: {
+        width: 18, height: 18, borderRadius: 9,
+        backgroundColor: '#2563eb', borderWidth: 2.5, borderColor: '#ffffff',
+        shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.3, shadowRadius: 2, elevation: 3,
+    },
+    // Player cache markers — orange dot
+    cacheMarkerOuter: {width: 26, height: 26, alignItems: 'center', justifyContent: 'center'},
+    cacheMarkerInner: {
+        width: 18, height: 18, borderRadius: 9,
+        backgroundColor: '#f59e0b', borderWidth: 2.5, borderColor: '#ffffff',
+        shadowColor: '#000', shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.3, shadowRadius: 2, elevation: 3,
+    },
 });
 
 export default ExpandedMapScreen;
