@@ -132,14 +132,12 @@ const GlobalMapScreen = ({ navigation, route }) => {
       setIsClaiming(false);
 
       if (result) {
-        const points = Number(claimedCache?.CachePoints ?? 0);
+        const points = Number(claimedCache?.CachePoints ?? 10);
         const cacheName = claimedCache?.CacheName || "Cache";
         setFoundCacheIds((prev) =>
           prev.includes(cacheId) ? prev : [...prev, cacheId],
         );
-        setClaimedPopupMessage(
-          `${cacheName} claimed! You received ${points} points.`,
-        );
+        setClaimedPopupMessage(`${cacheName} claimed! You gained +${points} points.`);
         setClaimedPopupVisible(true);
         setTimeout(() => setClaimedPopupVisible(false), 3000);
       }

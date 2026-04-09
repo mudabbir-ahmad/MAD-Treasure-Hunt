@@ -7,7 +7,7 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
     const prevIdRef = useRef('');
 
     useEffect(() => {
-        if (!playerLocation || playerHeading === null || playerHeading === undefined || !selectedCacheId) {
+        if (!playerLocation || playerHeading === null || playerHeading === undefined) {
             if (prevIdRef.current !== '') {
                 prevIdRef.current = '';
                 setVisibleCaches([]);
@@ -31,6 +31,10 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
             prevIdRef.current = newId;
             setVisibleCaches(visible ? [selected] : []);
             setIsClaiming(Boolean(visible));
+        } else if (!visible && prevIdRef.current !== '') {
+            prevIdRef.current = '';
+            setVisibleCaches([]);
+            setIsClaiming(false);
         }
     }, [playerLocation, playerHeading, activeCaches, claimDistance, selectedCacheId]);
 
