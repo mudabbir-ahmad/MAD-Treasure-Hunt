@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-import MapView, { Circle, Marker, Polygon } from "react-native-maps";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {ActivityIndicator, StyleSheet, Text, View} from "react-native";
+import MapView, {Circle, Marker, Polygon} from "react-native-maps";
 import * as Location from "expo-location";
 import Screen from "../../layout/Screen";
-import { Button, ButtonTray } from "../../UI/Button";
+import {Button, ButtonTray} from "../../UI/Button";
 import ClaimTimerView from "../../gameplay/ClaimTimerView";
 import CacheList from "../../../entity/cache/CacheList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
 import usePlayerGame from "../../../hooks/usePlayerGame";
-import { getSession } from "../../../hooks/SessionStore";
-import { getFovCone } from "../../../utils/geoMath";
-import { GAME_MODE } from "../../../utils/gameConstants";
+import {getSession} from "../../../hooks/SessionStore";
+import {getFovCone} from "../../../utils/geoMath";
+import {GAME_MODE} from "../../../utils/gameConstants";
 
 const DEFAULT_REGION = {
   latitude: 51.5074,
@@ -25,7 +25,9 @@ const GlobalMapScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
 
   const session = getSession();
-  const eventId = route?.params?.eventId ?? session.currentGlobalEventId;
+  const routeEvent = route?.params?.event ?? null;
+  const eventId =
+    route?.params?.eventId ?? routeEvent?.EventID ?? session.currentGlobalEventId;
   const { getCachesByEvent, getFindsByPlayer, logFind } = useGlobalHook();
   const globalApiRef = useRef({
     getCachesByEvent,
@@ -47,8 +49,11 @@ const GlobalMapScreen = ({ navigation, route }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("map");
   const [error, setError] = useState("");
-  const [selectedCacheId, setSelectedCacheId] = useState(null);
+  const [selectedCacheId, setSelectedCacheId] = useState(
+    route?.params?.selectedCacheId ?? route?.params?.cache?.CacheID ?? null,
+  );
   const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
+  const [claimedPopupMessage, setClaimedPopupMessage] = useState("Cache Claimed!");
 
   const claimableCaches = useMemo(
     () =>
@@ -114,6 +119,10 @@ const GlobalMapScreen = ({ navigation, route }) => {
         return;
       }
 
+      const claimedCache = (caches || []).find(
+        (cache) => String(cache.CacheID) === String(cacheId),
+      );
+
       const result = await globalApiRef.current.logFind({
         FindPlayerID: session.currentGlobalPlayerId,
         FindCacheID: cacheId,
@@ -123,12 +132,19 @@ const GlobalMapScreen = ({ navigation, route }) => {
       setIsClaiming(false);
 
       if (result) {
+        const points = Number(claimedCache?.CachePoints ?? 0);
+        const cacheName = claimedCache?.CacheName || "Cache";
+        setFoundCacheIds((prev) =>
+          prev.includes(cacheId) ? prev : [...prev, cacheId],
+        );
+        setClaimedPopupMessage(
+          `${cacheName} claimed! You received ${points} points.`,
+        );
         setClaimedPopupVisible(true);
         setTimeout(() => setClaimedPopupVisible(false), 3000);
-        await loadData({ forceRefresh: true });
       }
     },
-    [foundCacheIds, loadData, session.currentGlobalPlayerId, setIsClaiming],
+    [caches, foundCacheIds, session.currentGlobalPlayerId, setIsClaiming],
   );
 
   const handleCacheSelect = (cache) => {
@@ -143,6 +159,8 @@ const GlobalMapScreen = ({ navigation, route }) => {
     if (!selected) return;
     navigation.navigate("GlobalCacheViewScreen", {
       cache: selected,
+      event: routeEvent,
+      eventId,
       isFound: foundCacheIds.includes(selected.CacheID),
     });
   };
@@ -197,14 +215,15 @@ const GlobalMapScreen = ({ navigation, route }) => {
   }, [route?.params?.selectedCacheId]);
 
   useEffect(() => {
-    if (
-      selectedCacheId &&
-      claimableCaches.some((cache) => cache.id === selectedCacheId)
-    ) {
-      return;
+    if (route?.params?.cache?.CacheID) {
+      setSelectedCacheId(route.params.cache.CacheID);
     }
-    setSelectedCacheId(claimableCaches[0]?.id || null);
-  }, [claimableCaches, selectedCacheId]);
+  }, [route?.params?.cache?.CacheID]);
+
+  useEffect(() => {
+    if (selectedCacheId) return;
+    setSelectedCacheId(route?.params?.cache?.CacheID ?? claimableCaches[0]?.id ?? null);
+  }, [claimableCaches, route?.params?.cache?.CacheID, selectedCacheId]);
 
   useEffect(() => {
     let locationSub;
@@ -318,6 +337,8 @@ const GlobalMapScreen = ({ navigation, route }) => {
                   onCalloutPress={() =>
                     navigation.navigate("GlobalCacheViewScreen", {
                       cache,
+                      event: routeEvent,
+                      eventId,
                       isFound: found,
                     })
                   }
@@ -356,6 +377,8 @@ const GlobalMapScreen = ({ navigation, route }) => {
           isClaiming={isClaiming}
           onClaimSuccess={handleClaim}
           showClaimedPopup={claimedPopupVisible}
+          claimDurationSeconds={0}
+          claimedPopupMessage={claimedPopupMessage}
         />
 
         <ButtonTray>

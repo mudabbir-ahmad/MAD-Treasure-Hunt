@@ -2,36 +2,62 @@ import React, {useEffect, useRef, useState} from 'react';
 import {StyleSheet, Text, View} from 'react-native';
 import {CACHE_CLAIM_TIMER} from '../../utils/geoMath';
 
-const ClaimTimerView = ({ cache, onClaimSuccess, isClaiming, showClaimedPopup }) => {
-  const [timeLeft, setTimeLeft] = useState(CACHE_CLAIM_TIMER);
-  // Use a ref for the callback so it does not appear in the dependency array
+const ClaimTimerView = ({
+  cache,
+  onClaimSuccess,
+  isClaiming,
+  showClaimedPopup,
+  claimDurationSeconds = CACHE_CLAIM_TIMER,
+  claimedPopupMessage = 'Cache Claimed!',
+}) => {
+  const [timeLeft, setTimeLeft] = useState(claimDurationSeconds);
   const onClaimRef = useRef(onClaimSuccess);
+  const hasClaimedRef = useRef(false);
   onClaimRef.current = onClaimSuccess;
 
+  useEffect(() => {
+    setTimeLeft(claimDurationSeconds);
+    hasClaimedRef.current = false;
+  }, [cache?.id, claimDurationSeconds]);
 
   useEffect(() => {
     let timer;
-    if (isClaiming && cache && timeLeft > 0) {
-      timer = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
-    } else if (isClaiming && timeLeft === 0 && cache) {
-      onClaimRef.current(cache.id);
-    } else if (!isClaiming) {
-      setTimeLeft(CACHE_CLAIM_TIMER);
+
+    if (!isClaiming || !cache) {
+      if (!isClaiming) {
+        setTimeLeft(claimDurationSeconds);
+        hasClaimedRef.current = false;
+      }
+      return () => clearTimeout(timer);
     }
+
+    if (claimDurationSeconds <= 0) {
+      if (!hasClaimedRef.current) {
+        hasClaimedRef.current = true;
+        onClaimRef.current(cache.id);
+      }
+      return () => clearTimeout(timer);
+    }
+
+    if (timeLeft > 0) {
+      timer = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
+    } else if (!hasClaimedRef.current) {
+      hasClaimedRef.current = true;
+      onClaimRef.current(cache.id);
+    }
+
     return () => clearTimeout(timer);
-  }, [isClaiming, timeLeft, cache]);
+  }, [claimDurationSeconds, cache, isClaiming, timeLeft]);
 
-
-  // Show "Cache Claimed!" popup after a successful claim
   if (showClaimedPopup) {
     return (
       <View style={styles.claimedOverlay}>
-        <Text style={styles.claimedText}>Cache Claimed!</Text>
+        <Text style={styles.claimedText}>{claimedPopupMessage}</Text>
       </View>
     );
   }
 
-  if (!isClaiming || !cache) {
+  if (!isClaiming || !cache || claimDurationSeconds <= 0) {
     return null;
   }
 

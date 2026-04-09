@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import {useCallback, useEffect, useRef, useState} from "react";
+import {ActivityIndicator, StyleSheet, Text, View} from "react-native";
 import Screen from "../../layout/Screen";
-import { Button, ButtonTray } from "../../UI/Button";
+import {Button, ButtonTray} from "../../UI/Button";
 import EventList from "../../../entity/event/EventList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
-import { getSession, setGlobalSession } from "../../../hooks/SessionStore";
-import { GAME_MODE } from "../../../utils/gameConstants";
+import {getSession, setGlobalSession} from "../../../hooks/SessionStore";
+import {GAME_MODE} from "../../../utils/gameConstants";
 
 const GlobalEventsScreen = ({ navigation }) => {
   // Initialisations ---------------------
@@ -93,7 +93,10 @@ const GlobalEventsScreen = ({ navigation }) => {
     const existingPlayerId = pickPlayerId(existing);
     if (existingPlayerId !== null) {
       setGlobalSession(event.EventID, existingPlayerId);
-      navigation.navigate("GlobalMapScreen", { eventId: event.EventID });
+      navigation.navigate("GlobalMapScreen", {
+        eventId: event.EventID,
+        event,
+      });
       setJoining(null);
       return;
     }
@@ -107,7 +110,10 @@ const GlobalEventsScreen = ({ navigation }) => {
     const joinedPlayerId = pickPlayerId(player);
     if (joinedPlayerId !== null) {
       setGlobalSession(event.EventID, joinedPlayerId);
-      navigation.navigate("GlobalMapScreen", { eventId: event.EventID });
+      navigation.navigate("GlobalMapScreen", {
+        eventId: event.EventID,
+        event,
+      });
       setJoining(null);
       return;
     }
@@ -123,7 +129,10 @@ const GlobalEventsScreen = ({ navigation }) => {
     const recoveredPlayerId = pickPlayerId(recovered);
     if (recoveredPlayerId !== null) {
       setGlobalSession(event.EventID, recoveredPlayerId);
-      navigation.navigate("GlobalMapScreen", { eventId: event.EventID });
+      navigation.navigate("GlobalMapScreen", {
+        eventId: event.EventID,
+        event,
+      });
     } else {
       setError("Failed to join event. Please try again.");
     }

@@ -1,10 +1,10 @@
-import { useEffect } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import {useEffect} from "react";
+import {StyleSheet, Text, View} from "react-native";
 import Screen from "../../layout/Screen";
-import { Button, ButtonTray } from "../../UI/Button";
+import {Button, ButtonTray} from "../../UI/Button";
 import Card from "../../UI/Card";
-import { getSession } from "../../../hooks/SessionStore";
-import { GAME_MODE } from "../../../utils/gameConstants";
+import {getSession} from "../../../hooks/SessionStore";
+import {GAME_MODE} from "../../../utils/gameConstants";
 
 const GlobalCacheViewScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
@@ -23,6 +23,8 @@ const GlobalCacheViewScreen = ({ navigation, route }) => {
   const handleBackToMap = () => {
     navigation.navigate("GlobalMapScreen", {
       eventId: cache.CacheEventID ?? session.currentGlobalEventId,
+      event: route.params?.event ?? null,
+      cache,
       selectedCacheId: cache.CacheID,
     });
   };
