@@ -16,8 +16,15 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
             return;
         }
 
-        const selected = (activeCaches || []).find((c) => c.id === selectedCacheId);
-        const visible = selected && isInClaimCone(playerHeading, playerLocation, selected.coordinates, claimDistance);
+        const caches = activeCaches || [];
+        let selected = selectedCacheId ? caches.find((c) => c.id === selectedCacheId) : null;
+        let visible = selected && isInClaimCone(playerHeading, playerLocation, selected.coordinates, claimDistance);
+
+        if (!visible) {
+            selected = caches.find((c) => isInClaimCone(playerHeading, playerLocation, c.coordinates, claimDistance)) || null;
+            visible = Boolean(selected);
+        }
+
         const newId = visible ? String(selected.id) : '';
 
         if (newId !== prevIdRef.current) {
