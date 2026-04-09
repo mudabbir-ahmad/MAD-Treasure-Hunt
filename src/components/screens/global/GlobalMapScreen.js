@@ -9,7 +9,7 @@ import CacheList from "../../../entity/cache/CacheList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
 import usePlayerGame from "../../../hooks/usePlayerGame";
 import {getSession} from "../../../hooks/SessionStore";
-import {getFovCone} from "../../../utils/geoMath";
+import {getFovCone, isInClaimCone} from "../../../utils/geoMath";
 import {GAME_MODE} from "../../../utils/gameConstants";
 
 const DEFAULT_REGION = {
@@ -19,7 +19,7 @@ const DEFAULT_REGION = {
   longitudeDelta: 0.05,
 };
 
-const GLOBAL_CLAIM_DISTANCE_METERS = 30;
+const GLOBAL_CLAIM_DISTANCE_METERS = 50;
 
 const GlobalMapScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
@@ -58,7 +58,7 @@ const GlobalMapScreen = ({ navigation, route }) => {
   const claimableCaches = useMemo(
     () =>
       (caches || [])
-        .filter((cache) => !foundCacheIds.includes(cache.CacheID))
+        .filter((cache) => !foundCacheIds.includes(String(cache.CacheID)))
         .map((cache) => ({
           id: cache.CacheID,
           clue: cache.CacheClue || cache.CacheName,
@@ -101,7 +101,7 @@ const GlobalMapScreen = ({ navigation, route }) => {
       ]);
 
       setCaches(cacheData || []);
-      setFoundCacheIds((findsData || []).map((f) => f.FindCacheID));
+      setFoundCacheIds((findsData || []).map((f) => String(f.FindCacheID)));
       setIsLoading(false);
     },
     [eventId, session.currentGlobalPlayerId],
@@ -128,7 +128,7 @@ const GlobalMapScreen = ({ navigation, route }) => {
 
       const result = await globalApiRef.current.logFind({
         FindPlayerID: session.currentGlobalPlayerId,
-        FindCacheID: cacheId,
+        FindCacheID: claimedCache?.CacheID ?? cacheId,
         FindDatetime: new Date().toISOString(),
       });
 
@@ -151,6 +151,23 @@ const GlobalMapScreen = ({ navigation, route }) => {
     setActiveTab("map");
   };
 
+  const resolveClaimTarget = useCallback(() => {
+    if (!userLocation || heading === null || heading === undefined) {
+      return null;
+    }
+
+    return (
+      claimableCaches.find((cache) =>
+        isInClaimCone(
+          heading,
+          userLocation,
+          cache.coordinates,
+          GLOBAL_CLAIM_DISTANCE_METERS,
+        ),
+      ) || null
+    );
+  }, [claimableCaches, heading, userLocation]);
+
   const handleOpenSelectedCache = () => {
     const selected = (caches || []).find(
       (cache) => cache.CacheID === selectedCacheId,
@@ -160,7 +177,7 @@ const GlobalMapScreen = ({ navigation, route }) => {
       cache: selected,
       event: routeEvent,
       eventId,
-      isFound: foundCacheIds.includes(selected.CacheID),
+      isFound: foundCacheIds.includes(String(selected.CacheID)),
     });
   };
 
@@ -281,7 +298,7 @@ const GlobalMapScreen = ({ navigation, route }) => {
     ? { ...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }
     : DEFAULT_REGION;
 
-  const claimTarget = visibleCaches[0] || null;
+  const claimTarget = resolveClaimTarget() || visibleCaches[0] || null;
 
   // View --------------------------------
 
@@ -312,9 +329,14 @@ const GlobalMapScreen = ({ navigation, route }) => {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {activeTab === "map" ? (
-          <MapView style={styles.map} region={mapRegion} showsUserLocation>
+          <MapView
+            style={styles.map}
+            provider="google"
+            region={mapRegion}
+            showsUserLocation
+          >
             {(caches || []).map((cache) => {
-              const found = foundCacheIds.includes(cache.CacheID);
+              const found = foundCacheIds.includes(String(cache.CacheID));
               const selected = selectedCacheId === cache.CacheID;
               return (
                 <Marker
@@ -386,11 +408,13 @@ const GlobalMapScreen = ({ navigation, route }) => {
           <Button
             label="Claim Cache"
             onClick={() => {
-              if (claimTarget) {
-                handleClaim(claimTarget.id);
+              const target = resolveClaimTarget();
+              if (target) {
+                setSelectedCacheId(target.id);
+                handleClaim(target.id);
               }
             }}
-            disabled={!claimTarget || !session.currentGlobalPlayerId}
+            disabled={!resolveClaimTarget() || !session.currentGlobalPlayerId}
           />
           <Button
             label="Refresh"
