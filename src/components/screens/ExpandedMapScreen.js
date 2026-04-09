@@ -107,26 +107,19 @@ const ExpandedMapScreen = ({route}) => {
                             />
                         </React.Fragment>
                     ))}
-                    {/* Players — custom View markers for Apple Maps compatibility */}
+                    {/* Players — pin markers appear when cache is in FOV cone + within range */}
                     {!isAdmin && visiblePlayerCaches.map((cache) => (
-                        <React.Fragment key={cache.id}>
-                            <Marker
-                                coordinate={cache.coordinates}
-                                title={cache.clue}
-                                anchor={{x: 0.5, y: 0.5}}
-                                tracksViewChanges={Platform.OS === 'ios'}
-                            >
-                                <View style={styles.cacheMarkerOuter}>
-                                    <View style={styles.cacheMarkerInner} />
-                                </View>
-                            </Marker>
-                            <Circle
-                                center={cache.coordinates}
-                                radius={claimDistance}
-                                fillColor="rgba(250, 204, 21, 0.20)"
-                                strokeColor="rgba(250, 204, 21, 0.90)"
-                            />
-                        </React.Fragment>
+                        <Marker
+                            key={cache.id}
+                            coordinate={cache.coordinates}
+                            title={cache.clue}
+                            anchor={{x: 0.5, y: 0.5}}
+                            tracksViewChanges={Platform.OS === 'ios'}
+                        >
+                            <View style={styles.cacheMarkerOuter}>
+                                <View style={styles.cacheMarkerInner} />
+                            </View>
+                        </Marker>
                     ))}
                     {/* Heading FOV cone */}
                     {coneCoords && (

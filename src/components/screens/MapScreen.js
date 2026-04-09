@@ -73,12 +73,14 @@ const MapScreen = ({navigation}) => {
         });
     }, [cacheRecords, isPlayer, session.currentTid, session.currentUid, EMPTY_CACHES]);
 
-    // When requiresTeam is true pass null/empty so usePlayerGame is inert
+    // When requiresTeam is true pass null/empty so usePlayerGame is inert.
+    // selectedCacheId is the 5th param — only that cache can trigger the claim countdown.
     const {visibleCaches, isClaiming, setIsClaiming} = usePlayerGame(
         (isPlayer && !requiresTeam) ? userLocation : null,
         (isPlayer && !requiresTeam) ? heading : null,
         requiresTeam ? EMPTY_CACHES : activeCachesForPlayer,
         claimDistance,
+        selectedCacheId,
     );
 
     const mapRegion = userLocation
@@ -521,8 +523,8 @@ const MapScreen = ({navigation}) => {
         );
     }
 
-    // Player in game — use the first visible cache for the claim timer
-    const claimTarget = visibleCaches.length > 0 ? visibleCaches[0] : null;
+    // Player in game — the claim target is the selected cache (only it can trigger the countdown)
+    const claimTarget = visibleCaches.find((c) => c.id === selectedCacheId) || null;
 
     return (
         <Screen style={styles.containerMap}>
@@ -534,7 +536,6 @@ const MapScreen = ({navigation}) => {
                     userLocation={userLocation}
                     visibleCaches={visibleCaches}
                     heading={heading}
-                    claimDistance={claimDistance}
                 />
                 <Pressable style={styles.expandButton} onPress={handleExpandMap}>
                     <Text style={styles.expandIcon}>⛶</Text>

@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {isInClaimCone} from '../utils/geoMath';
 
-const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance) => {
+const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance, selectedCacheId) => {
 //   State ----------------------
 
     const [visibleCaches, setVisibleCaches] = useState([]);
@@ -10,19 +10,16 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
 
 //   Handlers -------------------
 
+    // Determine which caches fall inside the FOV claim cone
     useEffect(() => {
-        // Both location AND heading are required — the player must physically
-        // point their device towards a cache to trigger the claim countdown
         if (!playerLocation || playerHeading === null || playerHeading === undefined) {
             if (prevIdsRef.current !== '') {
                 prevIdsRef.current = '';
                 setVisibleCaches([]);
-                setIsClaiming(false);
             }
             return;
         }
 
-        // Find all caches that fall inside the claim cone
         const inCone = (activeCaches || []).filter((cache) =>
             isInClaimCone(playerHeading, playerLocation, cache.coordinates, claimDistance),
         );
@@ -32,9 +29,20 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
         if (newIds !== prevIdsRef.current) {
             prevIdsRef.current = newIds;
             setVisibleCaches(inCone);
-            setIsClaiming(inCone.length > 0);
         }
     }, [playerLocation, playerHeading, activeCaches, claimDistance]);
+
+    // Claiming requires ALL four criteria:
+    // 1. Cache not already claimed by player's team  (handled by activeCaches filter)
+    // 2. Cache within claim distance                  (handled by isInClaimCone)
+    // 3. Player looking at the cache (in FOV cone)    (handled by isInClaimCone)
+    // 4. Cache is the one currently selected in list  (checked here)
+    useEffect(() => {
+        const canClaim = Boolean(
+            selectedCacheId && visibleCaches.some((c) => c.id === selectedCacheId),
+        );
+        setIsClaiming(canClaim);
+    }, [visibleCaches, selectedCacheId]);
 
 //   Return ---------------------
 

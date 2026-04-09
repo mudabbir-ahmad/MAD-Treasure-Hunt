@@ -1,9 +1,9 @@
 import React from 'react';
 import {Platform, StyleSheet, View} from 'react-native';
-import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
+import MapView, {Marker, Polygon} from 'react-native-maps';
 import {getFovCone} from '../../utils/geoMath';
 
-const PlayerMapView = ({userLocation, visibleCaches, heading, claimDistance}) => {
+const PlayerMapView = ({userLocation, visibleCaches, heading}) => {
 //   Initialisation -------------
 //   State ----------------------
 //   Handlers -------------------
@@ -26,27 +26,21 @@ const PlayerMapView = ({userLocation, visibleCaches, heading, claimDistance}) =>
             pitchEnabled={false}
             showsUserLocation
         >
-            {/* Cache markers — uses a custom View instead of pinColor so the
-                marker renders identically on Apple Maps (iOS) and Google Maps */}
+            {/* Cache pin markers — appear temporarily when the cache is in the FOV
+                cone AND within claim distance. Uses a custom View so the pin
+                renders identically on iOS (Google Maps) and Android */}
             {(visibleCaches || []).map((cache) => (
-                <React.Fragment key={cache.id}>
-                    <Marker
-                        coordinate={cache.coordinates}
-                        title={cache.clue}
-                        anchor={{x: 0.5, y: 0.5}}
-                        tracksViewChanges={Platform.OS === 'ios'}
-                    >
-                        <View style={styles.markerOuter}>
-                            <View style={styles.markerInner} />
-                        </View>
-                    </Marker>
-                    <Circle
-                        center={cache.coordinates}
-                        radius={claimDistance}
-                        fillColor="rgba(250, 204, 21, 0.20)"
-                        strokeColor="rgba(250, 204, 21, 0.90)"
-                    />
-                </React.Fragment>
+                <Marker
+                    key={cache.id}
+                    coordinate={cache.coordinates}
+                    title={cache.clue}
+                    anchor={{x: 0.5, y: 0.5}}
+                    tracksViewChanges={Platform.OS === 'ios'}
+                >
+                    <View style={styles.markerOuter}>
+                        <View style={styles.markerInner} />
+                    </View>
+                </Marker>
             ))}
             {/* FOV heading cone */}
             {coneCoords && (
