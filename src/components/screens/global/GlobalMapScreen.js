@@ -19,7 +19,7 @@ const DEFAULT_REGION = {
   longitudeDelta: 0.05,
 };
 
-const GLOBAL_CLAIM_DISTANCE_METERS = 30;
+const GLOBAL_CLAIM_DISTANCE_METERS = 50;
 
 const GlobalMapScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
