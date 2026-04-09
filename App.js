@@ -9,6 +9,7 @@ import TeamScreen from "./src/components/screens/TeamScreen";
 import MapScreen from "./src/components/screens/MapScreen";
 import LeaderboardScreen from "./src/components/screens/LeaderboardScreen";
 import GameSettingsScreen from "./src/components/screens/GameSettingsScreen";
+import DepartmentSettingsScreen from "./src/components/screens/DepartmentSettingsScreen";
 import PlayersScreen from "./src/components/screens/PlayersScreen";
 import ExpandedMapScreen from "./src/components/screens/ExpandedMapScreen";
 import GameSelectionScreen from "./src/components/screens/GameSelectionScreen";
@@ -105,6 +106,15 @@ const AdminStack = () => (
       component={GlobalLeaderboardScreen}
     />
   </AdminStackNav.Navigator>
+    <AdminStackNav.Navigator screenOptions={screenOptions}>
+        <AdminStackNav.Screen name="GameSettingsScreen" component={GameSettingsScreen}/>
+        <AdminStackNav.Screen name="DepartmentSettingsScreen" component={DepartmentSettingsScreen}/>
+        <AdminStackNav.Screen name="MapScreen" component={MapScreen}/>
+        <AdminStackNav.Screen name="LeaderboardScreen" component={LeaderboardScreen}/>
+        <AdminStackNav.Screen name="PlayersScreen" component={PlayersScreen}/>
+        <AdminStackNav.Screen name="ExpandedMapScreen" component={ExpandedMapScreen}/>
+        <AdminStackNav.Screen name="TeamScreen" component={TeamScreen}/>
+    </AdminStackNav.Navigator>
 );
 
 export const App = () => {

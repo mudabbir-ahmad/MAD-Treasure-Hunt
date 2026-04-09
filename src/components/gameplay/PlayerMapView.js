@@ -1,12 +1,8 @@
-import MapView, {Circle, Polygon} from 'react-native-maps';
+import React from 'react';
+import MapView, {Marker, Polygon} from 'react-native-maps';
 import {getFovCone} from '../../utils/geoMath';
 
-const PlayerMapView = ({userLocation, visibleCache, heading, claimDistance}) => {
-//   Initialisation -------------
-//   State ----------------------
-//   Handlers -------------------
-//   View -----------------------
-
+const PlayerMapView = ({userLocation, visibleCaches, heading}) => {
     if (!userLocation) return null;
 
     const coneCoords = (heading !== null && heading !== undefined)
@@ -16,21 +12,22 @@ const PlayerMapView = ({userLocation, visibleCache, heading, claimDistance}) => 
     return (
         <MapView
             style={{flex: 1}}
-            region={{...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01}}
-            scrollEnabled={false}
+            provider="google"
+            initialRegion={{...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01}}
+            scrollEnabled={true}
             zoomEnabled={true}
             rotateEnabled={false}
             pitchEnabled={false}
             showsUserLocation
         >
-            {visibleCache && (
-                <Circle
-                    center={visibleCache.coordinates}
-                    radius={claimDistance}
-                    fillColor="rgba(250, 204, 21, 0.20)"
-                    strokeColor="rgba(250, 204, 21, 0.90)"
+            {(visibleCaches || []).map((cache) => (
+                <Marker
+                    key={cache.id}
+                    coordinate={cache.coordinates}
+                    pinColor="orange"
+                    title={cache.clue}
                 />
-            )}
+            ))}
             {coneCoords && (
                 <Polygon
                     coordinates={coneCoords}
@@ -44,3 +41,5 @@ const PlayerMapView = ({userLocation, visibleCache, heading, claimDistance}) => 
 };
 
 export default PlayerMapView;
+
+

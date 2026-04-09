@@ -11,10 +11,12 @@ const session = {
   currentTid: null,
   isBusiness: null,
   isAcceptedAdmin: false,
+  isPendingAdmin: false,
   teamsEnabled: false,
   // Global gameplay
   currentGlobalEventId: null,
   currentGlobalPlayerId: null,
+  selectedCacheId: null,
 };
 
 // --- Handlers ---
@@ -26,13 +28,16 @@ const setSessionUser = (user) => {
   session.currentTid = user?.TGid ?? null;
   session.isBusiness = user?.isBusiness ?? null;
   session.isAcceptedAdmin = Boolean(user?.IsAcceptedAdmin);
+  session.isPendingAdmin = Boolean(
+    user?.isBusiness && user?.Gid && !user?.SGid && !user?.IsAcceptedAdmin,
+  );
   persistSession();
 };
 
 const setSessionGroup = (gid, sgid = null) => {
   session.currentGid = gid ?? null;
-  if (sgid !== null && sgid !== undefined) {
-    session.currentSGid = sgid;
+  if (sgid !== undefined) {
+    session.currentSGid = sgid ?? null;
   }
   persistSession();
 };
@@ -44,6 +49,16 @@ const setSessionTeam = (tid) => {
 
 const setSessionTeamsEnabled = (val) => {
   session.teamsEnabled = Boolean(val);
+  persistSession();
+};
+
+const setPendingAdmin = (val) => {
+  session.isPendingAdmin = Boolean(val);
+  persistSession();
+};
+
+const setSelectedCache = (cacheId) => {
+  session.selectedCacheId = cacheId ?? null;
   persistSession();
 };
 
@@ -70,6 +85,7 @@ const clearSession = () => {
   session.isAcceptedAdmin = false;
   session.currentGlobalEventId = null;
   session.currentGlobalPlayerId = null;
+  session.isPendingAdmin = false;
   AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
 };
 
@@ -79,7 +95,9 @@ const clearGameSession = () => {
   session.currentSGid = null;
   session.currentTid = null;
   session.isAcceptedAdmin = false;
+  session.isPendingAdmin = false;
   session.teamsEnabled = false;
+  session.selectedCacheId = null;
   persistSession();
 };
 
@@ -114,3 +132,4 @@ export {
   setGlobalSession,
   clearGlobalSession,
 };
+export { setSessionUser, setSessionGroup, setSessionTeam, setSessionTeamsEnabled, setPendingAdmin, setSelectedCache, getSession, clearSession, clearGameSession, loadSession };

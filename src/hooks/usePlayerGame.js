@@ -1,35 +1,36 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {isInClaimCone} from '../utils/geoMath';
 
-const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance) => {
-//   State ----------------------
-
-    const [visibleCache, setVisibleCache] = useState(null);
+const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance, selectedCacheId) => {
+    const [visibleCaches, setVisibleCaches] = useState([]);
     const [isClaiming, setIsClaiming] = useState(false);
-
-//   Handlers -------------------
+    const prevIdRef = useRef('');
 
     useEffect(() => {
-        if (!playerLocation || playerHeading === null || playerHeading === undefined) {
-            setVisibleCache(null);
-            setIsClaiming(false);
+        if (!playerLocation || playerHeading === null || playerHeading === undefined || !selectedCacheId) {
+            if (prevIdRef.current !== '') {
+                prevIdRef.current = '';
+                setVisibleCaches([]);
+                setIsClaiming(false);
+            }
             return;
         }
 
-        // Find the first cache that falls inside the invisible claim cone
-        // (same FOV angle as the visible cone, but radius = admin-set claimDistance)
-        const cacheInCone = (activeCaches || []).find((cache) =>
-            isInClaimCone(playerHeading, playerLocation, cache.coordinates, claimDistance)
-        );
+        const selected = (activeCaches || []).find((c) => c.id === selectedCacheId);
+        const visible = selected && isInClaimCone(playerHeading, playerLocation, selected.coordinates, claimDistance);
+        const newId = visible ? String(selected.id) : '';
 
-        setVisibleCache(cacheInCone || null);
-        setIsClaiming(Boolean(cacheInCone));
-    }, [playerLocation, playerHeading, activeCaches, claimDistance]);
+        if (newId !== prevIdRef.current) {
+            prevIdRef.current = newId;
+            setVisibleCaches(visible ? [selected] : []);
+            setIsClaiming(Boolean(visible));
+        }
+    }, [playerLocation, playerHeading, activeCaches, claimDistance, selectedCacheId]);
 
-//   Return ---------------------
-
-    return {visibleCache, isClaiming, setIsClaiming};
+    return {visibleCaches, isClaiming, setIsClaiming};
 };
 
 export default usePlayerGame;
+
+
 

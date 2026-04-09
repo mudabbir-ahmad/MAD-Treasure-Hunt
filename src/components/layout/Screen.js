@@ -18,6 +18,7 @@ const Screen = ({ children, style, showBack = false }) => {
     MapScreen: "Map",
     GameSettingsScreen: "Game Settings",
     GameSelectionScreen: "Games",
+    DepartmentSettingsScreen: "Department Settings",
     PlayersScreen: "Players",
     ExpandedMapScreen: "Map View",
     GlobalEventsScreen: "Global Events",
@@ -57,6 +58,7 @@ const Screen = ({ children, style, showBack = false }) => {
       {!isAuthScreen && (
         <BottomNavbar navigation={navigation} routeName={routeName} />
       )}
+      {!isAuthScreen && <BottomNavbar navigation={navigation} routeName={routeName} routeParams={route.params} />}
       <StatusBar style="light" />
     </View>
   );
@@ -65,11 +67,13 @@ const Screen = ({ children, style, showBack = false }) => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#1e1e2e',
   },
   content: {
     flex: 1,
     padding: 15,
+    zIndex: 1,
+    overflow: 'hidden',
   },
 });
 

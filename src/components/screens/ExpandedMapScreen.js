@@ -3,24 +3,17 @@ import {StyleSheet, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import Screen from '../layout/Screen';
-import {getFovCone} from '../../utils/geoMath';
+import {getFovCone, isInClaimCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.01, longitudeDelta: 0.01};
 
 const ExpandedMapScreen = ({route}) => {
-//   Initialisation ------------
-
-    const {isAdmin, cacheRecords: cacheStr, claimDistance: routeClaimDistance, userLocation: routeLocation} = route.params || {};
+    const {isAdmin, cacheRecords: cacheStr, claimDistance: routeClaimDistance, userLocation: routeLocation, selectedCacheId} = route.params || {};
     const caches = cacheStr ? JSON.parse(cacheStr) : [];
     const claimDistance = routeClaimDistance || 20;
 
-//   State ----------------------
-
-    // Seed with the location passed from MapScreen so the map opens centred on the user immediately
     const [userLocation, setUserLocation] = useState(routeLocation || null);
     const [heading, setHeading] = useState(null);
-
-//   Handlers -------------------
 
     useEffect(() => {
         let locationSub;
@@ -30,7 +23,6 @@ const ExpandedMapScreen = ({route}) => {
             const {status} = await Location.requestForegroundPermissionsAsync();
             if (status !== 'granted') return;
 
-            // Only do a fresh one-shot fix if MapScreen didn't supply a location
             if (!routeLocation) {
                 const last = await Location.getLastKnownPositionAsync();
                 if (last) {
@@ -46,7 +38,6 @@ const ExpandedMapScreen = ({route}) => {
                 (next) => setUserLocation({latitude: next.coords.latitude, longitude: next.coords.longitude}),
             );
 
-            // Use OS-fused heading from expo-location
             headingSub = await Location.watchHeadingAsync((headingData) => {
                 const raw = headingData.trueHeading >= 0 ? headingData.trueHeading : headingData.magHeading;
                 setHeading(raw);
@@ -64,28 +55,25 @@ const ExpandedMapScreen = ({route}) => {
         ? {...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01}
         : DEFAULT_REGION;
 
-//   View -----------------------
+    const hasHeading = heading !== null;
+    const coneCoords = (userLocation && hasHeading) ? getFovCone(userLocation, heading) : null;
 
-    const coneCoords = (userLocation && heading !== null)
-        ? getFovCone(userLocation, heading)
-        : null;
+    const visiblePlayerCaches = (!isAdmin && userLocation && hasHeading && selectedCacheId)
+        ? caches.filter((c) => c.id === selectedCacheId && isInClaimCone(heading, userLocation, c.coordinates, claimDistance))
+        : [];
 
     return (
         <Screen showBack={true} style={styles.container}>
             <View style={styles.mapWrap}>
                 <MapView
                     style={{flex: 1}}
+                    provider="google"
                     initialRegion={region}
                     showsUserLocation
                 >
-                    {/* Only admins see cache pin locations */}
                     {isAdmin && caches.map((cache) => (
                         <React.Fragment key={cache.id}>
-                            <Marker
-                                coordinate={cache.coordinates}
-                                title={cache.name || cache.clue}
-                                pinColor="#2563eb"
-                            />
+                            <Marker coordinate={cache.coordinates} pinColor="#9ca3af" title={cache.name || cache.clue} />
                             <Circle
                                 center={cache.coordinates}
                                 radius={claimDistance}
@@ -94,7 +82,14 @@ const ExpandedMapScreen = ({route}) => {
                             />
                         </React.Fragment>
                     ))}
-                    {/* Heading FOV cone */}
+                    {!isAdmin && visiblePlayerCaches.map((cache) => (
+                        <Marker
+                            key={cache.id}
+                            coordinate={cache.coordinates}
+                            pinColor="orange"
+                            title={cache.clue}
+                        />
+                    ))}
                     {coneCoords && (
                         <Polygon
                             coordinates={coneCoords}
@@ -115,3 +110,5 @@ const styles = StyleSheet.create({
 });
 
 export default ExpandedMapScreen;
+
+

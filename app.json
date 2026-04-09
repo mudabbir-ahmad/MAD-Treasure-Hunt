@@ -16,6 +16,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs your location for the treasure hunt."
+      },
+      "config": {
+        "googleMapsApiKey": "AIzaSyA-G0tSzzcM5z6HyI23s8dzKDLCOrekhbw"
       }
     },
     "android": {

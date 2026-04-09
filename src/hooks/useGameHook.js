@@ -6,10 +6,11 @@ const useGameHook = () => {
   const usersEndpoint = `${API_BASE_URL}/users`;
   const groupsEndpoint = `${API_BASE_URL}/groups`;
   const subgroupsEndpoint = `${API_BASE_URL}/subgroups`;
-  const subgroupMembershipsEndpoint = `${API_BASE_URL}/subgroup-memberships`;
+  const subgroupMembersEndpoint = `${API_BASE_URL}/subgroup-members`;
   const teamsEndpoint = `${API_BASE_URL}/teams`;
   const teamMembersEndpoint = `${API_BASE_URL}/team-members`;
-  const gameDataEndpoint = `${API_BASE_URL}/game-data`;
+  const cachesEndpoint = `${API_BASE_URL}/caches`;
+  const adminWaitlistEndpoint = `${API_BASE_URL}/admin-waitlist`;
 
   //   Handlers -------------------
 
@@ -40,30 +41,71 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  // Look up a group by its Organisation Join Code
+  const getGroupByOrgCode = async (code) => {
+    const normalizedCode = String(code || '').trim().toUpperCase();
+    if (!normalizedCode) return null;
+    const response = await API.get(`${groupsEndpoint}?OrgJoinCode=${encodeURIComponent(normalizedCode)}`);
+    if (response.isSuccess && response.result.length > 0) return response.result[0];
+    return null;
+  };
+
+  // Subgroups
   const getSubgroups = async (gid) => {
     const response = await API.get(`${subgroupsEndpoint}?Gid=${gid}`);
     return response.isSuccess ? response.result : [];
   };
 
-  // Subgroup memberships
-  const joinPrivateGame = async (payload) => {
-    const response = await API.post(subgroupMembershipsEndpoint, payload);
+  const getSubgroup = async (sgid) => {
+    const response = await API.get(`${subgroupsEndpoint}/${sgid}`);
     return response.isSuccess ? response.result : null;
   };
 
-  const getGroupMembers = async (gid) => {
-    const response = await API.get(`${subgroupMembershipsEndpoint}?Gid=${gid}`);
+  const createSubgroup = async (payload) => {
+    const response = await API.post(subgroupsEndpoint, payload);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const updateSubgroup = async (sgid, data) => {
+    const response = await API.put(`${subgroupsEndpoint}/${sgid}`, data);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const deleteSubgroup = async (sgid) => {
+    const response = await API.delete(`${subgroupsEndpoint}/${sgid}`);
+    return response.isSuccess;
+  };
+
+  // Subgroup members
+  const joinPrivateGame = async (payload) => {
+    const data = {
+      JoinCode: payload.JoinCode,
+      Uid: payload.Uid,
+    };
+    if (payload.ExpectedGid !== undefined && payload.ExpectedGid !== null) {
+      data.ExpectedGid = payload.ExpectedGid;
+    }
+    const response = await API.post(subgroupMembersEndpoint, data);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const getGroupMembers = async (gid, sgid = null) => {
+    let url = `${subgroupMembersEndpoint}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.get(url);
     return response.isSuccess ? response.result : [];
   };
 
   const removeMember = async (membershipId) => {
-    const response = await API.delete(`${subgroupMembershipsEndpoint}/${membershipId}`);
+    const response = await API.delete(`${subgroupMembersEndpoint}/${membershipId}`);
     return response.isSuccess;
   };
 
   // Teams
-  const getTeams = async (gid) => {
-    const response = await API.get(`${teamsEndpoint}?Gid=${gid}`);
+  const getTeams = async (gid, sgid = null) => {
+    let url = `${teamsEndpoint}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.get(url);
     return response.isSuccess ? response.result : [];
   };
 
@@ -77,8 +119,34 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
+  const updateTeam = async (tid, data) => {
+    const response = await API.put(`${teamsEndpoint}/${tid}`, data);
+    return response.isSuccess ? response.result : null;
+  };
+
+  const deleteTeam = async (tid) => {
+    const response = await API.delete(`${teamsEndpoint}/${tid}`);
+    return response.isSuccess;
+  };
+
+  const disbandTeams = async (gid) => {
+    const response = await API.post(`${teamsEndpoint}/disband?Gid=${gid}`, {});
+    return response.isSuccess;
+  };
+
   const joinTeamByCode = async (payload) => {
-    const response = await API.post(teamMembersEndpoint, payload);
+    const data = {
+      Uid: payload.Uid,
+    };
+    if (payload.JoinCode !== undefined) data.JoinCode = payload.JoinCode;
+    if (payload.Tid !== undefined) data.Tid = payload.Tid;
+    if (payload.ExpectedGid !== undefined && payload.ExpectedGid !== null) {
+      data.ExpectedGid = payload.ExpectedGid;
+    }
+    if (payload.ExpectedSGid !== undefined && payload.ExpectedSGid !== null) {
+      data.ExpectedSGid = payload.ExpectedSGid;
+    }
+    const response = await API.post(teamMembersEndpoint, data);
     return response.isSuccess ? response.result : null;
   };
 
@@ -93,39 +161,86 @@ const useGameHook = () => {
     return response.isSuccess;
   };
 
-  // Caches
   const getCaches = async (gid, sgid = null) => {
-    let url = `${gameDataEndpoint}/${gid}/caches`;
-    if (sgid !== null) url += `?SGid=${sgid}`;
+    let url = `${cachesEndpoint}?Gid=${gid}`;
+    if (sgid !== null) url += `&SGid=${sgid}`;
     const response = await API.get(url);
     return response.isSuccess ? response.result : [];
   };
 
   const upsertCache = async (payload) => {
+    const data = {
+      Gid: payload.gid,
+      SGid: payload.subgroupId,
+      Title: payload.name,
+      Clue: payload.clue,
+      Latitude: payload.latitude,
+      Longitude: payload.longitude,
+      TriggerMeters: payload.radius,
+    };
     if (payload.cacheId) {
-      const response = await API.put(
-        `${gameDataEndpoint}/${payload.gid}/caches/${payload.cacheId}`,
-        payload,
-      );
+      const response = await API.put(`${cachesEndpoint}/${payload.cacheId}`, data);
       return response.isSuccess ? response.result : null;
     }
-    const response = await API.post(
-      `${gameDataEndpoint}/${payload.gid}/caches`,
-      payload,
-    );
+    const response = await API.post(cachesEndpoint, data);
     return response.isSuccess ? response.result : null;
   };
 
   const claimCache = async (payload) => {
-    const response = await API.put(
-      `${gameDataEndpoint}/${payload.gid}/caches/${payload.cacheId}`,
-      {ClaimedByUid: payload.uid, ClaimedByTid: payload.tid},
+    let url = `${cachesEndpoint}/${payload.cacheId}/claim`;
+    if (payload.sgid !== null && payload.sgid !== undefined) {
+      url += `?SGid=${payload.sgid}`;
+    }
+    const response = await API.post(
+      url,
+      {Uid: payload.uid, Tid: payload.tid, SGid: payload.sgid},
     );
     return response.isSuccess ? response.result : null;
   };
 
   const deleteCache = async (gid, cacheId) => {
-    const response = await API.delete(`${gameDataEndpoint}/${gid}/caches/${cacheId}`);
+    const response = await API.delete(`${cachesEndpoint}/${cacheId}`);
+    return response.isSuccess;
+  };
+
+  // Game reset — remove all caches for a game (optionally scoped to a subgroup)
+  const resetGame = async (gid, sgid = null) => {
+    let url = `${cachesEndpoint}/reset?Gid=${gid}`;
+    if (sgid !== null) url += `&SGid=${sgid}`;
+    const response = await API.post(url, {});
+    return response.isSuccess;
+  };
+
+  // Player progress reset — clear all claims by a specific user
+  const resetPlayerProgress = async (gid, uid, sgid = null) => {
+    let url = `${cachesEndpoint}/reset-player/${uid}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.post(url, {});
+    return response.isSuccess;
+  };
+
+  const resetTeamProgress = async (gid, tid, sgid = null) => {
+    let url = `${cachesEndpoint}/reset-team/${tid}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.post(url, {});
+    return response.isSuccess;
+  };
+
+  // Admin waitlist
+  const getAdminWaitlist = async (gid, uid = null) => {
+    let url = `${adminWaitlistEndpoint}?Gid=${gid}`;
+    if (uid !== null) url += `&Uid=${uid}`;
+    const response = await API.get(url);
+    return response.isSuccess ? response.result : [];
+  };
+
+  const approveAdmin = async (waitlistId) => {
+    const response = await API.post(`${adminWaitlistEndpoint}/${waitlistId}/approve`, {});
+    return response.isSuccess ? response.result : null;
+  };
+
+  const rejectAdmin = async (waitlistId) => {
+    const response = await API.delete(`${adminWaitlistEndpoint}/${waitlistId}`);
     return response.isSuccess;
   };
 
@@ -137,13 +252,21 @@ const useGameHook = () => {
     createPrivateGame,
     getLobby,
     updateGroup,
+    getGroupByOrgCode,
     getSubgroups,
+    getSubgroup,
+    createSubgroup,
+    updateSubgroup,
+    deleteSubgroup,
     joinPrivateGame,
     getGroupMembers,
     removeMember,
     getTeams,
     getTeam,
     createTeam,
+    updateTeam,
+    deleteTeam,
+    disbandTeams,
     joinTeamByCode,
     getTeamMembers,
     leaveTeam,
@@ -151,6 +274,12 @@ const useGameHook = () => {
     upsertCache,
     claimCache,
     deleteCache,
+    resetGame,
+    resetPlayerProgress,
+    resetTeamProgress,
+    getAdminWaitlist,
+    approveAdmin,
+    rejectAdmin,
   };
 };
 
