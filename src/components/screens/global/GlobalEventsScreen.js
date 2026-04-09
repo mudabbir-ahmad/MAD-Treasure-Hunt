@@ -10,17 +10,24 @@ import {GAME_MODE} from "../../../utils/gameConstants";
 const GlobalEventsScreen = ({ navigation }) => {
   // Initialisations ---------------------
 
-  const { getPublicEvents, getPlayersByEvent, joinEvent } = useGlobalHook();
+  const {
+    getPublicEvents,
+    getPlayersByEvent,
+    joinEvent,
+    isGlobalApiReady,
+  } = useGlobalHook();
   const session = getSession();
   const globalApiRef = useRef({
     getPublicEvents,
     getPlayersByEvent,
     joinEvent,
+    isGlobalApiReady,
   });
   globalApiRef.current = {
     getPublicEvents,
     getPlayersByEvent,
     joinEvent,
+    isGlobalApiReady,
   };
 
   // State -------------------------------
@@ -32,10 +39,18 @@ const GlobalEventsScreen = ({ navigation }) => {
 
   // Handlers ----------------------------
 
-  const loadEvents = useCallback(async () => {
+  const loadEvents = useCallback(async (options = {}) => {
     setIsLoading(true);
     setError("");
-    const data = await globalApiRef.current.getPublicEvents();
+
+    if (!globalApiRef.current.isGlobalApiReady()) {
+      setEvents([]);
+      setError("Global API URL is not configured yet. Add it in src/components/API/api.json.");
+      setIsLoading(false);
+      return;
+    }
+
+    const data = await globalApiRef.current.getPublicEvents(options);
     setEvents(data);
     setIsLoading(false);
   }, []);
@@ -52,27 +67,59 @@ const GlobalEventsScreen = ({ navigation }) => {
     setError("");
     setJoining(event.EventID);
 
+    if (!globalApiRef.current.isGlobalApiReady()) {
+      setError("Global API URL is not configured yet. Add it in src/components/API/api.json.");
+      setJoining(null);
+      return;
+    }
+
+    const globalUserId = session.currentGlobalUserId ?? session.currentUid;
+
+    const pickPlayerId = (player) => {
+      if (!player) return null;
+      const id = player.PlayerID ?? player.playerId ?? null;
+      return id !== undefined && id !== null ? id : null;
+    };
+
     // Check if already a player
-    const players = await globalApiRef.current.getPlayersByEvent(event.EventID);
+    const players = await globalApiRef.current.getPlayersByEvent(event.EventID, {forceRefresh: true});
     const existing = (players || []).find(
-      (p) => p.PlayerUserID === session.currentUid,
+      (p) => String(p.PlayerUserID) === String(globalUserId),
     );
 
-    if (existing) {
-      setGlobalSession(event.EventID, existing.PlayerID);
+    const existingPlayerId = pickPlayerId(existing);
+    if (existingPlayerId !== null) {
+      setGlobalSession(event.EventID, existingPlayerId);
+      navigation.navigate("GlobalMapScreen", { eventId: event.EventID });
+      setJoining(null);
+      return;
+    }
+
+    // Join the event
+    const player = await globalApiRef.current.joinEvent({
+      PlayerUserID: globalUserId,
+      PlayerEventID: event.EventID,
+    });
+
+    const joinedPlayerId = pickPlayerId(player);
+    if (joinedPlayerId !== null) {
+      setGlobalSession(event.EventID, joinedPlayerId);
+      navigation.navigate("GlobalMapScreen", { eventId: event.EventID });
+      setJoining(null);
+      return;
+    }
+
+    // If create fails due duplicate race/server behavior, recover by re-reading players.
+    const refreshedPlayers = await globalApiRef.current.getPlayersByEvent(event.EventID, {forceRefresh: true});
+    const recovered = (refreshedPlayers || []).find(
+      (p) => String(p.PlayerUserID) === String(globalUserId),
+    );
+    const recoveredPlayerId = pickPlayerId(recovered);
+    if (recoveredPlayerId !== null) {
+      setGlobalSession(event.EventID, recoveredPlayerId);
       navigation.navigate("GlobalMapScreen", { eventId: event.EventID });
     } else {
-      // Join the event
-      const player = await globalApiRef.current.joinEvent({
-        PlayerUserID: session.currentUid,
-        PlayerEventID: event.EventID,
-      });
-      if (player) {
-        setGlobalSession(event.EventID, player.PlayerID);
-        navigation.navigate("GlobalMapScreen", { eventId: event.EventID });
-      } else {
-        setError("Failed to join event. Please try again.");
-      }
+      setError("Failed to join event. Please try again.");
     }
 
     setJoining(null);
@@ -84,7 +131,7 @@ const GlobalEventsScreen = ({ navigation }) => {
     <Screen>
       <View style={styles.container}>
         <ButtonTray>
-          <Button label="Refresh" onClick={loadEvents} />
+          <Button label="Refresh" onClick={() => loadEvents({forceRefresh: true})} />
         </ButtonTray>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}

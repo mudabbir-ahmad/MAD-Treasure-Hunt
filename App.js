@@ -16,6 +16,7 @@ import GlobalEventsScreen from "./src/components/screens/global/GlobalEventsScre
 import GlobalMapScreen from "./src/components/screens/global/GlobalMapScreen";
 import GlobalCacheViewScreen from "./src/components/screens/global/GlobalCacheViewScreen";
 import GlobalLeaderboardScreen from "./src/components/screens/global/GlobalLeaderboardScreen";
+import GlobalProfileScreen from "./src/components/screens/global/GlobalProfileScreen";
 import {loadSession} from "./src/hooks/SessionStore";
 
 const RootStack = createNativeStackNavigator();
@@ -63,6 +64,10 @@ const GameStack = () => (
       name="GlobalLeaderboardScreen"
       component={GlobalLeaderboardScreen}
     />
+    <GameStackNav.Screen
+      name="GlobalProfileScreen"
+      component={GlobalProfileScreen}
+    />
   </GameStackNav.Navigator>
 );
 
@@ -99,6 +104,10 @@ const AdminStack = () => (
     <AdminStackNav.Screen
       name="GlobalLeaderboardScreen"
       component={GlobalLeaderboardScreen}
+    />
+    <AdminStackNav.Screen
+      name="GlobalProfileScreen"
+      component={GlobalProfileScreen}
     />
   </AdminStackNav.Navigator>
 );

@@ -13,9 +13,12 @@ const session = {
   isPendingAdmin: false,
   teamsEnabled: false,
   currentGameMode: null,
+  // Temporary state for business join flow between company code and department code.
+  pendingOrgJoin: null,
   // Global gameplay
   currentGlobalEventId: null,
   currentGlobalPlayerId: null,
+  currentGlobalUserId: null,
   selectedCacheId: null,
 };
 
@@ -34,6 +37,7 @@ const setSessionUser = (user) => {
   // New login/register starts in regular flow; global flow requires entering GLOBAL code.
   session.currentGlobalEventId = null;
   session.currentGlobalPlayerId = null;
+  session.currentGlobalUserId = null;
   session.currentGameMode = user?.Gid ? GAME_MODE.REGULAR : null;
   persistSession();
 };
@@ -62,6 +66,16 @@ const setPendingAdmin = (val) => {
   persistSession();
 };
 
+const setPendingOrgJoin = (payload) => {
+  session.pendingOrgJoin = payload || null;
+  persistSession();
+};
+
+const clearPendingOrgJoin = () => {
+  session.pendingOrgJoin = null;
+  persistSession();
+};
+
 const setSelectedCache = (cacheId) => {
   session.selectedCacheId = cacheId ?? null;
   persistSession();
@@ -73,6 +87,11 @@ const setGlobalSession = (eventId, playerId) => {
   session.currentGlobalEventId = eventId ?? null;
   session.currentGlobalPlayerId = playerId ?? null;
   session.currentGameMode = eventId ? GAME_MODE.GLOBAL : session.currentGameMode;
+  persistSession();
+};
+
+const setGlobalUserId = (userId) => {
+  session.currentGlobalUserId = userId ?? null;
   persistSession();
 };
 
@@ -98,7 +117,9 @@ const clearSession = () => {
   session.currentGameMode = null;
   session.currentGlobalEventId = null;
   session.currentGlobalPlayerId = null;
+  session.currentGlobalUserId = null;
   session.isPendingAdmin = false;
+  session.pendingOrgJoin = null;
   AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
 };
 
@@ -109,6 +130,7 @@ const clearGameSession = () => {
   session.currentTid = null;
   session.isAcceptedAdmin = false;
   session.isPendingAdmin = false;
+  session.pendingOrgJoin = null;
   session.teamsEnabled = false;
   session.selectedCacheId = null;
   if (!session.currentGlobalEventId) session.currentGameMode = null;
@@ -128,6 +150,15 @@ const loadSession = async () => {
       const saved = JSON.parse(raw);
       Object.assign(session, saved);
     }
+
+    // Keep mode coherent with persisted ids so navigation can restore correctly.
+    if (session.currentGlobalEventId) {
+      session.currentGameMode = GAME_MODE.GLOBAL;
+    } else if (session.currentGid) {
+      session.currentGameMode = GAME_MODE.REGULAR;
+    } else if (!session.currentGlobalEventId) {
+      session.currentGameMode = null;
+    }
   } catch (_) {
     // Ignore read errors — start fresh
   }
@@ -140,12 +171,15 @@ export {
   setSessionTeam,
   setSessionTeamsEnabled,
   setPendingAdmin,
+  setPendingOrgJoin,
+  clearPendingOrgJoin,
   setSelectedCache,
   getSession,
   clearSession,
   clearGameSession,
   loadSession,
   setGlobalSession,
+  setGlobalUserId,
   clearGlobalSession,
   setSessionMode,
 };

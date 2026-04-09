@@ -2,7 +2,7 @@ import {Pressable, StyleSheet, Text, View} from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {clearSession} from '../../hooks/SessionStore';
 
-const TopNavbar = ({title, showBack, navigation}) => {
+const TopNavbar = ({title, showBack, showProfile = false, navigation}) => {
 //   Initialisation ------------
 
     const insets = useSafeAreaInsets();
@@ -23,6 +23,10 @@ const TopNavbar = ({title, showBack, navigation}) => {
         });
     };
 
+    const handleProfile = () => {
+        navigation.navigate('GlobalProfileScreen');
+    };
+
 //   View -----------------------
 
     return (
@@ -36,6 +40,11 @@ const TopNavbar = ({title, showBack, navigation}) => {
             </View>
             <Text style={styles.title}>{title}</Text>
             <View style={styles.rightSlot}>
+                {showProfile ? (
+                    <Pressable onPress={handleProfile} style={styles.profileButton}>
+                        <Text style={styles.profileText}>Profile</Text>
+                    </Pressable>
+                ) : null}
                 <Pressable onPress={handleLogout} style={styles.logoutButton}>
                     <Text style={styles.logoutText}>Logout</Text>
                 </Pressable>
@@ -61,8 +70,10 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
     },
     rightSlot: {
-        width: 72,
+        width: 148,
         alignItems: 'flex-end',
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
     },
     iconButton: {
         paddingVertical: 8,
@@ -79,6 +90,16 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '700',
         color: '#ffffff',
+    },
+    profileButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 8,
+        marginRight: 4,
+    },
+    profileText: {
+        color: '#ffffff',
+        fontSize: 13,
+        fontWeight: '600',
     },
     logoutButton: {
         paddingVertical: 6,

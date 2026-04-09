@@ -12,10 +12,12 @@ import ClaimTimerView from '../gameplay/ClaimTimerView';
 import PlayerMapView from '../gameplay/PlayerMapView';
 import Card from '../UI/Card';
 import useGameHook from '../../hooks/useGameHook';
+import useGlobalHook from '../../hooks/useGlobalHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
 import {
     clearPendingOrgJoin,
     getSession,
+    setGlobalUserId,
     setPendingAdmin,
     setPendingOrgJoin,
     setSelectedCache,
@@ -34,6 +36,7 @@ const MapScreen = ({navigation, route}) => {
   const session = getSession();
   const isBusiness = Boolean(session.isBusiness);
   const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, joinTeamByCode, createPrivateGame, getGroups, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
+  const {ensureGlobalUser, isGlobalApiReady} = useGlobalHook();
 
   // Stable ref to prevent infinite re-render loops
   const getCachesRef = useRef(getCaches);
@@ -106,6 +109,23 @@ const MapScreen = ({navigation, route}) => {
   const mapRegion = userLocation
     ? {...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01}
     : DEFAULT_REGION;
+
+  useEffect(() => {
+    if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) return;
+
+    if (session.currentGlobalEventId && session.currentGlobalPlayerId) {
+      navigation.replace('GlobalMapScreen', {eventId: session.currentGlobalEventId});
+      return;
+    }
+
+    navigation.replace('GlobalEventsScreen');
+  }, [
+    navigation,
+    session.currentGameMode,
+    session.currentGlobalEventId,
+    session.currentGlobalPlayerId,
+    session.isBusiness,
+  ]);
 
   useEffect(() => {
     if (!session.currentGid) return;
@@ -291,7 +311,16 @@ const MapScreen = ({navigation, route}) => {
         setQuickJoiningCode(null);
     };
 
-    const handleEnterGlobal = () => {
+    const handleEnterGlobal = async () => {
+        if (isGlobalApiReady()) {
+            const privateUser = await getUser(session.currentUid);
+            const globalUser = await ensureGlobalUser(session.currentUid, privateUser || null);
+            if (!globalUser?.UserID) {
+                setError('Could not initialise your global account. Please try again.');
+                return;
+            }
+            setGlobalUserId(globalUser.UserID);
+        }
         setSessionMode(GAME_MODE.GLOBAL);
         navigation.navigate('GlobalEventsScreen');
     };

@@ -1,12 +1,15 @@
-import {useCallback, useEffect, useState} from "react";
+import {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {ActivityIndicator, StyleSheet, Text, View} from "react-native";
-import MapView, {Marker} from "react-native-maps";
+import MapView, {Circle, Marker, Polygon} from "react-native-maps";
 import * as Location from "expo-location";
 import Screen from "../../layout/Screen";
 import {Button, ButtonTray} from "../../UI/Button";
+import ClaimTimerView from "../../gameplay/ClaimTimerView";
 import CacheList from "../../../entity/cache/CacheList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
+import usePlayerGame from "../../../hooks/usePlayerGame";
 import {getSession} from "../../../hooks/SessionStore";
+import {getFovCone} from "../../../utils/geoMath";
 import {GAME_MODE} from "../../../utils/gameConstants";
 
 const DEFAULT_REGION = {
@@ -16,54 +19,177 @@ const DEFAULT_REGION = {
   longitudeDelta: 0.05,
 };
 
+const GLOBAL_CLAIM_DISTANCE_METERS = 30;
+
 const GlobalMapScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
 
-  const eventId = route?.params?.eventId ?? getSession().currentGlobalEventId;
-  const { getCachesByEvent, getFindsByPlayer } = useGlobalHook();
   const session = getSession();
+  const eventId = route?.params?.eventId ?? session.currentGlobalEventId;
+  const { getCachesByEvent, getFindsByPlayer, logFind } = useGlobalHook();
+  const globalApiRef = useRef({
+    getCachesByEvent,
+    getFindsByPlayer,
+    logFind,
+  });
+  globalApiRef.current = {
+    getCachesByEvent,
+    getFindsByPlayer,
+    logFind,
+  };
 
   // State -------------------------------
 
   const [caches, setCaches] = useState([]);
   const [foundCacheIds, setFoundCacheIds] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
+  const [heading, setHeading] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("map");
   const [error, setError] = useState("");
+  const [selectedCacheId, setSelectedCacheId] = useState(null);
+  const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
+
+  const claimableCaches = useMemo(
+    () =>
+      (caches || [])
+        .filter((cache) => !foundCacheIds.includes(cache.CacheID))
+        .map((cache) => ({
+          id: cache.CacheID,
+          clue: cache.CacheClue || cache.CacheName,
+          name: cache.CacheName,
+          coordinates: {
+            latitude: cache.CacheLatitude,
+            longitude: cache.CacheLongitude,
+          },
+          raw: cache,
+        })),
+    [caches, foundCacheIds],
+  );
+
+  const { visibleCaches, isClaiming, setIsClaiming } = usePlayerGame(
+    userLocation,
+    heading,
+    claimableCaches,
+    GLOBAL_CLAIM_DISTANCE_METERS,
+    selectedCacheId,
+  );
 
   // Handlers ----------------------------
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (options = {}) => {
+    if (!eventId) return;
+
     setIsLoading(true);
     setError("");
 
     const [cacheData, findsData] = await Promise.all([
-      getCachesByEvent(eventId),
+      globalApiRef.current.getCachesByEvent(eventId, options),
       session.currentGlobalPlayerId
-        ? getFindsByPlayer(session.currentGlobalPlayerId)
+        ? globalApiRef.current.getFindsByPlayer(session.currentGlobalPlayerId, options)
         : Promise.resolve([]),
     ]);
 
-    setCaches(cacheData);
+    setCaches(cacheData || []);
     setFoundCacheIds((findsData || []).map((f) => f.FindCacheID));
     setIsLoading(false);
-  }, [eventId, getCachesByEvent, getFindsByPlayer, session.currentGlobalPlayerId]);
+  }, [eventId, session.currentGlobalPlayerId]);
+
+  const handleClaim = useCallback(
+    async (cacheId) => {
+      if (!session.currentGlobalPlayerId) {
+        setIsClaiming(false);
+        return;
+      }
+
+      const alreadyFound = foundCacheIds.includes(cacheId);
+      if (alreadyFound) {
+        setIsClaiming(false);
+        return;
+      }
+
+      const result = await globalApiRef.current.logFind({
+        FindPlayerID: session.currentGlobalPlayerId,
+        FindCacheID: cacheId,
+        FindDatetime: new Date().toISOString(),
+      });
+
+      setIsClaiming(false);
+
+      if (result) {
+        setClaimedPopupVisible(true);
+        setTimeout(() => setClaimedPopupVisible(false), 3000);
+        await loadData({forceRefresh: true});
+      }
+    },
+    [foundCacheIds, loadData, session.currentGlobalPlayerId, setIsClaiming],
+  );
+
+  const handleCacheSelect = (cache) => {
+    setSelectedCacheId(cache.CacheID);
+    setActiveTab("map");
+  };
+
+  const handleOpenSelectedCache = () => {
+    const selected = (caches || []).find((cache) => cache.CacheID === selectedCacheId);
+    if (!selected) return;
+    navigation.navigate("GlobalCacheViewScreen", {
+      cache: selected,
+      isFound: foundCacheIds.includes(selected.CacheID),
+    });
+  };
+
+  const handleGotoLeaderboard = () => {
+    navigation.navigate("GlobalLeaderboardScreen", { eventId });
+  };
 
   useEffect(() => {
     if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
       navigation.replace("MapScreen");
       return;
     }
-    if (!eventId) {
+
+    if (!session.currentGlobalPlayerId) {
       navigation.replace("GlobalEventsScreen");
       return;
     }
-    loadData();
-  }, [eventId, loadData, navigation, session.currentGameMode, session.isBusiness]);
+
+    if (!eventId) {
+      navigation.replace("GlobalEventsScreen");
+    }
+  }, [
+    eventId,
+    navigation,
+    session.currentGameMode,
+    session.currentGlobalPlayerId,
+    session.isBusiness,
+  ]);
 
   useEffect(() => {
-    let sub;
+    if (!eventId || session.currentGameMode !== GAME_MODE.GLOBAL || !session.currentGlobalPlayerId) {
+      return;
+    }
+
+    loadData();
+  }, [eventId, loadData, session.currentGameMode, session.currentGlobalPlayerId]);
+
+  useEffect(() => {
+    const routeSelected = route?.params?.selectedCacheId;
+    if (!routeSelected) return;
+    setSelectedCacheId(routeSelected);
+  }, [route?.params?.selectedCacheId]);
+
+  useEffect(() => {
+    if (selectedCacheId && claimableCaches.some((cache) => cache.id === selectedCacheId)) {
+      return;
+    }
+    setSelectedCacheId(claimableCaches[0]?.id || null);
+  }, [claimableCaches, selectedCacheId]);
+
+  useEffect(() => {
+    let locationSub;
+    let headingSub;
+
     const start = async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
@@ -87,11 +213,11 @@ const GlobalMapScreen = ({ navigation, route }) => {
         });
       }
 
-      sub = await Location.watchPositionAsync(
+      locationSub = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
-          distanceInterval: 5,
-          timeInterval: 3000,
+          distanceInterval: 3,
+          timeInterval: 1500,
         },
         (pos) =>
           setUserLocation({
@@ -99,10 +225,21 @@ const GlobalMapScreen = ({ navigation, route }) => {
             longitude: pos.coords.longitude,
           }),
       );
+
+      headingSub = await Location.watchHeadingAsync((headingData) => {
+        const raw =
+          headingData.trueHeading >= 0
+            ? headingData.trueHeading
+            : headingData.magHeading;
+        setHeading(raw);
+      });
     };
+
     start();
+
     return () => {
-      if (sub) sub.remove();
+      if (locationSub) locationSub.remove();
+      if (headingSub) headingSub.remove();
     };
   }, []);
 
@@ -110,17 +247,7 @@ const GlobalMapScreen = ({ navigation, route }) => {
     ? { ...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 }
     : DEFAULT_REGION;
 
-  const handleCacheSelect = (cache) => {
-    navigation.navigate("GlobalCacheViewScreen", {
-      cache,
-      isFound: foundCacheIds.includes(cache.CacheID),
-      onFindLogged: loadData,
-    });
-  };
-
-  const handleGotoLeaderboard = () => {
-    navigation.navigate("GlobalLeaderboardScreen", { eventId });
-  };
+  const claimTarget = visibleCaches[0] || null;
 
   // View --------------------------------
 
@@ -135,7 +262,6 @@ const GlobalMapScreen = ({ navigation, route }) => {
   return (
     <Screen showBack>
       <View style={styles.container}>
-        {/* Tab switcher */}
         <View style={styles.tabs}>
           <TabButton
             label="Map"
@@ -153,8 +279,9 @@ const GlobalMapScreen = ({ navigation, route }) => {
 
         {activeTab === "map" ? (
           <MapView style={styles.map} region={mapRegion} showsUserLocation>
-            {caches.map((cache) => {
+            {(caches || []).map((cache) => {
               const found = foundCacheIds.includes(cache.CacheID);
+              const selected = selectedCacheId === cache.CacheID;
               return (
                 <Marker
                   key={cache.CacheID}
@@ -164,11 +291,35 @@ const GlobalMapScreen = ({ navigation, route }) => {
                   }}
                   title={cache.CacheName}
                   description={`${cache.CachePoints ?? 0} pts${found ? " · Found" : ""}`}
-                  pinColor={found ? "#22c55e" : "#ef4444"}
-                  onCalloutPress={() => handleCacheSelect(cache)}
+                  pinColor={found ? "#22c55e" : selected ? "#f59e0b" : "#ef4444"}
+                  onPress={() => setSelectedCacheId(cache.CacheID)}
+                  onCalloutPress={() =>
+                    navigation.navigate("GlobalCacheViewScreen", {
+                      cache,
+                      isFound: found,
+                    })
+                  }
                 />
               );
             })}
+
+            {claimTarget ? (
+              <Circle
+                center={claimTarget.coordinates}
+                radius={GLOBAL_CLAIM_DISTANCE_METERS}
+                fillColor="rgba(245, 158, 11, 0.12)"
+                strokeColor="rgba(245, 158, 11, 0.8)"
+              />
+            ) : null}
+
+            {userLocation && heading !== null && heading !== undefined ? (
+              <Polygon
+                coordinates={getFovCone(userLocation, heading)}
+                fillColor="rgba(66,133,244,0.28)"
+                strokeColor="rgba(66,133,244,0.50)"
+                strokeWidth={1}
+              />
+            ) : null}
           </MapView>
         ) : (
           <CacheList
@@ -178,9 +329,17 @@ const GlobalMapScreen = ({ navigation, route }) => {
           />
         )}
 
+        <ClaimTimerView
+          cache={claimTarget}
+          isClaiming={isClaiming}
+          onClaimSuccess={handleClaim}
+          showClaimedPopup={claimedPopupVisible}
+        />
+
         <ButtonTray>
+          <Button label="Details" onClick={handleOpenSelectedCache} disabled={!selectedCacheId} />
           <Button label="Leaderboard" onClick={handleGotoLeaderboard} />
-          <Button label="Refresh" onClick={loadData} />
+          <Button label="Refresh" onClick={() => loadData({forceRefresh: true})} />
         </ButtonTray>
       </View>
     </Screen>

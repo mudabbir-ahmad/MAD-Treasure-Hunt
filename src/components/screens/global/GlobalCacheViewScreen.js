@@ -1,71 +1,31 @@
-import {useEffect, useState} from "react";
-import {ActivityIndicator, Alert, StyleSheet, Text, View} from "react-native";
+import {useEffect} from "react";
+import {StyleSheet, Text, View} from "react-native";
 import Screen from "../../layout/Screen";
 import {Button, ButtonTray} from "../../UI/Button";
 import Card from "../../UI/Card";
-import useGlobalHook from "../../../hooks/useGlobalHook";
 import {getSession} from "../../../hooks/SessionStore";
 import {GAME_MODE} from "../../../utils/gameConstants";
 
 const GlobalCacheViewScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
 
-  const { cache, isFound: initIsFound, onFindLogged } = route.params;
-  const { logFind } = useGlobalHook();
+  const { cache, isFound: initIsFound } = route.params;
   const session = getSession();
 
-  // State -------------------------------
-
-  const [isFound, setIsFound] = useState(initIsFound);
-  const [isLogging, setIsLogging] = useState(false);
-
   // Handlers ----------------------------
-
-  const handleLogFind = async () => {
-    if (!session.currentGlobalPlayerId) {
-      Alert.alert(
-        "Not joined",
-        "You must join the event before logging a find.",
-      );
-      return;
-    }
-
-    Alert.alert(
-      "Log Discovery",
-      `Record that you found "${cache.CacheName}" and earn ${cache.CachePoints ?? 0} points?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Log Find",
-          onPress: async () => {
-            setIsLogging(true);
-            const result = await logFind({
-              FindPlayerID: session.currentGlobalPlayerId,
-              FindCacheID: cache.CacheID,
-              FindDatetime: new Date().toISOString(),
-            });
-            setIsLogging(false);
-            if (result) {
-              setIsFound(true);
-              if (onFindLogged) onFindLogged();
-              Alert.alert(
-                "Discovery logged!",
-                `+${cache.CachePoints ?? 0} points earned.`,
-              );
-            } else {
-              Alert.alert("Error", "Could not log find. Please try again.");
-            }
-          },
-        },
-      ],
-    );
-  };
 
   useEffect(() => {
     if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
       navigation.replace("MapScreen");
     }
   }, [navigation, session.currentGameMode, session.isBusiness]);
+
+  const handleBackToMap = () => {
+    navigation.navigate("GlobalMapScreen", {
+      eventId: cache.CacheEventID ?? session.currentGlobalEventId,
+      selectedCacheId: cache.CacheID,
+    });
+  };
 
   // View --------------------------------
 
@@ -78,11 +38,11 @@ const GlobalCacheViewScreen = ({ navigation, route }) => {
           <View
             style={[
               styles.statusBadge,
-              isFound ? styles.badgeFound : styles.badgeOpen,
+              initIsFound ? styles.badgeFound : styles.badgeOpen,
             ]}
           >
             <Text style={styles.statusText}>
-              {isFound ? "Already Found" : "Not Yet Found"}
+              {initIsFound ? "Already Found" : "Not Yet Found"}
             </Text>
           </View>
 
@@ -104,23 +64,17 @@ const GlobalCacheViewScreen = ({ navigation, route }) => {
               <Text style={styles.value}>{cache.CacheClue}</Text>
             </View>
           ) : null}
+
+          {!initIsFound ? (
+            <Text style={styles.claimHint}>
+              Claim this cache from the Global Map while within 30m and facing it.
+            </Text>
+          ) : null}
         </Card>
 
-        {isLogging ? (
-          <ActivityIndicator size="large" />
-        ) : (
-          <ButtonTray>
-            {!isFound && (
-              <Button
-                label="Log Discovery"
-                onClick={handleLogFind}
-                styleButton={styles.logButton}
-                styleLabel={styles.logButtonLabel}
-              />
-            )}
-            <Button label="Back" onClick={() => navigation.goBack()} />
-          </ButtonTray>
-        )}
+        <ButtonTray>
+          <Button label="Back to Map" onClick={handleBackToMap} />
+        </ButtonTray>
       </View>
     </Screen>
   );
@@ -170,14 +124,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#111827",
   },
-  logButton: {
-    backgroundColor: "#16a34a",
-    borderColor: "#16a34a",
-    flex: 2,
-  },
-  logButtonLabel: {
-    color: "#fff",
-    fontWeight: "700",
+  claimHint: {
+    marginTop: 6,
+    color: "#2563eb",
+    fontSize: 13,
+    fontWeight: "600",
   },
 });
 

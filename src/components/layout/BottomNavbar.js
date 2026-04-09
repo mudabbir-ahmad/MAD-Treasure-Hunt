@@ -92,10 +92,22 @@ const BottomNavbar = ({navigation, routeName, routeParams}) => {
     ...(inGame ? [{label: 'Leave', route: '__leave__', onPress: handleLeaveGame}] : []),
   ];
 
+  const globalEventParams = session.currentGlobalEventId
+    ? {eventId: session.currentGlobalEventId}
+    : undefined;
+
   const globalTabs = [
     {label: 'Events', route: 'GlobalEventsScreen', onPress: () => navigation.navigate('GlobalEventsScreen')},
-    {label: 'Map', route: 'GlobalMapScreen', onPress: () => navigation.navigate('GlobalMapScreen')},
-    {label: 'Leaderboard', route: 'GlobalLeaderboardScreen', onPress: () => navigation.navigate('GlobalLeaderboardScreen')},
+    {
+      label: 'Map',
+      route: 'GlobalMapScreen',
+      onPress: () => navigation.navigate('GlobalMapScreen', globalEventParams),
+    },
+    {
+      label: 'Leaderboard',
+      route: 'GlobalLeaderboardScreen',
+      onPress: () => navigation.navigate('GlobalLeaderboardScreen', globalEventParams),
+    },
     {label: 'Exit', route: '__exit_global__', onPress: handleExitGlobal},
   ];
 

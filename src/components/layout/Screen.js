@@ -25,12 +25,14 @@ const Screen = ({children, style, showBack = false}) => {
     GlobalMapScreen: 'Global Map',
     GlobalCacheViewScreen: 'Cache Details',
     GlobalLeaderboardScreen: 'Global Leaderboard',
+    GlobalProfileScreen: 'Global Profile',
   };
 
   //   State ----------------------
 
   const routeName = route.name;
   const isAuthScreen = routeName === 'LoginScreen' || routeName === 'RegisterScreen';
+  const isGlobalRoute = routeName.startsWith('Global');
   const pageTitle = titleMap[routeName] || 'Treasure Hunt';
 
   //   Handlers -------------------
@@ -50,6 +52,7 @@ const Screen = ({children, style, showBack = false}) => {
         <TopNavbar
           title={pageTitle}
           showBack={showBack}
+          showProfile={isGlobalRoute}
           navigation={navigation}
         />
       )}
