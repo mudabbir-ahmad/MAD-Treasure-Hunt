@@ -10,7 +10,8 @@ const PlayersScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser, getAdminWaitlist, approveAdmin, rejectAdmin} = useGameHook();
+    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser, getAdminWaitlist, approveAdmin, rejectAdmin, getSubgroups} = useGameHook();
+    const isBusiness = Boolean(session.isBusiness);
 
 //   State ----------------------
 
@@ -21,6 +22,15 @@ const PlayersScreen = () => {
 
     const loadData = useCallback(async () => {
         if (!session.currentGid) { setLoading(false); return; }
+
+        // Load subgroup names for department display (business accounts)
+        let subgroupNameMap = {};
+        if (isBusiness) {
+            const sgs = await getSubgroups(session.currentGid);
+            for (const sg of (sgs || [])) {
+                if (!sg.IsAdminGroup) subgroupNameMap[sg.SGid] = sg.SubGroupName;
+            }
+        }
 
         // Get ALL members (including admins)
         const allMembers = await getGroupMembers(session.currentGid);
@@ -73,6 +83,7 @@ const PlayersScreen = () => {
                     team: teamInfoByUid[m.Uid] || null,
                     adminTag,
                     waitlistId,
+                    departmentName: subgroupNameMap[m.SGid] || null,
                 });
             }
         }
@@ -89,6 +100,7 @@ const PlayersScreen = () => {
                     team: null,
                     adminTag: '[Admin Awaiting Response]',
                     waitlistId: w.id,
+                    departmentName: null,
                 });
             }
         }
@@ -165,6 +177,12 @@ const PlayersScreen = () => {
                                 {player.adminTag && (
                                     <Text style={player.adminTag === '[ADMIN]' ? styles.adminBadge : styles.waitlistBadge}>
                                         {' '}{player.adminTag}
+                                    </Text>
+                                )}
+                                {/* Show department name in brackets for non-admin players (org accounts) */}
+                                {!player.adminTag && player.departmentName && (
+                                    <Text style={styles.departmentName}>
+                                        {' '}({player.departmentName})
                                     </Text>
                                 )}
                             </Text>
@@ -255,6 +273,7 @@ const styles = StyleSheet.create({
     resetButton: {backgroundColor: '#f59e0b', borderColor: '#f59e0b', minHeight: 36, flex: 1, paddingHorizontal: 10},
     removeButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 1, paddingHorizontal: 10},
     actionLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    departmentName: {fontSize: 14, color: '#6b7280', fontStyle: 'italic'},
     // Waitlisted admin card tint — light red so they read as pending, not regular players
     waitlistCard: {backgroundColor: '#FFD1DC', borderColor: '#fca5a5'},
     // Approve / deny buttons for waitlisted admins

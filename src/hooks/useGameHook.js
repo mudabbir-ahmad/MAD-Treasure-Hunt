@@ -175,9 +175,11 @@ const useGameHook = () => {
     return response.isSuccess;
   };
 
-  // Game reset — remove all caches for a game
-  const resetGame = async (gid) => {
-    const response = await API.post(`${cachesEndpoint}/reset?Gid=${gid}`, {});
+  // Game reset — remove all caches for a game (optionally scoped to a subgroup)
+  const resetGame = async (gid, sgid = null) => {
+    let url = `${cachesEndpoint}/reset?Gid=${gid}`;
+    if (sgid !== null) url += `&SGid=${sgid}`;
+    const response = await API.post(url, {});
     return response.isSuccess;
   };
 

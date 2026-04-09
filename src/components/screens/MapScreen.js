@@ -42,7 +42,7 @@ const MapScreen = ({navigation}) => {
     const [subgroups, setSubgroups] = useState([]);
 
     // Business join flow state
-    const [joinStep, setJoinStep] = useState(null); // null | 'orgCode' | 'deptCode'
+    const [joinStep, setJoinStep] = useState(null); // null | 'deptCode'
     const [orgCode, setOrgCode] = useState('');
     const [deptCode, setDeptCode] = useState('');
     const [matchedGroup, setMatchedGroup] = useState(null);
@@ -365,7 +365,7 @@ const MapScreen = ({navigation}) => {
                         <ButtonTray>
                             <Button
                                 label="Back"
-                                onClick={() => { setJoinStep('orgCode'); setDeptCode(''); setJoinError(''); }}
+                                onClick={() => { setJoinStep(null); setDeptCode(''); setJoinError(''); }}
                                 styleButton={styles.backButton}
                                 styleLabel={styles.backLabel}
                             />
@@ -375,48 +375,28 @@ const MapScreen = ({navigation}) => {
             );
         }
 
-        // Step 1: Enter org code (or choose create / join)
-        if (joinStep === 'orgCode') {
-            return (
-                <Screen style={styles.center}>
-                    <Text style={styles.bizTitle}>Join a Company</Text>
-                    <Text style={styles.bizSubtitle}>Enter the organisation code provided by your company</Text>
-                    <View style={styles.inputRow}>
-                        <TextInput
-                            style={styles.codeInput}
-                            placeholder="Organisation Code"
-                            placeholderTextColor="#9ca3af"
-                            value={orgCode}
-                            onChangeText={(text) => setOrgCode(text.toUpperCase())}
-                            autoCapitalize="characters"
-                        />
-                        <Button
-                            label="Next"
-                            onClick={handleVerifyOrgCode}
-                            styleButton={styles.joinButton}
-                            styleLabel={styles.joinLabel}
-                        />
-                    </View>
-                    {joinError ? <Text style={styles.joinError}>{joinError}</Text> : null}
-                    <View style={styles.fullRow}>
-                        <ButtonTray>
-                            <Button
-                                label="Back"
-                                onClick={() => { setJoinStep(null); setOrgCode(''); setJoinError(''); }}
-                                styleButton={styles.backButton}
-                                styleLabel={styles.backLabel}
-                            />
-                        </ButtonTray>
-                    </View>
-                </Screen>
-            );
-        }
-
-        // Default: Create company or Join company choice
+        // Default: Join company or Create company choice
         return (
             <Screen style={styles.center}>
                 <Text style={styles.bizTitle}>Welcome</Text>
                 <Text style={styles.bizSubtitle}>Set up your organisation or join an existing one</Text>
+                <View style={styles.inputRow}>
+                    <TextInput
+                        style={styles.codeInput}
+                            placeholder="Company Code"
+                        placeholderTextColor="#9ca3af"
+                        value={orgCode}
+                        onChangeText={(text) => setOrgCode(text.toUpperCase())}
+                        autoCapitalize="characters"
+                    />
+                    <Button
+                        label="Join Company"
+                        onClick={handleVerifyOrgCode}
+                        styleButton={styles.joinButton}
+                        styleLabel={styles.joinLabel}
+                    />
+                </View>
+                {joinError ? <Text style={styles.joinError}>{joinError}</Text> : null}
                 <View style={styles.fullRow}>
                     <ButtonTray>
                         <Button
@@ -424,16 +404,6 @@ const MapScreen = ({navigation}) => {
                             onClick={handleCreateCompany}
                             styleButton={styles.createButton}
                             styleLabel={styles.createLabel}
-                        />
-                    </ButtonTray>
-                </View>
-                <View style={styles.fullRow}>
-                    <ButtonTray>
-                        <Button
-                            label="Join Company"
-                            onClick={() => setJoinStep('orgCode')}
-                            styleButton={styles.joinButton}
-                            styleLabel={styles.joinLabel}
                         />
                     </ButtonTray>
                 </View>

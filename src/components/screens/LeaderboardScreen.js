@@ -6,12 +6,14 @@ import {Button} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession} from '../../hooks/SessionStore';
 
-const LeaderboardScreen = () => {
+const LeaderboardScreen = ({navigation, route}) => {
 //   Initialisation ------------
 
     const session = getSession();
     const isAdmin = session.isAcceptedAdmin;
-    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress, resetTeamProgress} = useGameHook();
+    const isBusiness = Boolean(session.isBusiness);
+    const selectedDepartment = route?.params?.department || null;
+    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress, resetTeamProgress, getSubgroups} = useGameHook();
 
 //   State ----------------------
 
@@ -23,6 +25,7 @@ const LeaderboardScreen = () => {
     const [myTeamRanking, setMyTeamRanking] = useState([]);
     const [expandedTeam, setExpandedTeam] = useState(null);
     const [totalCacheCount, setTotalCacheCount] = useState(0);
+    const [departmentList, setDepartmentList] = useState([]);
 
 //   Handlers -------------------
 
@@ -33,7 +36,18 @@ const LeaderboardScreen = () => {
         const isTeams = Boolean(group?.TeamsEnabled);
         setTeamsEnabled(isTeams);
 
-        const caches = await getCaches(session.currentGid, null);
+        if (isBusiness && isAdmin && !selectedDepartment) {
+            const sgs = await getSubgroups(session.currentGid);
+            setDepartmentList((sgs || []).filter((sg) => !sg.IsAdminGroup));
+            setLoading(false);
+            return;
+        }
+
+        const leaderboardSGid = (isBusiness && isAdmin && selectedDepartment?.SGid)
+            ? selectedDepartment.SGid
+            : null;
+
+        const caches = await getCaches(session.currentGid, leaderboardSGid);
         const total = (caches || []).length;
         setTotalCacheCount(total);
 
@@ -42,7 +56,11 @@ const LeaderboardScreen = () => {
             const teams = await getTeams(session.currentGid);
             const teamData = [];
 
-            for (const team of (teams || [])) {
+            const scopedTeams = leaderboardSGid
+                ? (teams || []).filter((team) => !team.SGid || team.SGid === leaderboardSGid)
+                : (teams || []);
+
+            for (const team of scopedTeams) {
                 const members = await getTeamMembers(team.Tid);
                 const memberData = [];
                 for (const m of (members || [])) {
@@ -81,8 +99,11 @@ const LeaderboardScreen = () => {
         } else {
             // Build player rankings (no teams)
             const allMembers = await getGroupMembers(session.currentGid);
+            const scopedMembers = leaderboardSGid
+                ? (allMembers || []).filter((mem) => mem.SGid === leaderboardSGid)
+                : (allMembers || []);
             const playerData = [];
-            for (const m of (allMembers || []).filter((mem) => !mem.IsAcceptedAdmin)) {
+            for (const m of scopedMembers.filter((mem) => !mem.IsAcceptedAdmin)) {
                 const user = await getUser(m.Uid);
                 const count = (caches || []).filter((c) =>
                     (c.Claims || []).some((cl) => cl.Uid === m.Uid)
@@ -98,7 +119,7 @@ const LeaderboardScreen = () => {
         }
 
         setLoading(false);
-    }, [session.currentGid, session.currentTid]);
+    }, [session.currentGid, session.currentTid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -162,6 +183,32 @@ const LeaderboardScreen = () => {
         return (
             <Screen style={styles.center}>
                 <Text style={styles.body}>Join a game to view the leaderboard.</Text>
+            </Screen>
+        );
+    }
+
+    if (isBusiness && isAdmin && !selectedDepartment) {
+        return (
+            <Screen style={styles.container}>
+                <Text style={styles.departmentTitle}>Departments</Text>
+                <ScrollView style={styles.listSection}>
+                    {departmentList.map((department) => (
+                        <Pressable
+                            key={department.SGid}
+                            onPress={() => navigation.navigate('LeaderboardScreen', {department})}
+                        >
+                            <Card>
+                                <View style={styles.rankRow}>
+                                    <Text style={styles.rankName}>{department.SubGroupName}</Text>
+                                    <Text style={styles.openLabel}>Open</Text>
+                                </View>
+                            </Card>
+                        </Pressable>
+                    ))}
+                    {departmentList.length === 0 && (
+                        <Text style={styles.emptyText}>No departments yet.</Text>
+                    )}
+                </ScrollView>
             </Screen>
         );
     }
@@ -269,7 +316,10 @@ const LeaderboardScreen = () => {
         // Teams enabled: show team list (no tabs for admin)
         if (teamsEnabled) {
             return (
-                <Screen style={styles.container}>
+                <Screen style={styles.container} showBack={Boolean(selectedDepartment)}>
+                    {selectedDepartment && (
+                        <Text style={styles.departmentTitle}>{selectedDepartment.SubGroupName}</Text>
+                    )}
                     <ScrollView style={styles.listSection}>
                         {teamRankings.map((team, index) => renderAdminTeamCard(team, index))}
                         {teamRankings.length === 0 && (
@@ -282,7 +332,10 @@ const LeaderboardScreen = () => {
 
         // Teams disabled: show player list with reset buttons
         return (
-            <Screen style={styles.container}>
+            <Screen style={styles.container} showBack={Boolean(selectedDepartment)}>
+                {selectedDepartment && (
+                    <Text style={styles.departmentTitle}>{selectedDepartment.SubGroupName}</Text>
+                )}
                 <ScrollView style={styles.listSection}>
                     {playerRankings.map((player, index) => renderAdminPlayerCard(player, index))}
                     {playerRankings.length === 0 && (
@@ -361,6 +414,8 @@ const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     container: {padding: 0},
     body: {color: '#4b5563', fontSize: 15},
+    departmentTitle: {fontSize: 20, fontWeight: '700', color: '#1f2937', paddingHorizontal: 15, paddingTop: 15, marginBottom: 6},
+    openLabel: {fontSize: 13, fontWeight: '700', color: '#2563eb'},
     tabRow: {
         flexDirection: 'row',
         borderBottomWidth: 1,

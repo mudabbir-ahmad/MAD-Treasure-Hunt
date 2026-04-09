@@ -10,7 +10,7 @@ const GameSettingsScreen = ({navigation}) => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getLobby, updateGroup, getSubgroups, createSubgroup, updateSubgroup, deleteSubgroup, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser, disbandTeams} = useGameHook();
+    const {getLobby, updateGroup, getSubgroups, createSubgroup, deleteSubgroup, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser, disbandTeams} = useGameHook();
     const isBusiness = Boolean(session.isBusiness);
 
 //   State ----------------------
@@ -209,24 +209,24 @@ const GameSettingsScreen = ({navigation}) => {
         return (
             <Screen>
                 <ScrollView contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>
-                    <Text style={styles.sectionTitle}>Business Settings</Text>
+                    <Text style={styles.sectionTitle}>Game Configuration :</Text>
 
-                    <Text style={styles.label}>Business Name</Text>
+                    <Text style={styles.label}>Organisation Name:</Text>
                     <TextInput
                         style={styles.input}
                         value={businessName}
                         onChangeText={setBusinessName}
-                        placeholder="Enter business name"
+                        placeholder="Enter organisation name"
                         placeholderTextColor="#9ca3af"
                     />
 
                     <View style={styles.codeSection}>
-                        <Text style={styles.codeLabel}>Admin Join Code</Text>
+                        <Text style={styles.codeLabel}>Admin join code:</Text>
                         <Text style={styles.codeValue}>{adminJoinCode || '—'}</Text>
                     </View>
 
                     <View style={styles.codeSection}>
-                        <Text style={styles.codeLabel}>Organisation Join Code</Text>
+                        <Text style={styles.codeLabel}>Org join code:</Text>
                         <Text style={styles.codeValue}>{orgJoinCode || '—'}</Text>
                     </View>
 
@@ -243,26 +243,35 @@ const GameSettingsScreen = ({navigation}) => {
 
                     {/* Departments List */}
                     <View style={styles.deptSection}>
-                        <Text style={styles.sectionTitle}>Departments</Text>
-                        {departments.map((sg) => (
+                        <Text style={styles.sectionTitle}>Departments:</Text>
+                        {departments.map((sg, index) => (
                             <Card key={sg.SGid}>
-                                <View style={styles.deptRow}>
-                                    <View style={styles.deptInfo}>
+                                <Text style={styles.deptIndexLabel}>Department {index + 1}:</Text>
+                                <View style={styles.deptCardRow}>
+                                    <View style={styles.deptCardInfo}>
+                                        <Text style={styles.deptInfoLabel}>Department Name</Text>
                                         <Text style={styles.deptName}>{sg.SubGroupName}</Text>
-                                        <Text style={styles.deptCode}>Join Code: {sg.JoinCode || '—'}</Text>
                                     </View>
-                                    <View style={styles.deptActions}>
+                                    <View style={styles.deptCardActions}>
                                         <Button
-                                            label="Delete"
+                                            label="Open Department Game Settings"
+                                            onClick={() => handleEnterDepartment(sg)}
+                                            styleButton={styles.deptOpenButton}
+                                            styleLabel={styles.deptBtnLabel}
+                                        />
+                                    </View>
+                                </View>
+                                <View style={styles.deptCardRow}>
+                                    <View style={styles.deptCardInfo}>
+                                        <Text style={styles.deptInfoLabel}>Department Join code</Text>
+                                        <Text style={styles.deptCode}>{sg.JoinCode || '—'}</Text>
+                                    </View>
+                                    <View style={styles.deptCardActions}>
+                                        <Button
+                                            label="Delete Department"
                                             onClick={() => handleDeleteDepartment(sg)}
                                             styleButton={styles.deptDeleteButton}
                                             styleLabel={styles.deptBtnLabel}
-                                        />
-                                        <Button
-                                            label="→"
-                                            onClick={() => handleEnterDepartment(sg)}
-                                            styleButton={styles.deptArrowButton}
-                                            styleLabel={styles.deptArrowLabel}
                                         />
                                     </View>
                                 </View>
@@ -475,15 +484,16 @@ const styles = StyleSheet.create({
     saveLabel: {color: '#ffffff', fontWeight: '600'},
     // Department / subgroup styles
     deptSection: {marginTop: 30},
-    deptRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'},
-    deptInfo: {flex: 1},
+    deptIndexLabel: {fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 8},
+    deptCardRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8},
+    deptCardInfo: {flex: 1, paddingRight: 10},
+    deptCardActions: {flexDirection: 'row', gap: 6, flex: 0},
+    deptInfoLabel: {fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 2},
     deptName: {fontSize: 15, fontWeight: '700', color: '#1f2937'},
     deptCode: {fontSize: 13, fontWeight: '600', color: '#2563eb', marginTop: 2, letterSpacing: 1},
-    deptActions: {flexDirection: 'row', gap: 6},
     deptDeleteButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 0, paddingHorizontal: 10},
+    deptOpenButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', minHeight: 36, flex: 0, paddingHorizontal: 10},
     deptBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
-    deptArrowButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', minHeight: 36, flex: 0, paddingHorizontal: 14},
-    deptArrowLabel: {color: '#ffffff', fontWeight: '700', fontSize: 18},
     createDeptRow: {flexDirection: 'row', gap: 10, marginTop: 12, alignItems: 'center'},
     createDeptButton: {backgroundColor: '#16a34a', borderColor: '#16a34a', flex: 0, paddingHorizontal: 16},
     createDeptLabel: {color: '#ffffff', fontWeight: '600'},

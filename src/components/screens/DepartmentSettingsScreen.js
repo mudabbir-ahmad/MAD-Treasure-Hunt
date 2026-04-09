@@ -60,7 +60,7 @@ const DepartmentSettingsScreen = ({route, navigation}) => {
                     text: 'Reset',
                     style: 'destructive',
                     onPress: async () => {
-                        await resetGame(Gid);
+                        await resetGame(Gid, SGid);
                         Alert.alert('Done', 'Department progress has been reset.');
                     },
                 },
