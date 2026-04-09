@@ -6,7 +6,7 @@ const useGameHook = () => {
   const usersEndpoint = `${API_BASE_URL}/users`;
   const groupsEndpoint = `${API_BASE_URL}/groups`;
   const subgroupsEndpoint = `${API_BASE_URL}/subgroups`;
-  const subgroupMembershipsEndpoint = `${API_BASE_URL}/subgroup-memberships`;
+  const subgroupMembersEndpoint = `${API_BASE_URL}/subgroup-members`;
   const teamsEndpoint = `${API_BASE_URL}/teams`;
   const teamMembersEndpoint = `${API_BASE_URL}/team-members`;
   const cachesEndpoint = `${API_BASE_URL}/caches`;
@@ -67,19 +67,19 @@ const useGameHook = () => {
     return response.isSuccess;
   };
 
-  // Subgroup memberships
+  // Subgroup members
   const joinPrivateGame = async (payload) => {
-    const response = await API.post(subgroupMembershipsEndpoint, payload);
+    const response = await API.post(subgroupMembersEndpoint, payload);
     return response.isSuccess ? response.result : null;
   };
 
   const getGroupMembers = async (gid) => {
-    const response = await API.get(`${subgroupMembershipsEndpoint}?Gid=${gid}`);
+    const response = await API.get(`${subgroupMembersEndpoint}?Gid=${gid}`);
     return response.isSuccess ? response.result : [];
   };
 
   const removeMember = async (membershipId) => {
-    const response = await API.delete(`${subgroupMembershipsEndpoint}/${membershipId}`);
+    const response = await API.delete(`${subgroupMembersEndpoint}/${membershipId}`);
     return response.isSuccess;
   };
 
@@ -125,7 +125,6 @@ const useGameHook = () => {
     return response.isSuccess;
   };
 
-  // Caches (standalone resource)
   const getCaches = async (gid, sgid = null) => {
     let url = `${cachesEndpoint}?Gid=${gid}`;
     if (sgid !== null) url += `&SGid=${sgid}`;
@@ -134,14 +133,7 @@ const useGameHook = () => {
   };
 
   const upsertCache = async (payload) => {
-    if (payload.cacheId) {
-      const response = await API.put(
-        `${cachesEndpoint}/${payload.cacheId}`,
-        payload,
-      );
-      return response.isSuccess ? response.result : null;
-    }
-    const response = await API.post(cachesEndpoint, {
+    const data = {
       Gid: payload.gid,
       SGid: payload.subgroupId,
       Title: payload.name,
@@ -149,11 +141,15 @@ const useGameHook = () => {
       Latitude: payload.latitude,
       Longitude: payload.longitude,
       TriggerMeters: payload.radius,
-    });
+    };
+    if (payload.cacheId) {
+      const response = await API.put(`${cachesEndpoint}/${payload.cacheId}`, data);
+      return response.isSuccess ? response.result : null;
+    }
+    const response = await API.post(cachesEndpoint, data);
     return response.isSuccess ? response.result : null;
   };
 
-  // Claim a cache — team-aware: prevents same team from claiming again
   const claimCache = async (payload) => {
     const response = await API.post(
       `${cachesEndpoint}/${payload.cacheId}/claim`,

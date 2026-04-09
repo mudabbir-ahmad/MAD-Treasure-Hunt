@@ -39,10 +39,10 @@ const BottomNavbar = ({navigation, routeName}) => {
                 style: 'destructive',
                 onPress: async () => {
                     const s = getSession();
-                    const endpoint = `${API_BASE_URL}/subgroup-memberships?Uid=${s.currentUid}&Gid=${s.currentGid}`;
+                    const endpoint = `${API_BASE_URL}/subgroup-members?Uid=${s.currentUid}&Gid=${s.currentGid}`;
                     const res = await API.get(endpoint);
                     if (res.isSuccess && res.result.length > 0) {
-                        await API.delete(`${API_BASE_URL}/subgroup-memberships/${res.result[0].id}`);
+                        await API.delete(`${API_BASE_URL}/subgroup-members/${res.result[0].id}`);
                     }
                     clearGameSession();
                     navigation.reset({index: 0, routes: [{name: 'Game'}]});
