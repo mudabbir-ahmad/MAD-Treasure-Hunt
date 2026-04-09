@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   item: {
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderColor: "lightgray",
+    borderColor: "#45475a",
     gap: 3,
   },
   row: {
@@ -47,18 +47,18 @@ const styles = StyleSheet.create({
   cacheName: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#111827",
+    color: "#cdd6f4",
     flex: 1,
     marginRight: 8,
   },
   points: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#16a34a",
+    color: "#a6e3a1",
   },
   meta: {
     fontSize: 12,
-    color: "#9ca3af",
+    color: "#a6adc8",
   },
 });
 

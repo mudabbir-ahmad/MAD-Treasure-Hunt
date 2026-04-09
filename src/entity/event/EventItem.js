@@ -53,11 +53,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 2,
     borderTopWidth: 1,
-    borderColor: "lightgray",
+    borderColor: "#45475a",
     gap: 4,
   },
   pressedItem: {
-    backgroundColor: "#f0f9ff",
+    backgroundColor: "#313244",
   },
   row: {
     flexDirection: "row",
@@ -67,17 +67,17 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 16,
     fontWeight: "600",
-    color: "#111827",
+    color: "#cdd6f4",
     flex: 1,
     marginRight: 8,
   },
   description: {
     fontSize: 13,
-    color: "#6b7280",
+    color: "#a6adc8",
   },
   meta: {
     fontSize: 12,
-    color: "#9ca3af",
+    color: "#a6adc8",
   },
   badge: {
     paddingHorizontal: 8,
@@ -85,15 +85,15 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   badgePublic: {
-    backgroundColor: "#dcfce7",
+    backgroundColor: "#1e3a2f",
   },
   badgePrivate: {
-    backgroundColor: "#f3f4f6",
+    backgroundColor: "#313244",
   },
   badgeText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#374151",
+    color: "#cdd6f4",
   },
 });
 
