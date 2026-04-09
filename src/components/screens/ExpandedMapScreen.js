@@ -82,6 +82,7 @@ const ExpandedMapScreen = ({route}) => {
             <View style={styles.mapWrap}>
                 <MapView
                     style={{flex: 1}}
+                    provider="google"
                     initialRegion={region}
                     showsUserLocation
                 >

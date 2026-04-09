@@ -18,6 +18,7 @@ const PlayerMapView = ({userLocation, visibleCaches, heading, claimDistance}) =>
     return (
         <MapView
             style={{flex: 1}}
+            provider="google"
             initialRegion={{...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01}}
             scrollEnabled={true}
             zoomEnabled={true}

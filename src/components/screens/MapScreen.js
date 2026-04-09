@@ -342,6 +342,7 @@ const MapScreen = ({navigation}) => {
                 <View style={styles.mapWrap}>
                     <MapView
                         style={{flex: 1}}
+                        provider="google"
                         initialRegion={newCoord ? {...newCoord, latitudeDelta: 0.01, longitudeDelta: 0.01} : mapRegion}
                         scrollEnabled={true}
                         zoomEnabled={true}
@@ -443,6 +444,7 @@ const MapScreen = ({navigation}) => {
                 <View style={styles.mapContainer}>
                     <MapView
                         style={{flex: 1}}
+                        provider="google"
                         initialRegion={mapRegion}
                         scrollEnabled={true}
                         zoomEnabled={true}
