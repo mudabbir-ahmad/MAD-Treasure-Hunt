@@ -19,7 +19,7 @@ const DEFAULT_REGION = {
   longitudeDelta: 0.05,
 };
 
-const GLOBAL_CLAIM_DISTANCE_METERS = 50;
+const GLOBAL_CLAIM_DISTANCE_METERS = 30;
 
 const GlobalMapScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
@@ -114,7 +114,9 @@ const GlobalMapScreen = ({ navigation, route }) => {
         return;
       }
 
-      const alreadyFound = foundCacheIds.includes(cacheId);
+      const alreadyFound = foundCacheIds.some(
+        (id) => String(id) === String(cacheId),
+      );
       if (alreadyFound) {
         setIsClaiming(false);
         return;
@@ -134,15 +136,14 @@ const GlobalMapScreen = ({ navigation, route }) => {
 
       if (result) {
         const cacheName = claimedCache?.CacheName || "Cache";
-        setFoundCacheIds((prev) =>
-          prev.includes(cacheId) ? prev : [...prev, cacheId],
-        );
-        setClaimedPopupMessage(`${cacheName} claimed! You gained +10 points.`);
+        const points = Number(claimedCache?.CachePoints ?? 0);
+        setClaimedPopupMessage(`${cacheName} claimed! You gained +${points} points.`);
         setClaimedPopupVisible(true);
         setTimeout(() => setClaimedPopupVisible(false), 3000);
+        await loadData({ forceRefresh: true });
       }
     },
-    [caches, foundCacheIds, session.currentGlobalPlayerId, setIsClaiming],
+    [caches, foundCacheIds, loadData, session.currentGlobalPlayerId, setIsClaiming],
   );
 
   const handleCacheSelect = (cache) => {
@@ -161,10 +162,6 @@ const GlobalMapScreen = ({ navigation, route }) => {
       eventId,
       isFound: foundCacheIds.includes(selected.CacheID),
     });
-  };
-
-  const handleGotoLeaderboard = () => {
-    navigation.navigate("GlobalLeaderboardScreen", { eventId });
   };
 
   useEffect(() => {
@@ -377,6 +374,7 @@ const GlobalMapScreen = ({ navigation, route }) => {
           showClaimedPopup={claimedPopupVisible}
           claimDurationSeconds={0}
           claimedPopupMessage={claimedPopupMessage}
+          autoClaim={false}
         />
 
         <ButtonTray>
@@ -385,7 +383,15 @@ const GlobalMapScreen = ({ navigation, route }) => {
             onClick={handleOpenSelectedCache}
             disabled={!selectedCacheId}
           />
-          <Button label="Leaderboard" onClick={handleGotoLeaderboard} />
+          <Button
+            label="Claim Cache"
+            onClick={() => {
+              if (claimTarget) {
+                handleClaim(claimTarget.id);
+              }
+            }}
+            disabled={!claimTarget || !session.currentGlobalPlayerId}
+          />
           <Button
             label="Refresh"
             onClick={() => loadData({ forceRefresh: true })}

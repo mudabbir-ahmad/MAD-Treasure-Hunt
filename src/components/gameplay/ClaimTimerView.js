@@ -9,6 +9,7 @@ const ClaimTimerView = ({
   showClaimedPopup,
   claimDurationSeconds = CACHE_CLAIM_TIMER,
   claimedPopupMessage = 'Cache Claimed!',
+  autoClaim = true,
 }) => {
   const [timeLeft, setTimeLeft] = useState(claimDurationSeconds);
   const onClaimRef = useRef(onClaimSuccess);
@@ -31,6 +32,10 @@ const ClaimTimerView = ({
       return () => clearTimeout(timer);
     }
 
+    if (!autoClaim) {
+      return () => clearTimeout(timer);
+    }
+
     if (claimDurationSeconds <= 0) {
       if (!hasClaimedRef.current) {
         hasClaimedRef.current = true;
@@ -47,7 +52,7 @@ const ClaimTimerView = ({
     }
 
     return () => clearTimeout(timer);
-  }, [claimDurationSeconds, cache, isClaiming, timeLeft]);
+  }, [autoClaim, claimDurationSeconds, cache, isClaiming, timeLeft]);
 
   if (showClaimedPopup) {
     return (

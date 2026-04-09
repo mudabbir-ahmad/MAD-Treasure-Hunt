@@ -1,11 +1,11 @@
-import { useCallback, useMemo } from "react";
+import {useCallback, useMemo} from "react";
 import API from "../components/API/API";
 import globalApiConfig from "../components/API/api.json";
 import {
-  clearGlobalDataCache,
-  clearGlobalDataCacheByPrefix,
-  getOrFetchGlobalData,
-  writeGlobalDataCache,
+    clearGlobalDataCache,
+    clearGlobalDataCacheByPrefix,
+    getOrFetchGlobalData,
+    writeGlobalDataCache,
 } from "../utils/globalDataCache";
 
 const GLOBAL_BASE = String(
@@ -303,7 +303,7 @@ const useGlobalHook = () => {
       if (!isGlobalApiReady()) return null;
       const response = await API.post(withKey(endpoints.finds), data);
       if (!response.isSuccess) return null;
-      const find = unwrapSingle(response.result);
+      const find = unwrapSingle(response.result) || { ...data };
       if (data?.FindPlayerID !== undefined && data?.FindPlayerID !== null) {
         clearGlobalDataCache(CACHE_KEY.findsByPlayer(data.FindPlayerID));
       }
