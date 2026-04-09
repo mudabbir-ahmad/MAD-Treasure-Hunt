@@ -5,15 +5,8 @@ import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
 
 const LoginScreen = ({ navigation }) => {
-//   Initialisation -------------
-
   const { email, password, error, isLoading, setEmail, setPassword, login } = useAuthHook();
-
-//   State ----------------------
-
   const [submitting, setSubmitting] = useState(false);
-
-//   Handlers -------------------
 
   const handleLogin = async () => {
     setSubmitting(true);
@@ -29,8 +22,6 @@ const LoginScreen = ({ navigation }) => {
     navigation.reset({ index: 0, routes: [{ name: 'Game' }] });
   };
 
-//   View -----------------------
-
   return (
     <Screen style={styles.container}>
       <View style={styles.content}>
@@ -39,7 +30,7 @@ const LoginScreen = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Email"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#6c7086"
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
@@ -49,7 +40,7 @@ const LoginScreen = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Password"
-          placeholderTextColor="#9ca3af"
+          placeholderTextColor="#6c7086"
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -87,33 +78,34 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: 10,
+    color: '#cdd6f4',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#45475a',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#1f2937',
-    backgroundColor: '#ffffff',
+    color: '#cdd6f4',
+    backgroundColor: '#313244',
   },
   errorText: {
-    color: '#dc2626',
+    color: '#f38ba8',
     textAlign: 'center',
     marginTop: 5,
   },
   submitButton: {
-    backgroundColor: '#2563eb',
-    borderColor: '#2563eb',
+    backgroundColor: '#89b4fa',
+    borderColor: '#89b4fa',
   },
   submitText: {
-    color: '#ffffff',
+    color: '#1e1e2e',
     fontWeight: '600',
   },
   linkText: {
     textAlign: 'center',
-    color: '#2563eb',
+    color: '#89b4fa',
     fontWeight: '600',
     paddingVertical: 10,
   },

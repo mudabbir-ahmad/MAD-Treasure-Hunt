@@ -90,8 +90,8 @@ const styles = StyleSheet.create({
     container: {
         minHeight: 64,
         borderTopWidth: 1,
-        borderTopColor: '#555555',
-        backgroundColor: '#4a4a4a',
+        borderTopColor: '#45475a',
+        backgroundColor: '#313244',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-around',
@@ -107,22 +107,22 @@ const styles = StyleSheet.create({
         marginHorizontal: 4,
     },
     tabActive: {
-        backgroundColor: '#5c5c5c',
+        backgroundColor: '#45475a',
     },
     tabLeave: {
-        backgroundColor: 'rgba(220,38,38,0.15)',
+        backgroundColor: 'rgba(243, 139, 168, 0.15)',
     },
     tabText: {
-        color: '#d1d5db',
+        color: '#bac2de',
         fontSize: 12,
         fontWeight: '600',
         textAlign: 'center',
     },
     tabTextActive: {
-        color: '#ffffff',
+        color: '#cdd6f4',
     },
     tabTextLeave: {
-        color: '#fca5a5',
+        color: '#f38ba8',
     },
 });
 

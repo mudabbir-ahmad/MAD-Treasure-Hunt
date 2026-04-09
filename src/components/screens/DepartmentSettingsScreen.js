@@ -5,39 +5,35 @@ import {Button, ButtonTray} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 
 const DepartmentSettingsScreen = ({route, navigation}) => {
-//   Initialisation ------------
+  const {SGid, Gid} = route.params;
+  const {getSubgroup, updateSubgroup, getCaches, resetGame} = useGameHook();
 
-    const {SGid, Gid} = route.params;
-    const {getSubgroup, updateSubgroup, getCaches, resetGame} = useGameHook();
-
-//   State ----------------------
-
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [deptName, setDeptName] = useState('');
-    const [joinCode, setJoinCode] = useState('');
-    const [teamsEnabled, setTeamsEnabled] = useState(false);
-    const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
-    const [cacheCount, setCacheCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [deptName, setDeptName] = useState('');
+  const [joinCode, setJoinCode] = useState('');
+  const [teamsEnabled, setTeamsEnabled] = useState(false);
+  const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
+  const [cacheCount, setCacheCount] = useState(0);
 
 //   Handlers -------------------
 
-    useEffect(() => {
-        const load = async () => {
-            const sg = await getSubgroup(SGid);
-            if (sg) {
-                setDeptName(sg.SubGroupName || '');
-                setJoinCode(sg.JoinCode || '');
-                setTeamsEnabled(Boolean(sg.TeamsEnabled));
-                setCacheTriggerMeters(String(sg.CacheTriggerMeters || 20));
-            }
-            // Load cache count for this department
-            const caches = await getCaches(Gid, SGid);
-            setCacheCount((caches || []).length);
-            setLoading(false);
-        };
-        load();
-    }, []);
+  useEffect(() => {
+    const load = async () => {
+      const sg = await getSubgroup(SGid);
+      if (sg) {
+        setDeptName(sg.SubGroupName || '');
+        setJoinCode(sg.JoinCode || '');
+        setTeamsEnabled(Boolean(sg.TeamsEnabled));
+        setCacheTriggerMeters(String(sg.CacheTriggerMeters || 20));
+      }
+      // Load cache count for this department
+      const caches = await getCaches(Gid, SGid);
+      setCacheCount((caches || []).length);
+      setLoading(false);
+    };
+    load();
+  }, []);
 
     const handleSave = async () => {
         setSaving(true);
@@ -167,17 +163,17 @@ const DepartmentSettingsScreen = ({route, navigation}) => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     formContainer: {paddingBottom: 20},
-    sectionTitle: {fontSize: 20, fontWeight: '700', color: '#1f2937', marginBottom: 16},
-    label: {fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 14},
+    sectionTitle: {fontSize: 20, fontWeight: '700', color: '#cdd6f4', marginBottom: 16},
+    label: {fontSize: 14, fontWeight: '600', color: '#bac2de', marginBottom: 6, marginTop: 14},
     input: {
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#45475a',
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
-        color: '#1f2937',
-        backgroundColor: '#ffffff',
+        color: '#cdd6f4',
+        backgroundColor: '#313244',
     },
     codeSection: {
         flexDirection: 'row',
@@ -186,11 +182,11 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingVertical: 12,
         paddingHorizontal: 12,
-        backgroundColor: '#f3f4f6',
+        backgroundColor: '#313244',
         borderRadius: 8,
     },
-    codeLabel: {fontSize: 14, fontWeight: '600', color: '#374151'},
-    codeValue: {fontSize: 16, fontWeight: '700', color: '#2563eb', letterSpacing: 2},
+    codeLabel: {fontSize: 14, fontWeight: '600', color: '#bac2de'},
+    codeValue: {fontSize: 16, fontWeight: '700', color: '#89b4fa', letterSpacing: 2},
     toggleRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -198,9 +194,9 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        borderBottomColor: '#45475a',
     },
-    toggleLabel: {fontSize: 14, fontWeight: '600', color: '#374151'},
+    toggleLabel: {fontSize: 14, fontWeight: '600', color: '#bac2de'},
     infoRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -208,20 +204,20 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingVertical: 12,
         paddingHorizontal: 12,
-        backgroundColor: '#f3f4f6',
+        backgroundColor: '#313244',
         borderRadius: 8,
     },
-    infoLabel: {fontSize: 14, fontWeight: '600', color: '#374151'},
-    infoValue: {fontSize: 16, fontWeight: '700', color: '#1f2937'},
+    infoLabel: {fontSize: 14, fontWeight: '600', color: '#bac2de'},
+    infoValue: {fontSize: 16, fontWeight: '700', color: '#cdd6f4'},
     saveWrap: {marginTop: 24},
-    saveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
-    saveLabel: {color: '#ffffff', fontWeight: '600'},
+    saveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1'},
+    saveLabel: {color: '#1e1e2e', fontWeight: '600'},
     mapWrap: {marginTop: 16},
-    mapButton: {backgroundColor: '#2563eb', borderColor: '#2563eb'},
-    mapLabel: {color: '#ffffff', fontWeight: '600'},
+    mapButton: {backgroundColor: '#89b4fa', borderColor: '#89b4fa'},
+    mapLabel: {color: '#1e1e2e', fontWeight: '600'},
     resetWrap: {marginTop: 30},
-    resetButton: {backgroundColor: '#dc2626', borderColor: '#dc2626'},
-    resetLabel: {color: '#ffffff', fontWeight: '600'},
+    resetButton: {backgroundColor: '#f38ba8', borderColor: '#f38ba8'},
+    resetLabel: {color: '#1e1e2e', fontWeight: '600'},
 });
 
 export default DepartmentSettingsScreen;

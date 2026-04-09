@@ -13,12 +13,12 @@ const Card = ({children, style}) => {
 
 const styles = StyleSheet.create({
     card: {
-        backgroundColor: '#ffffff',
+        backgroundColor: '#313244',
         borderRadius: 8,
         padding: 12,
         marginBottom: 8,
         borderWidth: 1,
-        borderColor: '#e5e7eb',
+        borderColor: '#45475a',
     },
 });
 

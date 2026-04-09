@@ -8,63 +8,58 @@ import useGameHook from '../../hooks/useGameHook';
 import {getSession, setSessionTeamsEnabled} from '../../hooks/SessionStore';
 
 const GameSettingsScreen = ({navigation}) => {
-//   Initialisation ------------
+  const session = getSession();
+  const {getLobby, updateGroup, getSubgroups, createSubgroup, deleteSubgroup, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser, disbandTeams} = useGameHook();
+  const gameApiRef = useRef({
+    getLobby,
+    getSubgroups,
+    getAdminWaitlist,
+    getUser,
+  });
+  gameApiRef.current = {
+    getLobby,
+    getSubgroups,
+    getAdminWaitlist,
+    getUser,
+  };
+  const isMountedRef = useRef(true);
+  const isRefreshingRef = useRef(false);
+  const hasHydratedRef = useRef(false);
 
-    const session = getSession();
-    const {getLobby, updateGroup, getSubgroups, createSubgroup, deleteSubgroup, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser, disbandTeams} = useGameHook();
-    const gameApiRef = useRef({
-        getLobby,
-        getSubgroups,
-        getAdminWaitlist,
-        getUser,
-    });
-    gameApiRef.current = {
-        getLobby,
-        getSubgroups,
-        getAdminWaitlist,
-        getUser,
-    };
-    const isMountedRef = useRef(true);
-    const isRefreshingRef = useRef(false);
-    const hasHydratedRef = useRef(false);
-
-//   State ----------------------
-
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [groupName, setGroupName] = useState('');
-    const [businessName, setBusinessName] = useState('');
-    const [teamsEnabled, setTeamsEnabled] = useState(session.teamsEnabled);
-    const [serverTeamsEnabled, setServerTeamsEnabled] = useState(session.teamsEnabled);
-    const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
-    const [adminJoinCode, setAdminJoinCode] = useState('');
-    const [orgJoinCode, setOrgJoinCode] = useState('');
-    const [memberJoinCode, setMemberJoinCode] = useState('');
-    const [waitlist, setWaitlist] = useState([]);
-    const [waitlistNames, setWaitlistNames] = useState({});
-    const [isBusinessGroup, setIsBusinessGroup] = useState(Boolean(session.isBusiness));
-    // Business subgroup management
-    const [subgroupList, setSubgroupList] = useState([]);
-    const [newDeptName, setNewDeptName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [teamsEnabled, setTeamsEnabled] = useState(session.teamsEnabled);
+  const [serverTeamsEnabled, setServerTeamsEnabled] = useState(session.teamsEnabled);
+  const [cacheTriggerMeters, setCacheTriggerMeters] = useState('20');
+  const [adminJoinCode, setAdminJoinCode] = useState('');
+  const [orgJoinCode, setOrgJoinCode] = useState('');
+  const [memberJoinCode, setMemberJoinCode] = useState('');
+  const [waitlist, setWaitlist] = useState([]);
+  const [waitlistNames, setWaitlistNames] = useState({});
+  const [isBusinessGroup, setIsBusinessGroup] = useState(Boolean(session.isBusiness));
+  const [subgroupList, setSubgroupList] = useState([]);
+  const [newDeptName, setNewDeptName] = useState('');
 
 //   Handlers -------------------
 
-    useEffect(() => () => {
-        isMountedRef.current = false;
-    }, []);
+  useEffect(() => () => {
+    isMountedRef.current = false;
+  }, []);
 
-    const refreshSettings = useCallback(async ({showLoader = false} = {}) => {
-        const activeSession = getSession();
-        if (!activeSession.currentGid) {
-            if (isMountedRef.current) setLoading(false);
-            return;
-        }
+  const refreshSettings = useCallback(async ({showLoader = false} = {}) => {
+    const activeSession = getSession();
+    if (!activeSession.currentGid) {
+      if (isMountedRef.current) setLoading(false);
+      return;
+    }
 
-        // Guard against re-entrant focus refresh calls.
-        if (isRefreshingRef.current) return;
-        isRefreshingRef.current = true;
+    // Guard against re-entrant focus refresh calls.
+    if (isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
 
-        if (showLoader && isMountedRef.current) setLoading(true);
+    if (showLoader && isMountedRef.current) setLoading(true);
 
         try {
             const [group, sgs, waitlistRows] = await Promise.all([
@@ -78,7 +73,7 @@ const GameSettingsScreen = ({navigation}) => {
             if (group) {
                 setGroupName(group.GroupName || '');
                 setBusinessName(group.BusinessOrSchoolName || '');
-                // Organisation mode is based on organisation profile data, not generic org join code presence.
+                // Organisation mode
                 setIsBusinessGroup(Boolean(group.BusinessOrSchoolName));
 
                 const serverTeams = Boolean(group.TeamsEnabled);
@@ -487,18 +482,18 @@ const GameSettingsScreen = ({navigation}) => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     formContainer: {paddingBottom: 20},
-    sectionTitle: {fontSize: 20, fontWeight: '700', color: '#1f2937', marginBottom: 16},
-    label: {fontSize: 14, fontWeight: '600', color: '#374151', marginBottom: 6, marginTop: 14},
-    body: {color: '#4b5563', fontSize: 15},
+    sectionTitle: {fontSize: 20, fontWeight: '700', color: '#cdd6f4', marginBottom: 16},
+    label: {fontSize: 14, fontWeight: '600', color: '#bac2de', marginBottom: 6, marginTop: 14},
+    body: {color: '#bac2de', fontSize: 15},
     input: {
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#45475a',
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
-        color: '#1f2937',
-        backgroundColor: '#ffffff',
+        color: '#cdd6f4',
+        backgroundColor: '#313244',
     },
     toggleRow: {
         flexDirection: 'row',
@@ -507,9 +502,9 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingVertical: 10,
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        borderBottomColor: '#45475a',
     },
-    toggleLabel: {fontSize: 14, fontWeight: '600', color: '#374151'},
+    toggleLabel: {fontSize: 14, fontWeight: '600', color: '#bac2de'},
     codeSection: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -517,47 +512,44 @@ const styles = StyleSheet.create({
         marginTop: 16,
         paddingVertical: 12,
         paddingHorizontal: 12,
-        backgroundColor: '#f3f4f6',
+        backgroundColor: '#313244',
         borderRadius: 8,
     },
-    codeLabel: {fontSize: 14, fontWeight: '600', color: '#374151'},
-    codeValue: {fontSize: 16, fontWeight: '700', color: '#2563eb', letterSpacing: 2},
+    codeLabel: {fontSize: 14, fontWeight: '600', color: '#bac2de'},
+    codeValue: {fontSize: 16, fontWeight: '700', color: '#89b4fa', letterSpacing: 2},
     saveWrap: {marginTop: 24},
-    saveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
-    saveLabel: {color: '#ffffff', fontWeight: '600'},
-    // Department / subgroup styles
+    saveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1'},
+    saveLabel: {color: '#1e1e2e', fontWeight: '600'},
     deptSection: {marginTop: 30},
-    deptIndexLabel: {fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 8},
+    deptIndexLabel: {fontSize: 14, fontWeight: '700', color: '#bac2de', marginBottom: 8},
     deptCardRow: {flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8},
     deptCardInfo: {flex: 1, paddingRight: 10},
     deptCardActions: {flexDirection: 'row', gap: 6, flex: 0},
-    deptInfoLabel: {fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 2},
-    deptName: {fontSize: 15, fontWeight: '700', color: '#1f2937'},
-    deptCode: {fontSize: 13, fontWeight: '600', color: '#2563eb', marginTop: 2, letterSpacing: 1},
-    deptDeleteButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 0, paddingHorizontal: 10},
-    deptOpenButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', minHeight: 36, flex: 0, paddingHorizontal: 10},
-    deptBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    deptInfoLabel: {fontSize: 12, fontWeight: '600', color: '#6c7086', marginBottom: 2},
+    deptName: {fontSize: 15, fontWeight: '700', color: '#cdd6f4'},
+    deptCode: {fontSize: 13, fontWeight: '600', color: '#89b4fa', marginTop: 2, letterSpacing: 1},
+    deptDeleteButton: {backgroundColor: '#f38ba8', borderColor: '#f38ba8', minHeight: 36, flex: 0, paddingHorizontal: 10},
+    deptOpenButton: {backgroundColor: '#89b4fa', borderColor: '#89b4fa', minHeight: 36, flex: 0, paddingHorizontal: 10},
+    deptBtnLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
     createDeptRow: {flexDirection: 'row', gap: 10, marginTop: 12, alignItems: 'center'},
-    createDeptButton: {backgroundColor: '#16a34a', borderColor: '#16a34a', flex: 0, paddingHorizontal: 16},
-    createDeptLabel: {color: '#ffffff', fontWeight: '600'},
-    emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 10, fontSize: 14},
-    // Admin waitlist styles
+    createDeptButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1', flex: 0, paddingHorizontal: 16},
+    createDeptLabel: {color: '#1e1e2e', fontWeight: '600'},
+    emptyText: {color: '#6c7086', textAlign: 'center', marginTop: 10, fontSize: 14},
     waitlistSection: {marginTop: 30},
     waitlistRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    waitlistName: {fontSize: 15, fontWeight: '600', color: '#1f2937', flex: 1},
+    waitlistName: {fontSize: 15, fontWeight: '600', color: '#cdd6f4', flex: 1},
     waitlistActions: {flexDirection: 'row', gap: 6},
-    approveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a', minHeight: 36, flex: 0, paddingHorizontal: 10},
-    approveBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
-    rejectButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 0, paddingHorizontal: 10},
-    rejectBtnLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
-    // Reset game styles
+    approveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1', minHeight: 36, flex: 0, paddingHorizontal: 10},
+    approveBtnLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
+    rejectButton: {backgroundColor: '#f38ba8', borderColor: '#f38ba8', minHeight: 36, flex: 0, paddingHorizontal: 10},
+    rejectBtnLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
     resetSection: {marginTop: 30},
-    resetButton: {backgroundColor: '#dc2626', borderColor: '#dc2626'},
-    resetLabel: {color: '#ffffff', fontWeight: '600'},
+    resetButton: {backgroundColor: '#f38ba8', borderColor: '#f38ba8'},
+    resetLabel: {color: '#1e1e2e', fontWeight: '600'},
 });
 
 export default GameSettingsScreen;

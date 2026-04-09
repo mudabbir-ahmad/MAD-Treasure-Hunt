@@ -17,63 +17,59 @@ const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.
 
 
 const MapScreen = ({navigation, route}) => {
-//   Initialisation ------------
+  const session = getSession();
+  const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
 
-    const session = getSession();
-    const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
+  // Stable ref to prevent infinite re-render loops
+  const getCachesRef = useRef(getCaches);
+  getCachesRef.current = getCaches;
+  const lastAppliedRouteDepartmentRef = useRef(null);
 
-    // Stable ref to prevent infinite re-render loops
-    const getCachesRef = useRef(getCaches);
-    getCachesRef.current = getCaches;
-    const lastAppliedRouteDepartmentRef = useRef(null);
+  const [inGame, setInGame] = useState(Boolean(session.currentGid));
+  const [isAdmin, setIsAdmin] = useState(session.isAcceptedAdmin);
+  const [userLocation, setUserLocation] = useState(null);
+  const [heading, setHeading] = useState(null);
+  const [playerLoading, setPlayerLoading] = useState(true);
+  const [cacheRecords, setCacheRecords] = useState([]);
+  const [error, setError] = useState('');
+  const [gameCode, setGameCode] = useState('');
+  const [groupInfo, setGroupInfo] = useState(null);
+  const [selectedCacheId, setSelectedCacheIdState] = useState(session.selectedCacheId);
+  const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
+  const [subgroups, setSubgroups] = useState([]);
 
-//   State ----------------------
+  // Business join flow state
+  const [joinStep, setJoinStep] = useState(null);
+  const [orgCode, setOrgCode] = useState('');
+  const [deptCode, setDeptCode] = useState('');
+  const [matchedGroup, setMatchedGroup] = useState(null);
+  const [joinError, setJoinError] = useState('');
 
-    const [inGame, setInGame] = useState(Boolean(session.currentGid));
-    const [isAdmin, setIsAdmin] = useState(session.isAcceptedAdmin);
-    const [userLocation, setUserLocation] = useState(null);
-    const [heading, setHeading] = useState(null);
-    const [playerLoading, setPlayerLoading] = useState(true);
-    const [cacheRecords, setCacheRecords] = useState([]);
-    const [error, setError] = useState('');
-    const [gameCode, setGameCode] = useState('');
-    const [groupInfo, setGroupInfo] = useState(null);
-    const [selectedCacheId, setSelectedCacheIdState] = useState(session.selectedCacheId);
-    const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
-    const [subgroups, setSubgroups] = useState([]);
+  // Admin cache creation / editing state
+  const [isCreating, setIsCreating] = useState(false);
+  const [editingCacheId, setEditingCacheId] = useState(null);
+  const [newCoord, setNewCoord] = useState(null);
+  const [newName, setNewName] = useState('');
+  const [newClue, setNewClue] = useState('');
+  const [selectedCacheSubgroupId, setSelectedCacheSubgroupId] = useState(null);
+  const [departmentDropdownOpen, setDepartmentDropdownOpen] = useState(false);
 
-    // Business join flow state
-    const [joinStep, setJoinStep] = useState(null); // null | 'deptCode'
-    const [orgCode, setOrgCode] = useState('');
-    const [deptCode, setDeptCode] = useState('');
-    const [matchedGroup, setMatchedGroup] = useState(null);
-    const [joinError, setJoinError] = useState('');
+  const claimDistance = groupInfo?.CacheTriggerMeters || 20;
+  const isPlayer = inGame && !isAdmin;
+  const requiresTeam = Boolean(isPlayer && groupInfo?.TeamsEnabled && !session.currentTid);
+  const EMPTY_CACHES = useMemo(() => [], []);
 
-    // Admin cache creation / editing state
-    const [isCreating, setIsCreating] = useState(false);
-    const [editingCacheId, setEditingCacheId] = useState(null);
-    const [newCoord, setNewCoord] = useState(null);
-    const [newName, setNewName] = useState('');
-    const [newClue, setNewClue] = useState('');
-    const [selectedCacheSubgroupId, setSelectedCacheSubgroupId] = useState(null);
-    const [departmentDropdownOpen, setDepartmentDropdownOpen] = useState(false);
-
-    const claimDistance = groupInfo?.CacheTriggerMeters || 20;
-    const isPlayer = inGame && !isAdmin;
-    const requiresTeam = Boolean(isPlayer && groupInfo?.TeamsEnabled && !session.currentTid);
-    const EMPTY_CACHES = useMemo(() => [], []);
-
-    // Caches not yet claimed by the current user's team (or user if no team)
-    const activeCachesForPlayer = useMemo(() => {
-        if (!isPlayer) return EMPTY_CACHES;
-        return cacheRecords.filter((cache) => {
-            const claims = cache.Claims || [];
-            if (session.currentTid) {
-                return !claims.some((c) => c.Tid === session.currentTid);
-            }
-            return !claims.some((c) => c.Uid === session.currentUid);
-        });
-    }, [cacheRecords, isPlayer, session.currentTid, session.currentUid, EMPTY_CACHES]);
+  // Caches not yet claimed by the current user's team (or user if no team)
+  const activeCachesForPlayer = useMemo(() => {
+    if (!isPlayer) return EMPTY_CACHES;
+    return cacheRecords.filter((cache) => {
+      const claims = cache.Claims || [];
+      if (session.currentTid) {
+        return !claims.some((c) => c.Tid === session.currentTid);
+      }
+      return !claims.some((c) => c.Uid === session.currentUid);
+    });
+  }, [cacheRecords, isPlayer, session.currentTid, session.currentUid, EMPTY_CACHES]);
 
     const {visibleCaches, isClaiming, setIsClaiming} = usePlayerGame(
         (isPlayer && !requiresTeam) ? userLocation : null,
@@ -83,31 +79,29 @@ const MapScreen = ({navigation, route}) => {
         selectedCacheId,
     );
 
-    const mapRegion = userLocation
-        ? {...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01}
-        : DEFAULT_REGION;
+  const mapRegion = userLocation
+    ? {...userLocation, latitudeDelta: 0.01, longitudeDelta: 0.01}
+    : DEFAULT_REGION;
 
-//   Handlers -------------------
+  useEffect(() => {
+    if (!session.currentGid) return;
+    getLobby(session.currentGid).then(setGroupInfo);
+    getSubgroups(session.currentGid).then(setSubgroups);
+  }, [inGame]);
 
-    useEffect(() => {
-        if (!session.currentGid) return;
-        getLobby(session.currentGid).then(setGroupInfo);
-        getSubgroups(session.currentGid).then(setSubgroups);
-    }, [inGame]);
-
-    // Default member subgroup SGid for cache creation (first non-admin subgroup)
-    const departments = useMemo(
-        () => subgroups.filter((sg) => !sg.IsAdminGroup),
-        [subgroups],
-    );
-    const defaultMemberSGid = departments[0]?.SGid || null;
-    const departmentNamesById = useMemo(() => {
-        const map = {};
-        for (const subgroup of departments) {
-            map[String(subgroup.SGid)] = subgroup.SubGroupName || `Department ${subgroup.SGid}`;
-        }
-        return map;
-    }, [departments]);
+  // Default member subgroup SGid for cache creation (first non-admin subgroup)
+  const departments = useMemo(
+    () => subgroups.filter((sg) => !sg.IsAdminGroup),
+    [subgroups],
+  );
+  const defaultMemberSGid = departments[0]?.SGid || null;
+  const departmentNamesById = useMemo(() => {
+    const map = {};
+    for (const subgroup of departments) {
+      map[String(subgroup.SGid)] = subgroup.SubGroupName || `Department ${subgroup.SGid}`;
+    }
+    return map;
+  }, [departments]);
 
     useEffect(() => {
         if (!isAdmin || departments.length === 0) return;
@@ -377,6 +371,8 @@ const MapScreen = ({navigation, route}) => {
         if (session.currentTid) return claims.some((c) => c.Tid === session.currentTid);
         return claims.some((c) => c.Uid === session.currentUid);
     };
+
+    const showAdminDepartmentLabel = Boolean(isAdmin && groupInfo?.BusinessOrSchoolName);
 
 //   View -----------------------
 
@@ -668,7 +664,7 @@ const MapScreen = ({navigation, route}) => {
                                 key={cache.id}
                                 cache={cache}
                                 isAdmin={true}
-                                departmentName={departmentNamesById[String(cache.subgroupId)] || 'Unassigned'}
+                                departmentName={showAdminDepartmentLabel ? (departmentNamesById[String(cache.subgroupId)] || 'Unassigned') : null}
                                 onEdit={handleEditCache}
                                 onDelete={handleDeleteCache}
                             />
@@ -755,33 +751,32 @@ const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     containerMap: {padding: 0},
     mapContainer: {height: 200},
-    error: {color: '#dc2626', fontSize: 15},
-    loadingText: {color: '#6b7280', fontSize: 14, marginTop: 10},
+    error: {color: '#f38ba8', fontSize: 15},
+    loadingText: {color: '#6c7086', fontSize: 14, marginTop: 10},
     inputRow: {flexDirection: 'row', gap: 10, marginBottom: 15, width: '100%', paddingHorizontal: 20},
     fullRow: {width: '100%', paddingHorizontal: 20},
     codeInput: {
         flex: 1,
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#45475a',
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
-        color: '#1f2937',
-        backgroundColor: '#ffffff',
+        color: '#cdd6f4',
+        backgroundColor: '#313244',
     },
-    joinButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', flex: 0, paddingHorizontal: 20},
-    joinLabel: {color: '#ffffff', fontWeight: '600'},
-    createButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
-    createLabel: {color: '#ffffff', fontWeight: '600'},
-    // Business join flow styles
-    bizTitle: {fontSize: 22, fontWeight: '700', color: '#1f2937', marginBottom: 6, textAlign: 'center'},
-    bizSubtitle: {fontSize: 14, color: '#6b7280', textAlign: 'center', marginBottom: 20, paddingHorizontal: 20},
-    joinError: {color: '#dc2626', textAlign: 'center', marginTop: 8, marginBottom: 4, fontSize: 14, paddingHorizontal: 20},
-    backButton: {backgroundColor: '#6b7280', borderColor: '#6b7280'},
-    backLabel: {color: '#ffffff', fontWeight: '600'},
+    joinButton: {backgroundColor: '#89b4fa', borderColor: '#89b4fa', flex: 0, paddingHorizontal: 20},
+    joinLabel: {color: '#1e1e2e', fontWeight: '600'},
+    createButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1'},
+    createLabel: {color: '#1e1e2e', fontWeight: '600'},
+    bizTitle: {fontSize: 22, fontWeight: '700', color: '#cdd6f4', marginBottom: 6, textAlign: 'center'},
+    bizSubtitle: {fontSize: 14, color: '#bac2de', textAlign: 'center', marginBottom: 20, paddingHorizontal: 20},
+    joinError: {color: '#f38ba8', textAlign: 'center', marginTop: 8, marginBottom: 4, fontSize: 14, paddingHorizontal: 20},
+    backButton: {backgroundColor: '#6c7086', borderColor: '#6c7086'},
+    backLabel: {color: '#cdd6f4', fontWeight: '600'},
     warning: {
-        color: '#dc2626',
+        color: '#f38ba8',
         fontWeight: 'bold',
         textAlign: 'center',
         paddingVertical: 8,
@@ -791,7 +786,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 10,
         left: 10,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
         borderRadius: 6,
         width: 36,
         height: 36,
@@ -799,38 +794,36 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         zIndex: 10,
     },
-    expandIcon: {color: '#ffffff', fontSize: 18, fontWeight: '700'},
-    // Admin create button + scrollable cache list
+    expandIcon: {color: '#cdd6f4', fontSize: 18, fontWeight: '700'},
     createCacheWrap: {
         paddingHorizontal: 12,
         paddingVertical: 10,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#313244',
         borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
+        borderBottomColor: '#45475a',
     },
-    createCacheButton: {backgroundColor: '#2563eb', borderColor: '#2563eb', flex: 0},
-    createCacheLabel: {color: '#ffffff', fontWeight: '600'},
-    cacheListWrap: {flex: 1, backgroundColor: '#f3f4f6'},
+    createCacheButton: {backgroundColor: '#89b4fa', borderColor: '#89b4fa', flex: 0},
+    createCacheLabel: {color: '#1e1e2e', fontWeight: '600'},
+    cacheListWrap: {flex: 1, backgroundColor: '#1e1e2e'},
     cacheListContent: {paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12},
-    // Cache editor form
     formSection: {flex: 1, paddingHorizontal: 12, paddingVertical: 10},
     formInput: {
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#45475a',
         borderRadius: 8,
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
-        color: '#1f2937',
-        backgroundColor: '#ffffff',
+        color: '#cdd6f4',
+        backgroundColor: '#313244',
         marginBottom: 10,
     },
-    departmentLabel: {fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6},
+    departmentLabel: {fontSize: 13, fontWeight: '600', color: '#bac2de', marginBottom: 6},
     departmentSelector: {
         borderWidth: 1,
-        borderColor: '#d1d5db',
+        borderColor: '#45475a',
         borderRadius: 8,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#313244',
         paddingHorizontal: 12,
         paddingVertical: 10,
         flexDirection: 'row',
@@ -838,28 +831,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 8,
     },
-    departmentSelectorText: {color: '#1f2937', fontSize: 15, fontWeight: '500'},
-    departmentSelectorChevron: {color: '#6b7280', fontSize: 12, fontWeight: '700'},
+    departmentSelectorText: {color: '#cdd6f4', fontSize: 15, fontWeight: '500'},
+    departmentSelectorChevron: {color: '#6c7086', fontSize: 12, fontWeight: '700'},
     departmentMenu: {
         borderWidth: 1,
-        borderColor: '#e5e7eb',
+        borderColor: '#45475a',
         borderRadius: 8,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#313244',
         marginBottom: 10,
         overflow: 'hidden',
     },
-    departmentOption: {paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6'},
-    departmentOptionText: {color: '#374151', fontSize: 14},
+    departmentOption: {paddingHorizontal: 12, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#45475a'},
+    departmentOptionText: {color: '#cdd6f4', fontSize: 14},
     coordRow: {flexDirection: 'row', gap: 10},
     coordField: {flex: 1},
-    coordLabel: {fontSize: 12, fontWeight: '600', color: '#6b7280', marginBottom: 4},
-    saveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a'},
-    saveLabel: {color: '#ffffff', fontWeight: '600'},
-    cancelButton: {backgroundColor: '#6b7280', borderColor: '#6b7280'},
-    cancelLabel: {color: '#ffffff', fontWeight: '600'},
-    // Player cache section
-    cacheSection: {flex: 1, backgroundColor: '#f3f4f6', paddingHorizontal: 12, paddingTop: 10},
-    emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 20, fontSize: 14},
+    coordLabel: {fontSize: 12, fontWeight: '600', color: '#6c7086', marginBottom: 4},
+    saveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1'},
+    saveLabel: {color: '#1e1e2e', fontWeight: '600'},
+    cancelButton: {backgroundColor: '#6c7086', borderColor: '#6c7086'},
+    cancelLabel: {color: '#cdd6f4', fontWeight: '600'},
+    cacheSection: {flex: 1, backgroundColor: '#1e1e2e', paddingHorizontal: 12, paddingTop: 10},
+    emptyText: {color: '#6c7086', textAlign: 'center', marginTop: 20, fontSize: 14},
     mapWrap: {flex: 1},
 });
 

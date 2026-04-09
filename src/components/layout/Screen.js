@@ -44,13 +44,13 @@ const Screen = ({ children, style, showBack = false }) => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: '#1e1e2e',
   },
   content: {
     flex: 1,
     padding: 15,
     zIndex: 1,
-    overflow: "hidden",
+    overflow: 'hidden',
   },
 });
 
