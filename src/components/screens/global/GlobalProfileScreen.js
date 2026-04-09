@@ -1,10 +1,18 @@
-import {useCallback, useEffect, useRef, useState} from "react";
-import {ActivityIndicator, Image, ScrollView, StyleSheet, Text, TextInput, View} from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import Screen from "../../layout/Screen";
-import {Button, ButtonTray} from "../../UI/Button";
+import { Button, ButtonTray } from "../../UI/Button";
 import useGlobalHook from "../../../hooks/useGlobalHook";
-import {getSession} from "../../../hooks/SessionStore";
-import {GAME_MODE} from "../../../utils/gameConstants";
+import { getSession } from "../../../hooks/SessionStore";
+import { GAME_MODE } from "../../../utils/gameConstants";
 
 const EMPTY_FORM = {
   UserFirstname: "",
@@ -14,7 +22,7 @@ const EMPTY_FORM = {
   UserImageURL: "",
 };
 
-const GlobalProfileScreen = ({navigation}) => {
+const GlobalProfileScreen = ({ navigation }) => {
   // Initialisations ---------------------
 
   const session = getSession();
@@ -44,45 +52,52 @@ const GlobalProfileScreen = ({navigation}) => {
 
   // Handlers ----------------------------
 
-  const hydrateProfile = useCallback(async (options = {}) => {
-    setIsLoading(true);
-    setError("");
+  const hydrateProfile = useCallback(
+    async (options = {}) => {
+      setIsLoading(true);
+      setError("");
 
-    if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
-      navigation.replace("MapScreen");
-      return;
-    }
+      if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
+        navigation.replace("MapScreen");
+        return;
+      }
 
-    if (!globalApiRef.current.isGlobalApiReady()) {
-      setError("Global API URL is not configured yet. Add it in src/components/API/api.json.");
+      if (!globalApiRef.current.isGlobalApiReady()) {
+        setError(
+          "Global API URL is not configured yet. Add it in src/components/API/api.json.",
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      const globalUserId = session.currentGlobalUserId ?? session.currentUid;
+      const latest = await globalApiRef.current.getUser(globalUserId, options);
+      if (!latest) {
+        setError(
+          "Global profile not found. Tap Join Global Game first to initialise it.",
+        );
+        setIsLoading(false);
+        return;
+      }
+
+      setProfile({
+        UserFirstname: latest.UserFirstname || "",
+        UserLastname: latest.UserLastname || "",
+        UserPhone: latest.UserPhone || "00000",
+        UserUsername: latest.UserUsername || "",
+        UserImageURL: latest.UserImageURL || defaultGlobalProfileImageUrl,
+      });
       setIsLoading(false);
-      return;
-    }
-
-    const globalUserId = session.currentGlobalUserId ?? session.currentUid;
-    const latest = await globalApiRef.current.getUser(globalUserId, options);
-    if (!latest) {
-      setError("Global profile not found. Tap Join Global Game first to initialise it.");
-      setIsLoading(false);
-      return;
-    }
-
-    setProfile({
-      UserFirstname: latest.UserFirstname || "",
-      UserLastname: latest.UserLastname || "",
-      UserPhone: latest.UserPhone || "00000",
-      UserUsername: latest.UserUsername || "",
-      UserImageURL: latest.UserImageURL || defaultGlobalProfileImageUrl,
-    });
-    setIsLoading(false);
-  }, [
-    defaultGlobalProfileImageUrl,
-    navigation,
-    session.currentGameMode,
-    session.currentGlobalUserId,
-    session.currentUid,
-    session.isBusiness,
-  ]);
+    },
+    [
+      defaultGlobalProfileImageUrl,
+      navigation,
+      session.currentGameMode,
+      session.currentGlobalUserId,
+      session.currentUid,
+      session.isBusiness,
+    ],
+  );
 
   useEffect(() => {
     hydrateProfile();
@@ -98,19 +113,24 @@ const GlobalProfileScreen = ({navigation}) => {
       UserFirstname: profile.UserFirstname.trim() || "Global",
       UserLastname: profile.UserLastname.trim() || "User",
       UserPhone: profile.UserPhone.trim() || "00000",
-      UserUsername: profile.UserUsername.trim() || `global_${globalUserId}`,
+      UserUsername: `${profile.UserFirstname.trim() || "Global"}_${globalUserId}`,
       UserImageURL: profile.UserImageURL.trim() || defaultGlobalProfileImageUrl,
       UserTimestamp: Date.now(),
     };
 
-    const updated = await globalApiRef.current.updateUser(globalUserId, payload);
+    const updated = await globalApiRef.current.updateUser(
+      globalUserId,
+      payload,
+    );
     if (!updated) {
       setError("Failed to save profile. Please try again.");
       setIsSaving(false);
       return;
     }
 
-    const latest = await globalApiRef.current.getUser(globalUserId, {forceRefresh: true});
+    const latest = await globalApiRef.current.getUser(globalUserId, {
+      forceRefresh: true,
+    });
     setProfile({
       UserFirstname: latest?.UserFirstname || payload.UserFirstname,
       UserLastname: latest?.UserLastname || payload.UserLastname,
@@ -140,7 +160,9 @@ const GlobalProfileScreen = ({navigation}) => {
 
         <View style={styles.avatarWrap}>
           <Image
-            source={{uri: profile.UserImageURL || defaultGlobalProfileImageUrl}}
+            source={{
+              uri: profile.UserImageURL || defaultGlobalProfileImageUrl,
+            }}
             style={styles.avatar}
           />
         </View>
@@ -152,7 +174,7 @@ const GlobalProfileScreen = ({navigation}) => {
           placeholderTextColor="#9ca3af"
           value={profile.UserFirstname}
           onChangeText={(value) =>
-            setProfile((prev) => ({...prev, UserFirstname: value}))
+            setProfile((prev) => ({ ...prev, UserFirstname: value }))
           }
         />
 
@@ -163,7 +185,7 @@ const GlobalProfileScreen = ({navigation}) => {
           placeholderTextColor="#9ca3af"
           value={profile.UserLastname}
           onChangeText={(value) =>
-            setProfile((prev) => ({...prev, UserLastname: value}))
+            setProfile((prev) => ({ ...prev, UserLastname: value }))
           }
         />
 
@@ -174,7 +196,7 @@ const GlobalProfileScreen = ({navigation}) => {
           placeholderTextColor="#9ca3af"
           value={profile.UserPhone}
           onChangeText={(value) =>
-            setProfile((prev) => ({...prev, UserPhone: value}))
+            setProfile((prev) => ({ ...prev, UserPhone: value }))
           }
         />
 
@@ -185,7 +207,7 @@ const GlobalProfileScreen = ({navigation}) => {
           placeholderTextColor="#9ca3af"
           value={profile.UserImageURL}
           onChangeText={(value) =>
-            setProfile((prev) => ({...prev, UserImageURL: value}))
+            setProfile((prev) => ({ ...prev, UserImageURL: value }))
           }
           autoCapitalize="none"
         />
@@ -254,4 +276,3 @@ const styles = StyleSheet.create({
 });
 
 export default GlobalProfileScreen;
-
