@@ -442,6 +442,10 @@ const MapScreen = ({navigation, route}) => {
 
     const handleClaim = useCallback(async (cacheId) => {
         if (!session.currentGid) return;
+        if (!selectedCacheId || String(cacheId) !== String(selectedCacheId)) {
+            setIsClaiming(false);
+            return;
+        }
         const result = await claimCache({
             gid: session.currentGid,
             cacheId,
@@ -455,7 +459,7 @@ const MapScreen = ({navigation, route}) => {
             setTimeout(() => setClaimedPopupVisible(false), 3000);
         }
         await loadCaches();
-    }, [session.currentGid, session.currentUid, session.currentTid, effectiveSGid, claimCache, setIsClaiming, loadCaches]);
+    }, [session.currentGid, session.currentUid, session.currentTid, effectiveSGid, selectedCacheId, claimCache, setIsClaiming, loadCaches]);
 
     const handleCreateCachePress = () => {
         const fallback = userLocation || {latitude: mapRegion.latitude, longitude: mapRegion.longitude};

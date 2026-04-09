@@ -22,7 +22,7 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
             : null;
         let visible = selected && isInClaimCone(playerHeading, playerLocation, selected.coordinates, claimDistance);
 
-        if (!visible) {
+        if (!preferSelectedCache && !visible) {
             selected = caches.find((c) => isInClaimCone(playerHeading, playerLocation, c.coordinates, claimDistance)) || null;
             visible = Boolean(selected);
         }
