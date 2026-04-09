@@ -3,7 +3,7 @@ import {Platform, StyleSheet, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import Screen from '../layout/Screen';
-import {getFovCone, isInClaimCone, isWithinRadius} from '../../utils/geoMath';
+import {getFovCone, isInClaimCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.01, longitudeDelta: 0.01};
 
@@ -71,14 +71,10 @@ const ExpandedMapScreen = ({route}) => {
         ? getFovCone(userLocation, heading)
         : null;
 
-    // For players — when heading is available use FOV cone, otherwise fall back
-    // to proximity-only so the expanded map works on iPhones without compass data
-    const visiblePlayerCaches = (!isAdmin && userLocation)
-        ? caches.filter((c) =>
-            hasHeading
-                ? isInClaimCone(heading, userLocation, c.coordinates, claimDistance)
-                : isWithinRadius(userLocation, c.coordinates, claimDistance),
-        )
+    // For players — heading is required so the player must point their device
+    // towards a cache for it to appear (same logic as the main MapScreen)
+    const visiblePlayerCaches = (!isAdmin && userLocation && hasHeading)
+        ? caches.filter((c) => isInClaimCone(heading, userLocation, c.coordinates, claimDistance))
         : [];
 
     return (
@@ -138,15 +134,6 @@ const ExpandedMapScreen = ({route}) => {
                             fillColor="rgba(66,133,244,0.28)"
                             strokeColor="rgba(66,133,244,0.50)"
                             strokeWidth={1}
-                        />
-                    )}
-                    {/* Proximity circle when heading is unavailable (iOS fallback) */}
-                    {!isAdmin && userLocation && !hasHeading && claimDistance > 0 && (
-                        <Circle
-                            center={userLocation}
-                            radius={claimDistance}
-                            fillColor="rgba(66,133,244,0.12)"
-                            strokeColor="rgba(66,133,244,0.40)"
                         />
                     )}
                 </MapView>

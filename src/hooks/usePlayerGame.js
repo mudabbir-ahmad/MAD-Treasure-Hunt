@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
-import {isInClaimCone, isWithinRadius} from '../utils/geoMath';
+import {isInClaimCone} from '../utils/geoMath';
 
 const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistance) => {
 //   State ----------------------
@@ -11,8 +11,9 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
 //   Handlers -------------------
 
     useEffect(() => {
-        // No location at all — clear everything
-        if (!playerLocation) {
+        // Both location AND heading are required — the player must physically
+        // point their device towards a cache to trigger the claim countdown
+        if (!playerLocation || playerHeading === null || playerHeading === undefined) {
             if (prevIdsRef.current !== '') {
                 prevIdsRef.current = '';
                 setVisibleCaches([]);
@@ -21,24 +22,17 @@ const usePlayerGame = (playerLocation, playerHeading, activeCaches, claimDistanc
             return;
         }
 
-        const hasHeading = playerHeading !== null && playerHeading !== undefined;
-
-        // When heading is available use the full FOV cone check.
-        // When heading is NOT available (common on iOS / Apple Maps where the
-        // compass may be delayed or unavailable) fall back to proximity-only so
-        // iPhone users can still discover and claim caches within range.
-        const nearby = (activeCaches || []).filter((cache) =>
-            hasHeading
-                ? isInClaimCone(playerHeading, playerLocation, cache.coordinates, claimDistance)
-                : isWithinRadius(playerLocation, cache.coordinates, claimDistance),
+        // Find all caches that fall inside the claim cone
+        const inCone = (activeCaches || []).filter((cache) =>
+            isInClaimCone(playerHeading, playerLocation, cache.coordinates, claimDistance),
         );
 
         // Only update state when the set of visible caches actually changes
-        const newIds = nearby.map((c) => c.id).join(',');
+        const newIds = inCone.map((c) => c.id).join(',');
         if (newIds !== prevIdsRef.current) {
             prevIdsRef.current = newIds;
-            setVisibleCaches(nearby);
-            setIsClaiming(nearby.length > 0);
+            setVisibleCaches(inCone);
+            setIsClaiming(inCone.length > 0);
         }
     }, [playerLocation, playerHeading, activeCaches, claimDistance]);
 

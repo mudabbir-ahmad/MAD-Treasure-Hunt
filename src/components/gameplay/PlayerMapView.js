@@ -11,8 +11,9 @@ const PlayerMapView = ({userLocation, visibleCaches, heading, claimDistance}) =>
 
     if (!userLocation) return null;
 
-    const hasHeading = heading !== null && heading !== undefined;
-    const coneCoords = hasHeading ? getFovCone(userLocation, heading) : null;
+    const coneCoords = (heading !== null && heading !== undefined)
+        ? getFovCone(userLocation, heading)
+        : null;
 
     return (
         <MapView
@@ -46,22 +47,13 @@ const PlayerMapView = ({userLocation, visibleCaches, heading, claimDistance}) =>
                     />
                 </React.Fragment>
             ))}
-            {/* FOV cone when heading is available */}
+            {/* FOV heading cone */}
             {coneCoords && (
                 <Polygon
                     coordinates={coneCoords}
                     fillColor="rgba(66,133,244,0.28)"
                     strokeColor="rgba(66,133,244,0.50)"
                     strokeWidth={1}
-                />
-            )}
-            {/* Proximity circle when heading is NOT available (iOS fallback) */}
-            {!hasHeading && claimDistance > 0 && (
-                <Circle
-                    center={userLocation}
-                    radius={claimDistance}
-                    fillColor="rgba(66,133,244,0.12)"
-                    strokeColor="rgba(66,133,244,0.40)"
                 />
             )}
         </MapView>
