@@ -3,6 +3,7 @@ import {ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, View} from '
 import Screen from '../layout/Screen';
 import Card from '../UI/Card';
 import {Button, ButtonTray} from '../UI/Button';
+import PendingApprovalView from '../UI/PendingApprovalView';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession, setPendingAdmin, setSessionTeam, setSessionUser} from '../../hooks/SessionStore';
 
@@ -212,11 +213,7 @@ const TeamScreen = ({navigation}) => {
 
     // Waiting for admin approval
     if (onAdminWaitlist) {
-        return (
-            <Screen style={styles.center}>
-                <Text style={styles.waitlistText}>Waiting to be approved for Admin Team</Text>
-            </Screen>
-        );
+        return <PendingApprovalView message="Waiting to be approved for Admin Team"/>;
     }
 
     // Not in a team

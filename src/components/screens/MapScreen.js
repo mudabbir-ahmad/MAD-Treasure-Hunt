@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 import {useFocusEffect} from '@react-navigation/native';
 import Screen from '../layout/Screen';
 import {Button, ButtonTray} from '../UI/Button';
+import PendingApprovalView from '../UI/PendingApprovalView';
 import CacheCardItem from '../gameplay/CacheCardItem';
 import ClaimTimerView from '../gameplay/ClaimTimerView';
 import PlayerMapView from '../gameplay/PlayerMapView';
@@ -715,11 +716,7 @@ const MapScreen = ({navigation, route}) => {
     }
 
     if (session.isPendingAdmin && !session.isAcceptedAdmin) {
-        return (
-            <Screen style={styles.center}>
-                <Text style={styles.loadingText}>Waiting for admin approval. You will get access once approved.</Text>
-            </Screen>
-        );
+        return <PendingApprovalView/>;
     }
 
     // Player — loading location

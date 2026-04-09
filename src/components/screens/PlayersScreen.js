@@ -3,6 +3,7 @@ import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View}
 import Screen from '../layout/Screen';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
+import PendingApprovalView from '../UI/PendingApprovalView';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession} from '../../hooks/SessionStore';
 
@@ -23,6 +24,9 @@ const PlayersScreen = ({navigation, route}) => {
     const [loading, setLoading] = useState(true);
     const [players, setPlayers] = useState([]);
     const [departmentList, setDepartmentList] = useState([]);
+    const [adminTeam, setAdminTeam] = useState([]);
+    const [isCurrentUserAdminLead, setIsCurrentUserAdminLead] = useState(false);
+    const [adminTeamExpanded, setAdminTeamExpanded] = useState(false);
 
 //   Handlers -------------------
 
@@ -32,10 +36,37 @@ const PlayersScreen = ({navigation, route}) => {
         if (isBusiness && isAdmin && !selectedDepartment) {
             const sgs = await getSubgroups(session.currentGid);
             setDepartmentList((sgs || []).filter((sg) => !sg.IsAdminGroup));
+
+            const allOrgMembers = await getGroupMembers(session.currentGid, null);
+            const seenAdminUids = new Set();
+            const acceptedAdmins = (allOrgMembers || [])
+                .filter((m) => m.IsAcceptedAdmin)
+                .sort((a, b) => Number(a.id) - Number(b.id))
+                .filter((m) => {
+                    if (seenAdminUids.has(m.Uid)) return false;
+                    seenAdminUids.add(m.Uid);
+                    return true;
+                });
+
+            const adminRows = [];
+            for (const member of acceptedAdmins) {
+                const user = await getUser(member.Uid);
+                if (!user) continue;
+                adminRows.push({
+                    Uid: member.Uid,
+                    username: user.username || `User ${member.Uid}`,
+                    membershipId: member.id,
+                });
+            }
+            setAdminTeam(adminRows);
+            setIsCurrentUserAdminLead(adminRows.length > 0 && adminRows[0].Uid === session.currentUid);
             setPlayers([]);
             setLoading(false);
             return;
         }
+
+        setAdminTeam([]);
+        setIsCurrentUserAdminLead(false);
 
         // Load subgroup names for department display (business accounts)
         let subgroupNameMap = {};
@@ -160,6 +191,25 @@ const PlayersScreen = ({navigation, route}) => {
         await loadData();
     };
 
+    const handleKickAdmin = (adminMember) => {
+        if (!isCurrentUserAdminLead || adminMember.Uid === session.currentUid) return;
+        Alert.alert(
+            'Kick Admin',
+            `Remove ${adminMember.username} from the admin team?`,
+            [
+                {text: 'Cancel', style: 'cancel'},
+                {
+                    text: 'Kick',
+                    style: 'destructive',
+                    onPress: async () => {
+                        await removeMember(adminMember.membershipId);
+                        await loadData();
+                    },
+                },
+            ],
+        );
+    };
+
 //   View -----------------------
 
     if (loading) {
@@ -179,11 +229,7 @@ const PlayersScreen = ({navigation, route}) => {
     }
 
     if (session.isPendingAdmin && !session.isAcceptedAdmin) {
-        return (
-            <Screen style={styles.center}>
-                <Text style={styles.body}>Waiting for admin approval. You will get access once approved.</Text>
-            </Screen>
-        );
+        return <PendingApprovalView/>;
     }
 
     if (isBusiness && isAdmin && !selectedDepartment) {
@@ -191,6 +237,36 @@ const PlayersScreen = ({navigation, route}) => {
             <Screen style={styles.container}>
                 <Text style={styles.sectionTitle}>Departments</Text>
                 <ScrollView style={styles.listSection}>
+                    <Card>
+                        <Pressable onPress={() => setAdminTeamExpanded((prev) => !prev)}>
+                            <View style={styles.playerRow}>
+                                <Text style={styles.playerName}>Admin Team</Text>
+                                <Text style={styles.openLabel}>{adminTeamExpanded ? 'Close' : 'Open'}</Text>
+                            </View>
+                        </Pressable>
+                        {adminTeamExpanded && (
+                            <View style={styles.adminTeamWrap}>
+                                {adminTeam.map((adminMember, index) => (
+                                    <View key={adminMember.Uid} style={styles.adminTeamRow}>
+                                        <Text style={styles.adminTeamName} numberOfLines={1}>
+                                            {adminMember.username}{index === 0 ? ' (Admin Lead)' : ''}
+                                        </Text>
+                                        {isCurrentUserAdminLead && adminMember.Uid !== session.currentUid && (
+                                            <Button
+                                                label="Kick Admin"
+                                                onClick={() => handleKickAdmin(adminMember)}
+                                                styleButton={styles.removeButton}
+                                                styleLabel={styles.kickLabel}
+                                            />
+                                        )}
+                                    </View>
+                                ))}
+                                {adminTeam.length === 0 && (
+                                    <Text style={styles.emptyText}>No approved admins yet.</Text>
+                                )}
+                            </View>
+                        )}
+                    </Card>
                     {departmentList.map((department) => (
                         <Pressable
                             key={department.SGid}
@@ -323,6 +399,9 @@ const styles = StyleSheet.create({
     removeButton: {backgroundColor: '#D92800', borderColor: '#D92800', minHeight: 36, flex: 1, paddingHorizontal: 10},
     actionLabel: {color: '#1e1e2e', fontWeight: '600', fontSize: 13},
     kickLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    adminTeamWrap: {gap: 8},
+    adminTeamRow: {flexDirection: 'row', alignItems: 'center', gap: 8},
+    adminTeamName: {flex: 1, fontSize: 14, color: '#cdd6f4', fontWeight: '600'},
     departmentName: {fontSize: 14, color: '#6c7086', fontStyle: 'italic'},
     waitlistCard: {backgroundColor: 'rgba(217, 40, 0, 0.15)', borderColor: '#D92800'},
     approveButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1', minHeight: 36, flex: 1, paddingHorizontal: 10},

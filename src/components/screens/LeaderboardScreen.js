@@ -3,6 +3,7 @@ import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View}
 import Screen from '../layout/Screen';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
+import PendingApprovalView from '../UI/PendingApprovalView';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession} from '../../hooks/SessionStore';
 
@@ -185,11 +186,7 @@ const LeaderboardScreen = ({navigation, route}) => {
     }
 
     if (session.isPendingAdmin && !session.isAcceptedAdmin) {
-        return (
-            <Screen style={styles.center}>
-                <Text style={styles.body}>Waiting for admin approval. You will get access once approved.</Text>
-            </Screen>
-        );
+        return <PendingApprovalView/>;
     }
 
     if (isBusiness && isAdmin && !selectedDepartment) {
