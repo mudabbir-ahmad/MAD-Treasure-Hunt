@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {Platform, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import MapView, {Circle, Marker, Polygon} from 'react-native-maps';
 import * as Location from 'expo-location';
 import Screen from '../layout/Screen';
@@ -86,14 +86,16 @@ const ExpandedMapScreen = ({route}) => {
                     initialRegion={region}
                     showsUserLocation
                 >
-                    {/* Admins see all cache pin locations */}
+                    {/* Admins see all cache pin locations.
+                        tracksViewChanges must be true so Android captures the
+                        custom View as a bitmap on the first render cycle. */}
                     {isAdmin && caches.map((cache) => (
                         <React.Fragment key={cache.id}>
                             <Marker
                                 coordinate={cache.coordinates}
                                 title={cache.name || cache.clue}
                                 anchor={{x: 0.5, y: 0.5}}
-                                tracksViewChanges={Platform.OS === 'ios'}
+                                tracksViewChanges={true}
                             >
                                 <View style={styles.adminMarkerOuter}>
                                     <View style={styles.adminMarkerInner} />
@@ -107,14 +109,16 @@ const ExpandedMapScreen = ({route}) => {
                             />
                         </React.Fragment>
                     ))}
-                    {/* Players — pin markers appear when cache is in FOV cone + within range */}
+                    {/* Players — pin markers appear when cache is in FOV cone + within range.
+                        tracksViewChanges must be true so Android captures the
+                        custom View as a bitmap on the first render cycle. */}
                     {!isAdmin && visiblePlayerCaches.map((cache) => (
                         <Marker
                             key={cache.id}
                             coordinate={cache.coordinates}
                             title={cache.clue}
                             anchor={{x: 0.5, y: 0.5}}
-                            tracksViewChanges={Platform.OS === 'ios'}
+                            tracksViewChanges={true}
                         >
                             <View style={styles.cacheMarkerOuter}>
                                 <View style={styles.cacheMarkerInner} />

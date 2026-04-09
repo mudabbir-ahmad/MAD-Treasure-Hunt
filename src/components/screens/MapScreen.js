@@ -207,7 +207,7 @@ const MapScreen = ({navigation}) => {
             setSessionUser(freshUser);
             setInGame(true);
             setIsAdmin(true);
-            navigation.navigate('GameSettingsScreen');
+            navigation.reset({index: 0, routes: [{name: 'Admin'}]});
         }
     };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import {Platform, StyleSheet, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import MapView, {Marker, Polygon} from 'react-native-maps';
 import {getFovCone} from '../../utils/geoMath';
 
@@ -28,14 +28,16 @@ const PlayerMapView = ({userLocation, visibleCaches, heading}) => {
         >
             {/* Cache pin markers — appear temporarily when the cache is in the FOV
                 cone AND within claim distance. Uses a custom View so the pin
-                renders identically on iOS (Google Maps) and Android */}
+                renders identically on iOS (Google Maps) and Android.
+                tracksViewChanges must be true so Android captures the custom
+                View as a bitmap on the first render cycle. */}
             {(visibleCaches || []).map((cache) => (
                 <Marker
                     key={cache.id}
                     coordinate={cache.coordinates}
                     title={cache.clue}
                     anchor={{x: 0.5, y: 0.5}}
-                    tracksViewChanges={Platform.OS === 'ios'}
+                    tracksViewChanges={true}
                 >
                     <View style={styles.markerOuter}>
                         <View style={styles.markerInner} />
