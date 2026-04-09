@@ -1,12 +1,6 @@
-import {useCallback, useMemo} from "react";
+import { useCallback, useMemo } from "react";
 import API from "../components/API/API";
 import globalApiConfig from "../components/API/api.json";
-import {
-    clearGlobalDataCache,
-    clearGlobalDataCacheByPrefix,
-    getOrFetchGlobalData,
-    writeGlobalDataCache,
-} from "../utils/globalDataCache";
 
 const GLOBAL_BASE = String(
   process.env.EXPO_PUBLIC_GLOBAL_API_BASE ||
@@ -23,26 +17,6 @@ const DEFAULT_GLOBAL_PROFILE_IMAGE_URL =
   "https://placehold.co/256x256/png";
 
 const isGlobalApiReady = () => Boolean(GLOBAL_BASE);
-
-const CACHE_TTL = {
-  events: 20000,
-  players: 12000,
-  caches: 20000,
-  finds: 8000,
-  users: 15000,
-};
-
-const CACHE_KEY = {
-  publicEvents: "global:events:public",
-  users: "global:users",
-  event: (eventId) => `global:event:${eventId}`,
-  playersByEvent: (eventId) => `global:players:event:${eventId}`,
-  cachesByEvent: (eventId) => `global:caches:event:${eventId}`,
-  cacheById: (cacheId) => `global:cache:${cacheId}`,
-  findsByEvent: (eventId) => `global:finds:event:${eventId}`,
-  findsByPlayer: (playerId) => `global:finds:player:${playerId}`,
-  userById: (userId) => `global:user:${userId}`,
-};
 
 // Appends the API key as a query param when provided.
 const withKey = (url) => {
@@ -155,56 +129,33 @@ const useGlobalHook = () => {
   // Handlers ----------------------------
 
   // Events
-  const getPublicEvents = useCallback(
-    async (options = {}) => {
-      if (!isGlobalApiReady()) return [];
-      return getOrFetchGlobalData(
-        CACHE_KEY.publicEvents,
-        async () => {
-          const response = await API.get(withKey(endpoints.events));
-          if (!response.isSuccess) return [];
-          const rows = unwrapList(response.result);
-          return rows.filter((e) => e.EventIspublic);
-        },
-        { ttlMs: CACHE_TTL.events, forceRefresh: options.forceRefresh },
-      );
-    },
-    [endpoints.events],
-  );
+  const getPublicEvents = useCallback(async () => {
+    if (!isGlobalApiReady()) return [];
+    const response = await API.get(withKey(endpoints.events));
+    if (!response.isSuccess) return [];
+    const rows = unwrapList(response.result);
+    return rows.filter((e) => e.EventIspublic);
+  }, [endpoints.events]);
 
   const getEvent = useCallback(
-    async (eventId, options = {}) => {
+    async (eventId) => {
       if (!isGlobalApiReady()) return null;
-      return getOrFetchGlobalData(
-        CACHE_KEY.event(eventId),
-        async () => {
-          const response = await API.get(
-            withKey(`${endpoints.events}/${eventId}`),
-          );
-          if (!response.isSuccess) return null;
-          return unwrapSingle(response.result);
-        },
-        { ttlMs: CACHE_TTL.events, forceRefresh: options.forceRefresh },
-      );
+      const response = await API.get(withKey(`${endpoints.events}/${eventId}`));
+      if (!response.isSuccess) return null;
+      return unwrapSingle(response.result);
     },
     [endpoints.events],
   );
 
   // Players
   const getPlayersByEvent = useCallback(
-    async (eventId, options = {}) => {
+    async (eventId) => {
       if (!isGlobalApiReady()) return [];
-      return getOrFetchGlobalData(
-        CACHE_KEY.playersByEvent(eventId),
-        async () => {
-          const response = await API.get(
-            withKey(`${endpoints.players}/events/${eventId}`),
-          );
-          if (!response.isSuccess) return [];
-          return unwrapList(response.result);
-        },
-        { ttlMs: CACHE_TTL.players, forceRefresh: options.forceRefresh },
+      const response = await API.get(
+        withKey(`${endpoints.players}/events/${eventId}`),
       );
+      if (!response.isSuccess) return [];
+      return unwrapList(response.result);
     },
     [endpoints.players],
   );
@@ -214,86 +165,55 @@ const useGlobalHook = () => {
       if (!isGlobalApiReady()) return null;
       const response = await API.post(withKey(endpoints.players), data);
       if (!response.isSuccess) return null;
-      const joined = unwrapSingle(response.result);
-      const eventId = data?.PlayerEventID ?? joined?.PlayerEventID;
-      if (eventId !== undefined && eventId !== null) {
-        clearGlobalDataCache(CACHE_KEY.playersByEvent(eventId));
-      }
-      return joined;
+      return unwrapSingle(response.result);
     },
     [endpoints.players],
   );
 
   // Caches
   const getCachesByEvent = useCallback(
-    async (eventId, options = {}) => {
+    async (eventId) => {
       if (!isGlobalApiReady()) return [];
-      return getOrFetchGlobalData(
-        CACHE_KEY.cachesByEvent(eventId),
-        async () => {
-          const response = await API.get(
-            withKey(`${endpoints.caches}/events/${eventId}`),
-          );
-          if (!response.isSuccess) return [];
-          return unwrapList(response.result);
-        },
-        { ttlMs: CACHE_TTL.caches, forceRefresh: options.forceRefresh },
+      const response = await API.get(
+        withKey(`${endpoints.caches}/events/${eventId}`),
       );
+      if (!response.isSuccess) return [];
+      return unwrapList(response.result);
     },
     [endpoints.caches],
   );
 
   const getCache = useCallback(
-    async (cacheId, options = {}) => {
+    async (cacheId) => {
       if (!isGlobalApiReady()) return null;
-      return getOrFetchGlobalData(
-        CACHE_KEY.cacheById(cacheId),
-        async () => {
-          const response = await API.get(
-            withKey(`${endpoints.caches}/${cacheId}`),
-          );
-          if (!response.isSuccess) return null;
-          return unwrapSingle(response.result);
-        },
-        { ttlMs: CACHE_TTL.caches, forceRefresh: options.forceRefresh },
-      );
+      const response = await API.get(withKey(`${endpoints.caches}/${cacheId}`));
+      if (!response.isSuccess) return null;
+      return unwrapSingle(response.result);
     },
     [endpoints.caches],
   );
 
   // Finds
   const getFindsByEvent = useCallback(
-    async (eventId, options = {}) => {
+    async (eventId) => {
       if (!isGlobalApiReady()) return [];
-      return getOrFetchGlobalData(
-        CACHE_KEY.findsByEvent(eventId),
-        async () => {
-          const response = await API.get(
-            withKey(`${endpoints.finds}/events/${eventId}`),
-          );
-          if (!response.isSuccess) return [];
-          return unwrapList(response.result);
-        },
-        { ttlMs: CACHE_TTL.finds, forceRefresh: options.forceRefresh },
+      const response = await API.get(
+        withKey(`${endpoints.finds}/events/${eventId}`),
       );
+      if (!response.isSuccess) return [];
+      return unwrapList(response.result);
     },
     [endpoints.finds],
   );
 
   const getFindsByPlayer = useCallback(
-    async (playerId, options = {}) => {
+    async (playerId) => {
       if (!isGlobalApiReady()) return [];
-      return getOrFetchGlobalData(
-        CACHE_KEY.findsByPlayer(playerId),
-        async () => {
-          const response = await API.get(
-            withKey(`${endpoints.finds}/players/${playerId}`),
-          );
-          if (!response.isSuccess) return [];
-          return unwrapList(response.result);
-        },
-        { ttlMs: CACHE_TTL.finds, forceRefresh: options.forceRefresh },
+      const response = await API.get(
+        withKey(`${endpoints.finds}/players/${playerId}`),
       );
+      if (!response.isSuccess) return [];
+      return unwrapList(response.result);
     },
     [endpoints.finds],
   );
@@ -303,57 +223,53 @@ const useGlobalHook = () => {
       if (!isGlobalApiReady()) return null;
       const response = await API.post(withKey(endpoints.finds), data);
       if (!response.isSuccess) return null;
-      const find = unwrapSingle(response.result) || { ...data };
-      if (data?.FindPlayerID !== undefined && data?.FindPlayerID !== null) {
-        clearGlobalDataCache(CACHE_KEY.findsByPlayer(data.FindPlayerID));
-      }
-      // Event ID is not always present in payload, so clear all event-level find caches.
-      clearGlobalDataCacheByPrefix("global:finds:event:");
-      return find;
+      return unwrapSingle(response.result) || { ...data };
+    },
+    [endpoints.finds],
+  );
+
+  const claimCache = useCallback(
+    async (playerId, cache) => {
+      if (!isGlobalApiReady() || !playerId || !cache) return null;
+      const response = await API.post(withKey(endpoints.finds), {
+        FindPlayerID: playerId,
+        FindCacheID: cache.CacheID,
+        FindDatetime: new Date().toISOString(),
+        FindImageURL: cache.CacheImageURL || DEFAULT_GLOBAL_PROFILE_IMAGE_URL,
+      });
+      if (!response.isSuccess)
+        return { error: response.message || "Unknown error" };
+      const find = unwrapSingle(response.result) || {
+        FindPlayerID: playerId,
+        FindCacheID: cache.CacheID,
+      };
+      return { find, points: Number(cache.CachePoints ?? 0) };
     },
     [endpoints.finds],
   );
 
   // Users
-  const getUsers = useCallback(
-    async (options = {}) => {
-      if (!isGlobalApiReady()) return [];
-      return getOrFetchGlobalData(
-        CACHE_KEY.users,
-        async () => {
-          const response = await API.get(withKey(endpoints.users));
-          if (!response.isSuccess) return [];
-          return unwrapList(response.result);
-        },
-        { ttlMs: CACHE_TTL.users, forceRefresh: options.forceRefresh },
-      );
-    },
-    [endpoints.users],
-  );
+  const getUsers = useCallback(async () => {
+    if (!isGlobalApiReady()) return [];
+    const response = await API.get(withKey(endpoints.users));
+    if (!response.isSuccess) return [];
+    return unwrapList(response.result);
+  }, [endpoints.users]);
 
   const getUser = useCallback(
-    async (userId, options = {}) => {
+    async (userId) => {
       if (!isGlobalApiReady()) return null;
-
-      const key = CACHE_KEY.userById(userId);
-      return getOrFetchGlobalData(
-        key,
-        async () => {
-          // Some global API deployments expose list-only user routes.
-          const byIdResponse = await API.get(
-            withKey(`${endpoints.users}/${userId}`),
-          );
-          if (byIdResponse.isSuccess) {
-            const single = unwrapSingle(byIdResponse.result);
-            if (single) return single;
-          }
-
-          const users = await getUsers({ forceRefresh: options.forceRefresh });
-          return (
-            users.find((user) => String(user.UserID) === String(userId)) || null
-          );
-        },
-        { ttlMs: CACHE_TTL.users, forceRefresh: options.forceRefresh },
+      // Some global API deployments expose list-only user routes.
+      const byIdResponse = await API.get(
+        withKey(`${endpoints.users}/${userId}`),
+      );
+      if (byIdResponse.isSuccess) {
+        const single = unwrapSingle(byIdResponse.result);
+        if (single) return single;
+      }
+      const users = await getUsers();
+      return (
+        users.find((user) => String(user.UserID) === String(userId)) || null
       );
     },
     [endpoints.users, getUsers],
@@ -364,17 +280,7 @@ const useGlobalHook = () => {
       if (!isGlobalApiReady()) return null;
       const response = await API.post(withKey(endpoints.users), payload);
       if (!response.isSuccess) return null;
-      const created = unwrapSingle(response.result);
-      const createdUserId = created?.UserID ?? payload?.UserID;
-      if (createdUserId !== undefined && createdUserId !== null) {
-        writeGlobalDataCache(
-          CACHE_KEY.userById(createdUserId),
-          created || payload,
-          CACHE_TTL.users,
-        );
-      }
-      clearGlobalDataCache(CACHE_KEY.users);
-      return created;
+      return unwrapSingle(response.result);
     },
     [endpoints.users],
   );
@@ -387,14 +293,7 @@ const useGlobalHook = () => {
         payload,
       );
       if (!response.isSuccess) return null;
-      const updated = unwrapSingle(response.result) || payload;
-      writeGlobalDataCache(
-        CACHE_KEY.userById(userId),
-        updated,
-        CACHE_TTL.users,
-      );
-      clearGlobalDataCache(CACHE_KEY.users);
-      return updated;
+      return unwrapSingle(response.result) || payload;
     },
     [endpoints.users],
   );
@@ -420,7 +319,7 @@ const useGlobalHook = () => {
       if (created) return created;
 
       // Final fallback: check list endpoint again after attempted creation.
-      const refreshed = await getUsers({ forceRefresh: true });
+      const refreshed = await getUsers();
       return (
         refreshed.find(
           (user) => String(user.UserUsername) === String(seed.UserUsername),
@@ -446,6 +345,7 @@ const useGlobalHook = () => {
     getFindsByEvent,
     getFindsByPlayer,
     logFind,
+    claimCache,
     getUser,
     createUser,
     updateUser,

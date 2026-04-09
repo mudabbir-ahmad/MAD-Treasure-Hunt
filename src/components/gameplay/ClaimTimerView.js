@@ -1,6 +1,6 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
-import {CACHE_CLAIM_TIMER} from '../../utils/geoMath';
+import { useEffect, useRef, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { CACHE_CLAIM_TIMER } from "../../utils/geoMath";
 
 const ClaimTimerView = ({
   cache,
@@ -8,7 +8,7 @@ const ClaimTimerView = ({
   isClaiming,
   showClaimedPopup,
   claimDurationSeconds = CACHE_CLAIM_TIMER,
-  claimedPopupMessage = 'Cache Claimed!',
+  claimedPopupMessage = "Cache Claimed!",
   autoClaim = true,
 }) => {
   const [timeLeft, setTimeLeft] = useState(claimDurationSeconds);
@@ -75,30 +75,30 @@ const ClaimTimerView = ({
 
 const styles = StyleSheet.create({
   overlay: {
-    alignSelf: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
+    alignSelf: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 10,
     marginTop: 8,
   },
   text: {
-    color: '#cdd6f4',
+    color: "#cdd6f4",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   claimedOverlay: {
-    alignSelf: 'center',
-    backgroundColor: '#a6e3a1',
+    alignSelf: "center",
+    backgroundColor: "#a6e3a1",
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderRadius: 10,
     marginTop: 8,
   },
   claimedText: {
-    color: '#1e1e2e',
+    color: "#1e1e2e",
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
 

@@ -1,11 +1,12 @@
-import React, {useState} from 'react';
-import {Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
-import useAuthHook from '../../hooks/useAuthHook';
-import Screen from '../layout/Screen';
-import {Button, ButtonTray} from '../UI/Button';
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import useAuthHook from "../../hooks/useAuthHook";
+import Screen from "../layout/Screen";
+import { Button, ButtonTray } from "../UI/Button";
 
 const LoginScreen = ({ navigation }) => {
-  const { email, password, error, isLoading, setEmail, setPassword, login } = useAuthHook();
+  const { email, password, error, isLoading, setEmail, setPassword, login } =
+    useAuthHook();
   const [submitting, setSubmitting] = useState(false);
 
   const handleLogin = async () => {
@@ -17,10 +18,10 @@ const LoginScreen = ({ navigation }) => {
     }
     const rootNav = navigation.getParent() || navigation;
     if (user.IsAcceptedAdmin) {
-      rootNav.reset({ index: 0, routes: [{ name: 'Admin' }] });
+      rootNav.reset({ index: 0, routes: [{ name: "Admin" }] });
       return;
     }
-    rootNav.reset({ index: 0, routes: [{ name: 'Game' }] });
+    rootNav.reset({ index: 0, routes: [{ name: "Game" }] });
   };
 
   return (
@@ -52,14 +53,14 @@ const LoginScreen = ({ navigation }) => {
 
         <ButtonTray>
           <Button
-            label={submitting ? 'Logging in...' : 'Login'}
+            label={submitting ? "Logging in..." : "Login"}
             onClick={handleLogin}
             styleButton={styles.submitButton}
             styleLabel={styles.submitText}
           />
         </ButtonTray>
 
-        <Pressable onPress={() => navigation.navigate('RegisterScreen')}>
+        <Pressable onPress={() => navigation.navigate("RegisterScreen")}>
           <Text style={styles.linkText}>Create new account</Text>
         </Pressable>
       </View>
@@ -69,45 +70,45 @@ const LoginScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: {
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   content: {
     gap: 15,
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontWeight: "bold",
+    textAlign: "center",
     marginBottom: 10,
-    color: '#cdd6f4',
+    color: "#cdd6f4",
   },
   input: {
     borderWidth: 1,
-    borderColor: '#45475a',
+    borderColor: "#45475a",
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
-    color: '#cdd6f4',
-    backgroundColor: '#313244',
+    color: "#cdd6f4",
+    backgroundColor: "#313244",
   },
   errorText: {
-    color: '#D92800',
-    textAlign: 'center',
+    color: "#D92800",
+    textAlign: "center",
     marginTop: 5,
   },
   submitButton: {
-    backgroundColor: '#bd93f9',
-    borderColor: '#bd93f9',
+    backgroundColor: "#bd93f9",
+    borderColor: "#bd93f9",
   },
   submitText: {
-    color: '#1e1e2e',
-    fontWeight: '600',
+    color: "#1e1e2e",
+    fontWeight: "600",
   },
   linkText: {
-    textAlign: 'center',
-    color: '#bd93f9',
-    fontWeight: '600',
+    textAlign: "center",
+    color: "#bd93f9",
+    fontWeight: "600",
     paddingVertical: 10,
   },
 });

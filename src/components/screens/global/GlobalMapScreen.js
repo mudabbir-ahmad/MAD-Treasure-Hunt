@@ -1,16 +1,16 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {ActivityIndicator, StyleSheet, Text, View} from "react-native";
-import MapView, {Circle, Marker, Polygon} from "react-native-maps";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import MapView, { Circle, Marker, Polygon } from "react-native-maps";
 import * as Location from "expo-location";
 import Screen from "../../layout/Screen";
-import {Button, ButtonTray} from "../../UI/Button";
+import { Button, ButtonTray } from "../../UI/Button";
 import ClaimTimerView from "../../gameplay/ClaimTimerView";
 import CacheList from "../../../entity/cache/CacheList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
 import usePlayerGame from "../../../hooks/usePlayerGame";
-import {getSession} from "../../../hooks/SessionStore";
-import {getFovCone, isInClaimCone} from "../../../utils/geoMath";
-import {GAME_MODE} from "../../../utils/gameConstants";
+import { getSession } from "../../../hooks/SessionStore";
+import { getFovCone, isInClaimCone } from "../../../utils/geoMath";
+import { GAME_MODE } from "../../../utils/gameConstants";
 
 const DEFAULT_REGION = {
   latitude: 51.5074,
@@ -27,17 +27,19 @@ const GlobalMapScreen = ({ navigation, route }) => {
   const session = getSession();
   const routeEvent = route?.params?.event ?? null;
   const eventId =
-    route?.params?.eventId ?? routeEvent?.EventID ?? session.currentGlobalEventId;
-  const { getCachesByEvent, getFindsByPlayer, logFind } = useGlobalHook();
+    route?.params?.eventId ??
+    routeEvent?.EventID ??
+    session.currentGlobalEventId;
+  const { getCachesByEvent, getFindsByPlayer, claimCache } = useGlobalHook();
   const globalApiRef = useRef({
     getCachesByEvent,
     getFindsByPlayer,
-    logFind,
+    claimCache,
   });
   globalApiRef.current = {
     getCachesByEvent,
     getFindsByPlayer,
-    logFind,
+    claimCache,
   };
 
   // State -------------------------------
@@ -53,7 +55,8 @@ const GlobalMapScreen = ({ navigation, route }) => {
     route?.params?.selectedCacheId ?? route?.params?.cache?.CacheID ?? null,
   );
   const [claimedPopupVisible, setClaimedPopupVisible] = useState(false);
-  const [claimedPopupMessage, setClaimedPopupMessage] = useState("Cache Claimed!");
+  const [claimedPopupMessage, setClaimedPopupMessage] =
+    useState("Cache Claimed!");
 
   const claimableCaches = useMemo(
     () =>
@@ -126,24 +129,29 @@ const GlobalMapScreen = ({ navigation, route }) => {
         (cache) => String(cache.CacheID) === String(cacheId),
       );
 
-      const result = await globalApiRef.current.logFind({
-        FindPlayerID: session.currentGlobalPlayerId,
-        FindCacheID: claimedCache?.CacheID ?? cacheId,
-        FindDatetime: new Date().toISOString(),
-      });
+      const result = await globalApiRef.current.claimCache(
+        session.currentGlobalPlayerId,
+        claimedCache,
+      );
 
       setIsClaiming(false);
 
-      if (result) {
-        const cacheName = claimedCache?.CacheName || "Cache";
-        const points = Number(claimedCache?.CachePoints ?? 0);
-        setClaimedPopupMessage(`${cacheName} claimed! You gained +${points} points.`);
-        setClaimedPopupVisible(true);
-        setTimeout(() => setClaimedPopupVisible(false), 3000);
-        await loadData({ forceRefresh: true });
+      if (!result || result.error) {
+        setError(`Failed to claim cache: ${result?.error || "Unknown error"}`);
+        return;
       }
+
+      // Optimistically mark as found — no loadData() to avoid overwriting
+      // this state with a stale server response.
+      setFoundCacheIds((prev) => [...prev, String(cacheId)]);
+      const cacheName = claimedCache?.CacheName || "Cache";
+      setClaimedPopupMessage(
+        `${cacheName} claimed! You gained +${result.points} points.`,
+      );
+      setClaimedPopupVisible(true);
+      setTimeout(() => setClaimedPopupVisible(false), 3000);
     },
-    [caches, foundCacheIds, loadData, session.currentGlobalPlayerId, setIsClaiming],
+    [caches, foundCacheIds, session.currentGlobalPlayerId, setIsClaiming],
   );
 
   const handleCacheSelect = (cache) => {
@@ -234,7 +242,9 @@ const GlobalMapScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (selectedCacheId) return;
-    setSelectedCacheId(route?.params?.cache?.CacheID ?? claimableCaches[0]?.id ?? null);
+    setSelectedCacheId(
+      route?.params?.cache?.CacheID ?? claimableCaches[0]?.id ?? null,
+    );
   }, [claimableCaches, route?.params?.cache?.CacheID, selectedCacheId]);
 
   useEffect(() => {
@@ -335,33 +345,32 @@ const GlobalMapScreen = ({ navigation, route }) => {
             region={mapRegion}
             showsUserLocation
           >
-            {(caches || []).map((cache) => {
-              const found = foundCacheIds.includes(String(cache.CacheID));
-              const selected = selectedCacheId === cache.CacheID;
-              return (
-                <Marker
-                  key={cache.CacheID}
-                  coordinate={{
-                    latitude: cache.CacheLatitude,
-                    longitude: cache.CacheLongitude,
-                  }}
-                  title={cache.CacheName}
-                  description={`${cache.CachePoints ?? 0} pts${found ? " · Found" : ""}`}
-                  pinColor={
-                    found ? "#22c55e" : selected ? "#f59e0b" : "#ef4444"
-                  }
-                  onPress={() => setSelectedCacheId(cache.CacheID)}
-                  onCalloutPress={() =>
-                    navigation.navigate("GlobalCacheViewScreen", {
-                      cache,
-                      event: routeEvent,
-                      eventId,
-                      isFound: found,
-                    })
-                  }
-                />
-              );
-            })}
+            {(caches || [])
+              .filter((cache) => !foundCacheIds.includes(String(cache.CacheID)))
+              .map((cache) => {
+                const selected = selectedCacheId === cache.CacheID;
+                return (
+                  <Marker
+                    key={cache.CacheID}
+                    coordinate={{
+                      latitude: cache.CacheLatitude,
+                      longitude: cache.CacheLongitude,
+                    }}
+                    title={cache.CacheName}
+                    description={`${cache.CachePoints ?? 0} pts`}
+                    pinColor={selected ? "#f59e0b" : "#ef4444"}
+                    onPress={() => setSelectedCacheId(cache.CacheID)}
+                    onCalloutPress={() =>
+                      navigation.navigate("GlobalCacheViewScreen", {
+                        cache,
+                        event: routeEvent,
+                        eventId,
+                        isFound: false,
+                      })
+                    }
+                  />
+                );
+              })}
 
             {claimTarget ? (
               <Circle
@@ -383,7 +392,9 @@ const GlobalMapScreen = ({ navigation, route }) => {
           </MapView>
         ) : (
           <CacheList
-            caches={caches}
+            caches={(caches || []).filter(
+              (cache) => !foundCacheIds.includes(String(cache.CacheID)),
+            )}
             foundCacheIds={foundCacheIds}
             onSelect={handleCacheSelect}
           />
