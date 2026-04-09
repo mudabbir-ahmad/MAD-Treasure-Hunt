@@ -1,12 +1,18 @@
-import {useCallback, useEffect, useRef, useState} from "react";
-import {ActivityIndicator, ScrollView, StyleSheet, Text, View,} from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Screen from "../../layout/Screen";
-import {Button, ButtonTray} from "../../UI/Button";
+import { Button, ButtonTray } from "../../UI/Button";
 import Card from "../../UI/Card";
 import FindList from "../../../entity/find/FindList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
-import {getSession} from "../../../hooks/SessionStore";
-import {GAME_MODE} from "../../../utils/gameConstants";
+import { getSession } from "../../../hooks/SessionStore";
+import { GAME_MODE } from "../../../utils/gameConstants";
 
 const GlobalLeaderboardScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
@@ -35,75 +41,78 @@ const GlobalLeaderboardScreen = ({ navigation, route }) => {
 
   // Handlers ----------------------------
 
-  const loadData = useCallback(async (options = {}) => {
-    if (!eventId) return;
+  const loadData = useCallback(
+    async (options = {}) => {
+      if (!eventId) return;
 
-    setIsLoading(true);
+      setIsLoading(true);
 
-    const [finds, caches, players] = await Promise.all([
-      globalApiRef.current.getFindsByEvent(eventId, options),
-      globalApiRef.current.getCachesByEvent(eventId, options),
-      globalApiRef.current.getPlayersByEvent(eventId, options),
-    ]);
+      const [finds, caches, players] = await Promise.all([
+        globalApiRef.current.getFindsByEvent(eventId, options),
+        globalApiRef.current.getCachesByEvent(eventId, options),
+        globalApiRef.current.getPlayersByEvent(eventId, options),
+      ]);
 
-    // Build cache points lookup
-    const cacheMap = {};
-    (caches || []).forEach((c) => {
-      cacheMap[String(c.CacheID)] = c;
-    });
+      // Build cache points lookup
+      const cacheMap = {};
+      (caches || []).forEach((c) => {
+        cacheMap[String(c.CacheID)] = c;
+      });
 
-    // Augment finds with cache info for FindList
-    const augmented = (finds || []).map((f) => ({
-      ...f,
-      FindCache: f.FindCache || cacheMap[String(f.FindCacheID)] || null,
-    }));
+      // Augment finds with cache info for FindList
+      const augmented = (finds || []).map((f) => ({
+        ...f,
+        FindCache: f.FindCache || cacheMap[String(f.FindCacheID)] || null,
+      }));
 
-    // Sort recent first
-    const sorted = [...augmented].sort(
-      (a, b) => new Date(b.FindDatetime) - new Date(a.FindDatetime),
-    );
-    setRecentFinds(sorted.slice(0, 50));
+      // Sort recent first
+      const sorted = [...augmented].sort(
+        (a, b) => new Date(b.FindDatetime) - new Date(a.FindDatetime),
+      );
+      setRecentFinds(sorted.slice(0, 50));
 
-    // Start ranking map with all players so zero-point players are visible.
-    const pointsMap = {};
-    (players || []).forEach((p) => {
-      const pid = p.PlayerID;
-      pointsMap[String(pid)] = {
-        playerId: pid,
-        points: Number(p.PlayerPoints || 0),
-        finds: 0,
-        name: p.PlayerUser?.UserUsername || `Player #${p.PlayerUserID}`,
-      };
-    });
-
-    // Aggregate points and finds from recorded discoveries.
-    augmented.forEach((f) => {
-      const pid = f.FindPlayerID;
-      const key = String(pid);
-      const pts = Number(f.FindCache?.CachePoints || 0);
-
-      if (!pointsMap[key]) {
-        pointsMap[key] = {
+      // Start ranking map with all players so zero-point players are visible.
+      const pointsMap = {};
+      (players || []).forEach((p) => {
+        const pid = p.PlayerID;
+        pointsMap[String(pid)] = {
           playerId: pid,
-          points: 0,
+          points: Number(p.PlayerPoints || 0),
           finds: 0,
-          name: `Player #${f.FindPlayerID}`,
+          name: p.PlayerUser?.UserUsername || `Player #${p.PlayerUserID}`,
         };
-      }
+      });
 
-      pointsMap[key].points += pts;
-      pointsMap[key].finds += 1;
-    });
+      // Aggregate points and finds from recorded discoveries.
+      augmented.forEach((f) => {
+        const pid = f.FindPlayerID;
+        const key = String(pid);
+        const pts = Number(f.FindCache?.CachePoints || 0);
 
-    const ranked = Object.values(pointsMap).sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.finds !== a.finds) return b.finds - a.finds;
-      return String(a.name || "").localeCompare(String(b.name || ""));
-    });
+        if (!pointsMap[key]) {
+          pointsMap[key] = {
+            playerId: pid,
+            points: 0,
+            finds: 0,
+            name: `Player #${f.FindPlayerID}`,
+          };
+        }
 
-    setRankings(ranked);
-    setIsLoading(false);
-  }, [eventId]);
+        pointsMap[key].points += pts;
+        pointsMap[key].finds += 1;
+      });
+
+      const ranked = Object.values(pointsMap).sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.finds !== a.finds) return b.finds - a.finds;
+        return String(a.name || "").localeCompare(String(b.name || ""));
+      });
+
+      setRankings(ranked);
+      setIsLoading(false);
+    },
+    [eventId],
+  );
 
   useEffect(() => {
     if (session.isBusiness || session.currentGameMode !== GAME_MODE.GLOBAL) {
@@ -126,12 +135,21 @@ const GlobalLeaderboardScreen = ({ navigation, route }) => {
   ]);
 
   useEffect(() => {
-    if (!eventId || session.currentGameMode !== GAME_MODE.GLOBAL || !session.currentGlobalPlayerId) {
+    if (
+      !eventId ||
+      session.currentGameMode !== GAME_MODE.GLOBAL ||
+      !session.currentGlobalPlayerId
+    ) {
       return;
     }
 
     loadData();
-  }, [eventId, loadData, session.currentGameMode, session.currentGlobalPlayerId]);
+  }, [
+    eventId,
+    loadData,
+    session.currentGameMode,
+    session.currentGlobalPlayerId,
+  ]);
 
   // View --------------------------------
 
@@ -199,7 +217,10 @@ const GlobalLeaderboardScreen = ({ navigation, route }) => {
         )}
 
         <ButtonTray>
-          <Button label="Refresh" onClick={() => loadData({forceRefresh: true})} />
+          <Button
+            label="Refresh"
+            onClick={() => loadData({ forceRefresh: true })}
+          />
         </ButtonTray>
       </View>
     </Screen>
@@ -222,13 +243,13 @@ const tabStyles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
     fontWeight: "600",
-    color: "#6b7280",
+    color: "#a6adc8",
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
   activeTab: {
-    color: "#111827",
-    borderBottomColor: "#111827",
+    color: "#cdd6f4",
+    borderBottomColor: "#89b4fa",
   },
 });
 
@@ -244,7 +265,7 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: "#45475a",
   },
   rankList: {
     gap: 6,
@@ -254,7 +275,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   myCard: {
-    borderColor: "#2563eb",
+    borderColor: "#89b4fa",
     borderWidth: 2,
   },
   rankRow: {
@@ -265,14 +286,14 @@ const styles = StyleSheet.create({
   rankPos: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#6b7280",
+    color: "#a6adc8",
     width: 32,
   },
   rankName: {
     flex: 1,
     fontSize: 15,
     fontWeight: "600",
-    color: "#111827",
+    color: "#cdd6f4",
   },
   rankRight: {
     alignItems: "flex-end",
@@ -280,15 +301,15 @@ const styles = StyleSheet.create({
   rankPoints: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#16a34a",
+    color: "#a6e3a1",
   },
   rankFinds: {
     fontSize: 12,
-    color: "#9ca3af",
+    color: "#a6adc8",
   },
   empty: {
     textAlign: "center",
-    color: "#9ca3af",
+    color: "#a6adc8",
     marginTop: 30,
     fontSize: 15,
   },

@@ -1,16 +1,16 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from "react";
-import {ActivityIndicator, StyleSheet, Text, View} from "react-native";
-import MapView, {Circle, Marker, Polygon} from "react-native-maps";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import MapView, { Circle, Marker, Polygon } from "react-native-maps";
 import * as Location from "expo-location";
 import Screen from "../../layout/Screen";
-import {Button, ButtonTray} from "../../UI/Button";
+import { Button, ButtonTray } from "../../UI/Button";
 import ClaimTimerView from "../../gameplay/ClaimTimerView";
 import CacheList from "../../../entity/cache/CacheList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
 import usePlayerGame from "../../../hooks/usePlayerGame";
-import {getSession} from "../../../hooks/SessionStore";
-import {getFovCone} from "../../../utils/geoMath";
-import {GAME_MODE} from "../../../utils/gameConstants";
+import { getSession } from "../../../hooks/SessionStore";
+import { getFovCone } from "../../../utils/geoMath";
+import { GAME_MODE } from "../../../utils/gameConstants";
 
 const DEFAULT_REGION = {
   latitude: 51.5074,
@@ -77,23 +77,29 @@ const GlobalMapScreen = ({ navigation, route }) => {
 
   // Handlers ----------------------------
 
-  const loadData = useCallback(async (options = {}) => {
-    if (!eventId) return;
+  const loadData = useCallback(
+    async (options = {}) => {
+      if (!eventId) return;
 
-    setIsLoading(true);
-    setError("");
+      setIsLoading(true);
+      setError("");
 
-    const [cacheData, findsData] = await Promise.all([
-      globalApiRef.current.getCachesByEvent(eventId, options),
-      session.currentGlobalPlayerId
-        ? globalApiRef.current.getFindsByPlayer(session.currentGlobalPlayerId, options)
-        : Promise.resolve([]),
-    ]);
+      const [cacheData, findsData] = await Promise.all([
+        globalApiRef.current.getCachesByEvent(eventId, options),
+        session.currentGlobalPlayerId
+          ? globalApiRef.current.getFindsByPlayer(
+              session.currentGlobalPlayerId,
+              options,
+            )
+          : Promise.resolve([]),
+      ]);
 
-    setCaches(cacheData || []);
-    setFoundCacheIds((findsData || []).map((f) => f.FindCacheID));
-    setIsLoading(false);
-  }, [eventId, session.currentGlobalPlayerId]);
+      setCaches(cacheData || []);
+      setFoundCacheIds((findsData || []).map((f) => f.FindCacheID));
+      setIsLoading(false);
+    },
+    [eventId, session.currentGlobalPlayerId],
+  );
 
   const handleClaim = useCallback(
     async (cacheId) => {
@@ -119,7 +125,7 @@ const GlobalMapScreen = ({ navigation, route }) => {
       if (result) {
         setClaimedPopupVisible(true);
         setTimeout(() => setClaimedPopupVisible(false), 3000);
-        await loadData({forceRefresh: true});
+        await loadData({ forceRefresh: true });
       }
     },
     [foundCacheIds, loadData, session.currentGlobalPlayerId, setIsClaiming],
@@ -131,7 +137,9 @@ const GlobalMapScreen = ({ navigation, route }) => {
   };
 
   const handleOpenSelectedCache = () => {
-    const selected = (caches || []).find((cache) => cache.CacheID === selectedCacheId);
+    const selected = (caches || []).find(
+      (cache) => cache.CacheID === selectedCacheId,
+    );
     if (!selected) return;
     navigation.navigate("GlobalCacheViewScreen", {
       cache: selected,
@@ -166,12 +174,21 @@ const GlobalMapScreen = ({ navigation, route }) => {
   ]);
 
   useEffect(() => {
-    if (!eventId || session.currentGameMode !== GAME_MODE.GLOBAL || !session.currentGlobalPlayerId) {
+    if (
+      !eventId ||
+      session.currentGameMode !== GAME_MODE.GLOBAL ||
+      !session.currentGlobalPlayerId
+    ) {
       return;
     }
 
     loadData();
-  }, [eventId, loadData, session.currentGameMode, session.currentGlobalPlayerId]);
+  }, [
+    eventId,
+    loadData,
+    session.currentGameMode,
+    session.currentGlobalPlayerId,
+  ]);
 
   useEffect(() => {
     const routeSelected = route?.params?.selectedCacheId;
@@ -180,7 +197,10 @@ const GlobalMapScreen = ({ navigation, route }) => {
   }, [route?.params?.selectedCacheId]);
 
   useEffect(() => {
-    if (selectedCacheId && claimableCaches.some((cache) => cache.id === selectedCacheId)) {
+    if (
+      selectedCacheId &&
+      claimableCaches.some((cache) => cache.id === selectedCacheId)
+    ) {
       return;
     }
     setSelectedCacheId(claimableCaches[0]?.id || null);
@@ -291,7 +311,9 @@ const GlobalMapScreen = ({ navigation, route }) => {
                   }}
                   title={cache.CacheName}
                   description={`${cache.CachePoints ?? 0} pts${found ? " · Found" : ""}`}
-                  pinColor={found ? "#22c55e" : selected ? "#f59e0b" : "#ef4444"}
+                  pinColor={
+                    found ? "#22c55e" : selected ? "#f59e0b" : "#ef4444"
+                  }
                   onPress={() => setSelectedCacheId(cache.CacheID)}
                   onCalloutPress={() =>
                     navigation.navigate("GlobalCacheViewScreen", {
@@ -337,9 +359,16 @@ const GlobalMapScreen = ({ navigation, route }) => {
         />
 
         <ButtonTray>
-          <Button label="Details" onClick={handleOpenSelectedCache} disabled={!selectedCacheId} />
+          <Button
+            label="Details"
+            onClick={handleOpenSelectedCache}
+            disabled={!selectedCacheId}
+          />
           <Button label="Leaderboard" onClick={handleGotoLeaderboard} />
-          <Button label="Refresh" onClick={() => loadData({forceRefresh: true})} />
+          <Button
+            label="Refresh"
+            onClick={() => loadData({ forceRefresh: true })}
+          />
         </ButtonTray>
       </View>
     </Screen>
@@ -362,13 +391,13 @@ const tabStyles = StyleSheet.create({
     paddingVertical: 8,
     fontSize: 14,
     fontWeight: "600",
-    color: "#6b7280",
+    color: "#a6adc8",
     borderBottomWidth: 2,
     borderBottomColor: "transparent",
   },
   activeTab: {
-    color: "#111827",
-    borderBottomColor: "#111827",
+    color: "#cdd6f4",
+    borderBottomColor: "#89b4fa",
   },
 });
 
@@ -384,13 +413,13 @@ const styles = StyleSheet.create({
   tabs: {
     flexDirection: "row",
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
+    borderBottomColor: "#45475a",
   },
   map: {
     flex: 1,
   },
   error: {
-    color: "#dc2626",
+    color: "#f38ba8",
     fontSize: 14,
   },
 });

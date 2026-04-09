@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   error: {
-    color: "#dc2626",
+    color: "#f38ba8",
     fontSize: 14,
   },
   avatarWrap: {
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    color: "#9ca3af",
+    color: "#a6adc8",
     fontWeight: "600",
   },
   input: {

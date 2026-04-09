@@ -1,10 +1,10 @@
-import {useEffect} from "react";
-import {StyleSheet, Text, View} from "react-native";
+import { useEffect } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import Screen from "../../layout/Screen";
-import {Button, ButtonTray} from "../../UI/Button";
+import { Button, ButtonTray } from "../../UI/Button";
 import Card from "../../UI/Card";
-import {getSession} from "../../../hooks/SessionStore";
-import {GAME_MODE} from "../../../utils/gameConstants";
+import { getSession } from "../../../hooks/SessionStore";
+import { GAME_MODE } from "../../../utils/gameConstants";
 
 const GlobalCacheViewScreen = ({ navigation, route }) => {
   // Initialisations ---------------------
@@ -67,7 +67,8 @@ const GlobalCacheViewScreen = ({ navigation, route }) => {
 
           {!initIsFound ? (
             <Text style={styles.claimHint}>
-              Claim this cache from the Global Map while within 30m and facing it.
+              Claim this cache from the Global Map while within 30m and facing
+              it.
             </Text>
           ) : null}
         </Card>
@@ -91,7 +92,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "700",
-    color: "#111827",
+    color: "#cdd6f4",
   },
   statusBadge: {
     alignSelf: "flex-start",
@@ -100,15 +101,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   badgeFound: {
-    backgroundColor: "#d1fae5",
+    backgroundColor: "#1e3a2f",
   },
   badgeOpen: {
-    backgroundColor: "#fef3c7",
+    backgroundColor: "#3d3117",
   },
   statusText: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#374151",
+    color: "#cdd6f4",
   },
   detailRow: {
     gap: 2,
@@ -116,17 +117,17 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: "600",
-    color: "#6b7280",
+    color: "#a6adc8",
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
   value: {
     fontSize: 15,
-    color: "#111827",
+    color: "#cdd6f4",
   },
   claimHint: {
     marginTop: 6,
-    color: "#2563eb",
+    color: "#89b4fa",
     fontSize: 13,
     fontWeight: "600",
   },

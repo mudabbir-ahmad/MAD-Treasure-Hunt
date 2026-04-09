@@ -1,21 +1,17 @@
-import {useCallback, useEffect, useRef, useState} from "react";
-import {ActivityIndicator, StyleSheet, Text, View} from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import Screen from "../../layout/Screen";
-import {Button, ButtonTray} from "../../UI/Button";
+import { Button, ButtonTray } from "../../UI/Button";
 import EventList from "../../../entity/event/EventList";
 import useGlobalHook from "../../../hooks/useGlobalHook";
-import {getSession, setGlobalSession} from "../../../hooks/SessionStore";
-import {GAME_MODE} from "../../../utils/gameConstants";
+import { getSession, setGlobalSession } from "../../../hooks/SessionStore";
+import { GAME_MODE } from "../../../utils/gameConstants";
 
 const GlobalEventsScreen = ({ navigation }) => {
   // Initialisations ---------------------
 
-  const {
-    getPublicEvents,
-    getPlayersByEvent,
-    joinEvent,
-    isGlobalApiReady,
-  } = useGlobalHook();
+  const { getPublicEvents, getPlayersByEvent, joinEvent, isGlobalApiReady } =
+    useGlobalHook();
   const session = getSession();
   const globalApiRef = useRef({
     getPublicEvents,
@@ -45,7 +41,9 @@ const GlobalEventsScreen = ({ navigation }) => {
 
     if (!globalApiRef.current.isGlobalApiReady()) {
       setEvents([]);
-      setError("Global API URL is not configured yet. Add it in src/components/API/api.json.");
+      setError(
+        "Global API URL is not configured yet. Add it in src/components/API/api.json.",
+      );
       setIsLoading(false);
       return;
     }
@@ -68,7 +66,9 @@ const GlobalEventsScreen = ({ navigation }) => {
     setJoining(event.EventID);
 
     if (!globalApiRef.current.isGlobalApiReady()) {
-      setError("Global API URL is not configured yet. Add it in src/components/API/api.json.");
+      setError(
+        "Global API URL is not configured yet. Add it in src/components/API/api.json.",
+      );
       setJoining(null);
       return;
     }
@@ -82,7 +82,10 @@ const GlobalEventsScreen = ({ navigation }) => {
     };
 
     // Check if already a player
-    const players = await globalApiRef.current.getPlayersByEvent(event.EventID, {forceRefresh: true});
+    const players = await globalApiRef.current.getPlayersByEvent(
+      event.EventID,
+      { forceRefresh: true },
+    );
     const existing = (players || []).find(
       (p) => String(p.PlayerUserID) === String(globalUserId),
     );
@@ -110,7 +113,10 @@ const GlobalEventsScreen = ({ navigation }) => {
     }
 
     // If create fails due duplicate race/server behavior, recover by re-reading players.
-    const refreshedPlayers = await globalApiRef.current.getPlayersByEvent(event.EventID, {forceRefresh: true});
+    const refreshedPlayers = await globalApiRef.current.getPlayersByEvent(
+      event.EventID,
+      { forceRefresh: true },
+    );
     const recovered = (refreshedPlayers || []).find(
       (p) => String(p.PlayerUserID) === String(globalUserId),
     );
@@ -131,7 +137,10 @@ const GlobalEventsScreen = ({ navigation }) => {
     <Screen>
       <View style={styles.container}>
         <ButtonTray>
-          <Button label="Refresh" onClick={() => loadEvents({forceRefresh: true})} />
+          <Button
+            label="Refresh"
+            onClick={() => loadEvents({ forceRefresh: true })}
+          />
         </ButtonTray>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -174,21 +183,21 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   loadingText: {
-    color: "#6b7280",
+    color: "#a6adc8",
     fontSize: 14,
   },
   empty: {
     textAlign: "center",
-    color: "#9ca3af",
+    color: "#a6adc8",
     marginTop: 30,
     fontSize: 15,
   },
   hint: {
     fontSize: 13,
-    color: "#6b7280",
+    color: "#a6adc8",
   },
   error: {
-    color: "#dc2626",
+    color: "#f38ba8",
     fontSize: 14,
   },
   overlay: {
