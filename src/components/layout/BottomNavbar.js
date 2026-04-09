@@ -15,7 +15,14 @@ const BottomNavbar = ({navigation, routeName, routeParams}) => {
 
     const adminTabs = [
         {label: 'Settings', route: 'GameSettingsScreen', onPress: () => navigation.navigate('GameSettingsScreen')},
-        {label: 'Map', route: 'MapScreen', onPress: () => navigation.navigate('MapScreen')},
+        {
+            label: 'Map',
+            route: 'MapScreen',
+            onPress: () => navigation.navigate('MapScreen', {
+                selectedDepartmentSGid: null,
+                selectedDepartmentName: null,
+            }),
+        },
         {
             label: 'Players',
             route: 'PlayersScreen',
@@ -39,6 +46,11 @@ const BottomNavbar = ({navigation, routeName, routeParams}) => {
     ];
 
     const tabs = session.isAcceptedAdmin ? adminTabs : playerTabs;
+    const pendingTabs = [
+        {label: 'Pending', route: 'TeamScreen', onPress: () => navigation.navigate('TeamScreen')},
+        ...(inGame ? [{label: 'Leave', route: '__leave__', onPress: () => handleLeaveGame()}] : []),
+    ];
+    const visibleTabs = (session.isPendingAdmin && !session.isAcceptedAdmin) ? pendingTabs : tabs;
 
 //   State ----------------------
 //   Handlers -------------------
@@ -67,7 +79,7 @@ const BottomNavbar = ({navigation, routeName, routeParams}) => {
 
     return (
         <View style={[styles.container, {paddingBottom: insets.bottom}]}>
-            {tabs.map((tab) => {
+            {visibleTabs.map((tab) => {
                 const isActive = routeName === tab.route;
                 const isLeave = tab.route === '__leave__';
                 return (

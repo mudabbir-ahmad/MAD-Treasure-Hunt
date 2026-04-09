@@ -140,6 +140,9 @@ const useGameHook = () => {
     };
     if (payload.JoinCode !== undefined) data.JoinCode = payload.JoinCode;
     if (payload.Tid !== undefined) data.Tid = payload.Tid;
+    if (payload.ExpectedGid !== undefined && payload.ExpectedGid !== null) {
+      data.ExpectedGid = payload.ExpectedGid;
+    }
     if (payload.ExpectedSGid !== undefined && payload.ExpectedSGid !== null) {
       data.ExpectedSGid = payload.ExpectedSGid;
     }

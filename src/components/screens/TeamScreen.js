@@ -4,9 +4,9 @@ import Screen from '../layout/Screen';
 import Card from '../UI/Card';
 import {Button, ButtonTray} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
-import {getSession, setSessionTeam} from '../../hooks/SessionStore';
+import {getSession, setPendingAdmin, setSessionTeam, setSessionUser} from '../../hooks/SessionStore';
 
-const TeamScreen = () => {
+const TeamScreen = ({navigation}) => {
   const session = getSession();
   const isAdmin = session.isAcceptedAdmin;
   const isBusiness = Boolean(session.isBusiness);
@@ -48,6 +48,24 @@ const TeamScreen = () => {
                 if (subgroup) teamsAreEnabled = Boolean(subgroup.TeamsEnabled);
             }
 
+            if (session.isPendingAdmin && !session.isAcceptedAdmin) {
+                const freshUser = await getUser(session.currentUid);
+                if (freshUser?.IsAcceptedAdmin) {
+                    setPendingAdmin(false);
+                    setSessionUser(freshUser);
+                    setSessionTeam(freshUser.TGid ?? null);
+                    navigation.reset({index: 0, routes: [{name: 'Admin'}]});
+                    return;
+                }
+                const waitlist = await getAdminWaitlist(session.currentGid, session.currentUid);
+                if (waitlist.length > 0) {
+                    setOnAdminWaitlist(true);
+                    setLoading(false);
+                    return;
+                }
+                setPendingAdmin(false);
+            }
+
             if (!teamsAreEnabled) {
                 setTeamsDisabled(true);
                 setLoading(false);
@@ -69,6 +87,44 @@ const TeamScreen = () => {
         load();
     }, [activeTid]);
 
+    useEffect(() => {
+        if (!onAdminWaitlist && !session.isPendingAdmin) return;
+
+        let stopped = false;
+        const refreshWaitlistStatus = async () => {
+            const currentSession = getSession();
+            if (!currentSession.currentUid || !currentSession.currentGid) return;
+
+            const freshUser = await getUser(currentSession.currentUid);
+            if (stopped) return;
+
+            if (freshUser?.IsAcceptedAdmin) {
+                setPendingAdmin(false);
+                setSessionUser(freshUser);
+                setSessionTeam(freshUser.TGid ?? null);
+                navigation.reset({index: 0, routes: [{name: 'Admin'}]});
+                return;
+            }
+
+            const waitlist = await getAdminWaitlist(currentSession.currentGid, currentSession.currentUid);
+            if (stopped) return;
+
+            const isStillWaiting = waitlist.length > 0;
+            setOnAdminWaitlist(isStillWaiting);
+            if (!isStillWaiting) {
+                setPendingAdmin(false);
+            }
+        };
+
+        refreshWaitlistStatus();
+        const intervalId = setInterval(refreshWaitlistStatus, 5000);
+
+        return () => {
+            stopped = true;
+            clearInterval(intervalId);
+        };
+    }, [onAdminWaitlist, session.isPendingAdmin]);
+
     const handleJoinTeam = async () => {
         if (!teamCode.trim()) return;
         // Force uppercase just in case a lowercase code is pasted
@@ -82,6 +138,7 @@ const TeamScreen = () => {
 
         // If the server indicates this code matched the admin join code
         if (result.adminWaitlist) {
+            setPendingAdmin(true);
             setOnAdminWaitlist(true);
             return;
         }

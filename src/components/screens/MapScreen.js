@@ -10,7 +10,7 @@ import ClaimTimerView from '../gameplay/ClaimTimerView';
 import PlayerMapView from '../gameplay/PlayerMapView';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
-import {getSession, setSelectedCache, setSessionGroup, setSessionTeam, setSessionUser} from '../../hooks/SessionStore';
+import {getSession, setPendingAdmin, setSelectedCache, setSessionGroup, setSessionTeam, setSessionUser} from '../../hooks/SessionStore';
 import {getFovCone} from '../../utils/geoMath';
 
 const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.05, longitudeDelta: 0.05};
@@ -19,7 +19,7 @@ const DEFAULT_REGION = {latitude: 51.5074, longitude: -0.1278, latitudeDelta: 0.
 const MapScreen = ({navigation, route}) => {
   const session = getSession();
   const isBusiness = Boolean(session.isBusiness);
-  const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, createPrivateGame, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
+  const {getCaches, claimCache, upsertCache, deleteCache, joinPrivateGame, joinTeamByCode, createPrivateGame, getLobby, getUser, getSubgroups, getGroupByOrgCode} = useGameHook();
 
   // Stable ref to prevent infinite re-render loops
   const getCachesRef = useRef(getCaches);
@@ -104,8 +104,9 @@ const MapScreen = ({navigation, route}) => {
     return map;
   }, [departments]);
   const routeDepartmentSGid = route?.params?.selectedDepartmentSGid;
+  const isDepartmentScopedMap = routeDepartmentSGid !== null && routeDepartmentSGid !== undefined;
   const effectiveSGid = isBusiness
-      ? (isAdmin ? (selectedCacheSubgroupId ?? routeDepartmentSGid ?? defaultMemberSGid ?? null) : (session.currentSGid ?? null))
+      ? (isAdmin ? (isDepartmentScopedMap ? routeDepartmentSGid : null) : (session.currentSGid ?? null))
       : null;
 
     useEffect(() => {
@@ -199,6 +200,7 @@ const MapScreen = ({navigation, route}) => {
         const result = await joinPrivateGame({JoinCode: gameCode.trim().toUpperCase(), Uid: session.currentUid});
         if (!result) return;
         setSessionGroup(result.Gid, result.SGid);
+        setPendingAdmin(false);
 
         const freshUser = await getUser(session.currentUid);
         if (freshUser) {
@@ -219,6 +221,7 @@ const MapScreen = ({navigation, route}) => {
             MaxMemberSubgroups: 1,
         });
         if (!result) return;
+        setPendingAdmin(false);
         const freshUser = await getUser(session.currentUid);
         if (freshUser) {
             setSessionUser(freshUser);
@@ -239,6 +242,7 @@ const MapScreen = ({navigation, route}) => {
             isBusiness: true,
         });
         if (!result) return;
+        setPendingAdmin(false);
         const freshUser = await getUser(session.currentUid);
         if (freshUser) {
             setSessionUser(freshUser);
@@ -265,8 +269,33 @@ const MapScreen = ({navigation, route}) => {
     const handleJoinDepartment = async () => {
         setJoinError('');
         if (!deptCode.trim()) return;
+        const enteredCode = deptCode.trim().toUpperCase();
+        const adminCode = String(matchedGroup?.AdminJoinCode || '').trim().toUpperCase();
+
+        // If the code matches the org admin code, submit an admin waitlist request
+        if (adminCode && enteredCode === adminCode) {
+            const waitlistResult = await joinTeamByCode({
+                JoinCode: enteredCode,
+                Uid: session.currentUid,
+                ExpectedGid: matchedGroup.Gid,
+            });
+            if (!waitlistResult || !waitlistResult.adminWaitlist) {
+                setJoinError('Could not submit admin request. Please try again.');
+                return;
+            }
+            setSessionGroup(matchedGroup.Gid, null);
+            setSessionTeam(null);
+            setPendingAdmin(true);
+            setInGame(true);
+            setIsAdmin(false);
+            setJoinStep(null);
+            setDeptCode('');
+            navigation.navigate('TeamScreen');
+            return;
+        }
+
         const result = await joinPrivateGame({
-            JoinCode: deptCode.trim().toUpperCase(),
+            JoinCode: enteredCode,
             Uid: session.currentUid,
             ExpectedGid: matchedGroup.Gid,
         });
@@ -275,6 +304,7 @@ const MapScreen = ({navigation, route}) => {
             return;
         }
         setSessionGroup(result.Gid, result.SGid);
+        setPendingAdmin(false);
         const freshUser = await getUser(session.currentUid);
         if (freshUser) {
             setSessionUser(freshUser);
@@ -680,6 +710,14 @@ const MapScreen = ({navigation, route}) => {
                         )}
                     </ScrollView>
                 </View>
+            </Screen>
+        );
+    }
+
+    if (session.isPendingAdmin && !session.isAcceptedAdmin) {
+        return (
+            <Screen style={styles.center}>
+                <Text style={styles.loadingText}>Waiting for admin approval. You will get access once approved.</Text>
             </Screen>
         );
     }
