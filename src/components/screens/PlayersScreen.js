@@ -10,7 +10,7 @@ const PlayersScreen = () => {
 //   Initialisation ------------
 
     const session = getSession();
-    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser, getAdminWaitlist} = useGameHook();
+    const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser, getAdminWaitlist, approveAdmin, rejectAdmin} = useGameHook();
 
 //   State ----------------------
 
@@ -28,6 +28,13 @@ const PlayersScreen = () => {
         // Get admin waitlist entries
         const waitlist = await getAdminWaitlist(session.currentGid);
 
+        // Deduplicate allMembers by Uid — a user may have two rows if they were a
+        // regular member before being approved as an admin. Prefer the admin row.
+        const seenUids = new Set();
+        const uniqueMembers = (allMembers || [])
+            .sort((a, b) => (b.IsAcceptedAdmin ? 1 : 0) - (a.IsAcceptedAdmin ? 1 : 0))
+            .filter((m) => { if (seenUids.has(m.Uid)) return false; seenUids.add(m.Uid); return true; });
+
         // Build team lookup: { Uid -> { teamCode, teamName, isLeader } }
         const allTeams = await getTeams(session.currentGid);
         const teamInfoByUid = {};
@@ -44,23 +51,33 @@ const PlayersScreen = () => {
 
         // Build player list — include admins with tags
         const playerList = [];
-        for (const m of (allMembers || [])) {
+        for (const m of uniqueMembers) {
             // Skip the current admin viewing the list
             if (m.Uid === session.currentUid) continue;
             const user = await getUser(m.Uid);
             if (user) {
+                // A group member may also be on the admin waitlist (applied after joining as a player).
+                // Check the waitlist first so they are treated as pending, not a regular player.
+                const waitlistEntry = (waitlist || []).find((w) => w.Uid === m.Uid);
                 let adminTag = null;
-                if (m.IsAcceptedAdmin) adminTag = '[ADMIN]';
+                let waitlistId = null;
+                if (waitlistEntry) {
+                    adminTag = '[Admin Awaiting Response]';
+                    waitlistId = waitlistEntry.id;
+                } else if (m.IsAcceptedAdmin) {
+                    adminTag = '[ADMIN]';
+                }
                 playerList.push({
                     ...user,
                     membershipId: m.id,
                     team: teamInfoByUid[m.Uid] || null,
                     adminTag,
+                    waitlistId,
                 });
             }
         }
 
-        // Include waitlisted users who are not yet group members
+        // Include waitlisted users who are not yet group members at all
         for (const w of (waitlist || [])) {
             if (playerList.some((p) => p.Uid === w.Uid)) continue;
             if (w.Uid === session.currentUid) continue;
@@ -105,6 +122,18 @@ const PlayersScreen = () => {
         );
     };
 
+    // Approve a waitlisted admin and refresh the list
+    const handleApproveAdmin = async (player) => {
+        await approveAdmin(player.waitlistId);
+        await loadData();
+    };
+
+    // Deny (remove from waitlist) a pending admin and refresh the list
+    const handleDenyAdmin = async (player) => {
+        await rejectAdmin(player.waitlistId);
+        await loadData();
+    };
+
 //   View -----------------------
 
     if (loading) {
@@ -128,7 +157,8 @@ const PlayersScreen = () => {
             <Text style={styles.sectionTitle}>Players</Text>
             <ScrollView style={styles.listSection}>
                 {players.map((player) => (
-                    <Card key={player.Uid}>
+                    // Waitlisted admins get a light red tint so they stand out from regular players
+                    <Card key={player.Uid} style={player.waitlistId ? styles.waitlistCard : undefined}>
                         <View style={styles.playerRow}>
                             <Text style={styles.playerName} numberOfLines={1}>
                                 {player.username}
@@ -148,21 +178,41 @@ const PlayersScreen = () => {
                             </View>
                         </View>
                         <View style={styles.actionRow}>
-                            {!player.adminTag && (
-                                <Button
-                                    label="Reset Progress"
-                                    onClick={() => handleResetPlayerProgress(player)}
-                                    styleButton={styles.resetButton}
-                                    styleLabel={styles.actionLabel}
-                                />
-                            )}
-                            {player.membershipId && (
-                                <Button
-                                    label="Kick"
-                                    onClick={() => handleRemovePlayer(player.membershipId)}
-                                    styleButton={styles.removeButton}
-                                    styleLabel={styles.actionLabel}
-                                />
+                            {/* Waitlisted admins get Approve / Deny instead of the normal player actions */}
+                            {player.waitlistId ? (
+                                <>
+                                    <Button
+                                        label="Approve"
+                                        onClick={() => handleApproveAdmin(player)}
+                                        styleButton={styles.approveButton}
+                                        styleLabel={styles.actionLabel}
+                                    />
+                                    <Button
+                                        label="Deny"
+                                        onClick={() => handleDenyAdmin(player)}
+                                        styleButton={styles.denyButton}
+                                        styleLabel={styles.actionLabel}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    {!player.adminTag && (
+                                        <Button
+                                            label="Reset Progress"
+                                            onClick={() => handleResetPlayerProgress(player)}
+                                            styleButton={styles.resetButton}
+                                            styleLabel={styles.actionLabel}
+                                        />
+                                    )}
+                                    {player.membershipId && (
+                                        <Button
+                                            label="Kick"
+                                            onClick={() => handleRemovePlayer(player.membershipId)}
+                                            styleButton={styles.removeButton}
+                                            styleLabel={styles.actionLabel}
+                                        />
+                                    )}
+                                </>
                             )}
                         </View>
                     </Card>
@@ -205,6 +255,11 @@ const styles = StyleSheet.create({
     resetButton: {backgroundColor: '#f59e0b', borderColor: '#f59e0b', minHeight: 36, flex: 1, paddingHorizontal: 10},
     removeButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 1, paddingHorizontal: 10},
     actionLabel: {color: '#ffffff', fontWeight: '600', fontSize: 13},
+    // Waitlisted admin card tint — light red so they read as pending, not regular players
+    waitlistCard: {backgroundColor: '#FFD1DC', borderColor: '#fca5a5'},
+    // Approve / deny buttons for waitlisted admins
+    approveButton: {backgroundColor: '#16a34a', borderColor: '#16a34a', minHeight: 36, flex: 1, paddingHorizontal: 10},
+    denyButton: {backgroundColor: '#dc2626', borderColor: '#dc2626', minHeight: 36, flex: 1, paddingHorizontal: 10},
 });
 
 export default PlayersScreen;

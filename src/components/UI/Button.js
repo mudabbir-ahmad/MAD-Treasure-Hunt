@@ -1,15 +1,15 @@
 import {Pressable, StyleSheet, Text, View} from "react-native";
 
-export const Button = ({ label, icon, onClick, styleLabel, styleButton }) => {
+export const Button = ({ label, icon, onClick, styleLabel, styleButton, disabled }) => {
   //   Initialisation -------------
   //   State ----------------------
   //   Handlers -------------------
   //   View -----------------------
 
   return (
-    <Pressable onPress={onClick} style={[styles.button, styleButton]}>
+    <Pressable onPress={onClick} disabled={disabled} style={[styles.button, styleButton, disabled && styles.buttonDisabled]}>
       {icon ? icon : null}
-      <Text style={[styles.label, styleLabel]}>{label}</Text>
+      <Text style={[styles.label, styleLabel, disabled && styles.labelDisabled]}>{label}</Text>
     </Pressable>
   );
 };
@@ -43,6 +43,13 @@ const styles = StyleSheet.create({
   buttonTray: {
     flexDirection: "row",
     gap: 15,
+  },
+  // Greyed-out state for buttons that should not be interactive
+  buttonDisabled: {
+    opacity: 0.4,
+  },
+  labelDisabled: {
+    color: '#9ca3af',
   },
 });
 

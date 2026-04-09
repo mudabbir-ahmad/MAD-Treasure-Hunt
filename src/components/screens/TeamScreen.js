@@ -137,22 +137,30 @@ const TeamScreen = () => {
 
     // Not in a team
     if (!activeTid || !team) {
+        // Disable team actions until the user has joined a game
+        const notInGame = !session.currentGid;
+
         return (
             <Screen style={styles.center}>
+                {notInGame && (
+                    <Text style={styles.notInGameText}>Join a game first to manage teams.</Text>
+                )}
                 <View style={styles.inputRow}>
                     <TextInput
-                        style={styles.codeInput}
+                        style={[styles.codeInput, notInGame && styles.inputDisabled]}
                         placeholder="Enter Team Code"
                         placeholderTextColor="#9ca3af"
                         value={teamCode}
                         onChangeText={(text) => setTeamCode(text.toUpperCase())}
                         autoCapitalize="characters"
+                        editable={!notInGame}
                     />
                     <Button
                         label="Join"
                         onClick={handleJoinTeam}
                         styleButton={styles.joinButton}
                         styleLabel={styles.joinLabel}
+                        disabled={notInGame}
                     />
                 </View>
                 {!isAdmin && (
@@ -163,6 +171,7 @@ const TeamScreen = () => {
                                 onClick={handleCreateTeam}
                                 styleButton={styles.createButton}
                                 styleLabel={styles.createLabel}
+                                disabled={notInGame}
                             />
                         </ButtonTray>
                     </View>
@@ -261,6 +270,9 @@ const TeamScreen = () => {
 const styles = StyleSheet.create({
     center: {justifyContent: 'center', alignItems: 'center'},
     container: {padding: 0},
+    // Shown when the user has not yet joined a game
+    notInGameText: {color: '#6b7280', fontSize: 15, fontWeight: '600', marginBottom: 16, textAlign: 'center', paddingHorizontal: 20},
+    inputDisabled: {backgroundColor: '#f3f4f6', opacity: 0.5},
     inputRow: {flexDirection: 'row', gap: 10, marginBottom: 15, width: '100%', paddingHorizontal: 20},
     fullRow: {width: '100%', paddingHorizontal: 20},
     codeInput: {

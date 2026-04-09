@@ -49,9 +49,13 @@ const MapScreen = ({navigation}) => {
 
     const isPlayer = inGame && !isAdmin;
 
+    // Stable empty array — avoids creating a new reference on every render
+    // which would trigger an infinite re-render loop in usePlayerGame
+    const EMPTY_CACHES = useMemo(() => [], []);
+
     // Filter out caches already claimed by the current user's team (or by the user if no team)
     const activeCachesForPlayer = useMemo(() => {
-        if (!isPlayer) return [];
+        if (!isPlayer) return EMPTY_CACHES;
         return cacheRecords.filter((cache) => {
             const claims = cache.Claims || [];
             if (session.currentTid) {
@@ -59,12 +63,12 @@ const MapScreen = ({navigation}) => {
             }
             return !claims.some((c) => c.Uid === session.currentUid);
         });
-    }, [cacheRecords, isPlayer, session.currentTid, session.currentUid]);
+    }, [cacheRecords, isPlayer, session.currentTid, session.currentUid, EMPTY_CACHES]);
 
     const {visibleCaches, isClaiming, setIsClaiming} = usePlayerGame(
         isPlayer ? userLocation : null,
         isPlayer ? heading : null,
-        isPlayer ? activeCachesForPlayer : [],
+        activeCachesForPlayer,
         claimDistance,
     );
 

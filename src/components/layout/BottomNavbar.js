@@ -16,11 +16,14 @@ const BottomNavbar = ({navigation, routeName}) => {
         {label: 'Leaderboard', route: 'LeaderboardScreen', onPress: () => navigation.navigate('LeaderboardScreen')},
     ];
 
+    // Only show the Leave tab when the player is actually in a game
+    const inGame = Boolean(session.currentGid);
+
     const playerTabs = [
         {label: 'Team', route: 'TeamScreen', onPress: () => navigation.navigate('TeamScreen')},
         {label: 'Map', route: 'MapScreen', onPress: () => navigation.navigate('MapScreen')},
         {label: 'Leaderboard', route: 'LeaderboardScreen', onPress: () => navigation.navigate('LeaderboardScreen')},
-        {label: 'Leave', route: '__leave__', onPress: () => handleLeaveGame()},
+        ...(inGame ? [{label: 'Leave', route: '__leave__', onPress: () => handleLeaveGame()}] : []),
     ];
 
     const tabs = session.isAcceptedAdmin ? adminTabs : playerTabs;
