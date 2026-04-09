@@ -14,8 +14,10 @@ import Card from '../UI/Card';
 import useGameHook from '../../hooks/useGameHook';
 import usePlayerGame from '../../hooks/usePlayerGame';
 import {
+    clearPendingOrgJoin,
     getSession,
     setPendingAdmin,
+    setPendingOrgJoin,
     setSelectedCache,
     setSessionGroup,
     setSessionMode,
@@ -58,6 +60,7 @@ const MapScreen = ({navigation, route}) => {
   const [subgroups, setSubgroups] = useState([]);
   const [availableGames, setAvailableGames] = useState([]);
   const [gamesLoading, setGamesLoading] = useState(false);
+  const [quickJoiningCode, setQuickJoiningCode] = useState(null);
 
   // Business join flow state
   const [joinStep, setJoinStep] = useState(null);
@@ -120,12 +123,36 @@ const MapScreen = ({navigation, route}) => {
       setGamesLoading(true);
       const groups = await getGroupsRef.current();
       const individualGames = (groups || []).filter((group) => !group.BusinessOrSchoolName);
-      setAvailableGames(individualGames);
+      const withCodes = await Promise.all(
+        individualGames.map(async (group) => {
+          const subgroupRows = await getSubgroupsRef.current(group.Gid);
+          const memberSubgroup = (subgroupRows || []).find((row) => !row.IsAdminGroup);
+          return {
+            ...group,
+            JoinCode: memberSubgroup?.JoinCode || null,
+          };
+        }),
+      );
+      setAvailableGames(withCodes.filter((group) => Boolean(group.JoinCode)));
       setGamesLoading(false);
     };
 
     loadAvailableGames();
   }, [inGame, session.isBusiness]);
+
+  useEffect(() => {
+    if (!session.isBusiness || inGame) return;
+
+    const pending = session.pendingOrgJoin;
+    if (!pending || pending.Uid !== session.currentUid || !pending.Gid) return;
+
+    setOrgCode(pending.OrgCode || '');
+    setMatchedGroup({
+      Gid: pending.Gid,
+      BusinessOrSchoolName: pending.BusinessOrSchoolName || null,
+    });
+    setJoinStep('deptCode');
+  }, [inGame, session.currentUid, session.isBusiness, session.pendingOrgJoin]);
 
   // Default member subgroup SGid for cache creation (first non-admin subgroup)
   const departments = useMemo(
@@ -232,10 +259,9 @@ const MapScreen = ({navigation, route}) => {
         };
     }, [inGame, isPlayer]);
 
-    const handleJoinGame = async () => {
-        if (!gameCode.trim()) return;
-        const code = gameCode.trim().toUpperCase();
-
+    const joinIndividualGameByCode = async (value) => {
+        const code = String(value || '').trim().toUpperCase();
+        if (!code) return;
         const result = await joinPrivateGame({JoinCode: code, Uid: session.currentUid});
         if (!result) return;
         setSessionGroup(result.Gid, result.SGid);
@@ -251,6 +277,18 @@ const MapScreen = ({navigation, route}) => {
         setInGame(true);
         setIsAdmin(false);
         navigation.navigate('TeamScreen');
+    };
+
+    const handleJoinGame = async () => {
+        await joinIndividualGameByCode(gameCode);
+    };
+
+    const handleQuickJoinGame = async (group) => {
+        if (!group?.JoinCode) return;
+        setQuickJoiningCode(group.JoinCode);
+        setGameCode(group.JoinCode);
+        await joinIndividualGameByCode(group.JoinCode);
+        setQuickJoiningCode(null);
     };
 
     const handleEnterGlobal = () => {
@@ -288,6 +326,7 @@ const MapScreen = ({navigation, route}) => {
             isBusiness: true,
         });
         if (!result) return;
+        clearPendingOrgJoin();
         setSessionMode(GAME_MODE.REGULAR);
         setPendingAdmin(false);
         const freshUser = await getUser(session.currentUid);
@@ -309,6 +348,12 @@ const MapScreen = ({navigation, route}) => {
             return;
         }
         setMatchedGroup(group);
+        setPendingOrgJoin({
+            Uid: session.currentUid,
+            OrgCode: orgCode.trim().toUpperCase(),
+            Gid: group.Gid,
+            BusinessOrSchoolName: group.BusinessOrSchoolName || null,
+        });
         setJoinStep('deptCode');
     };
 
@@ -332,6 +377,7 @@ const MapScreen = ({navigation, route}) => {
             }
             setSessionGroup(matchedGroup.Gid, null);
             setSessionTeam(null);
+            clearPendingOrgJoin();
             setPendingAdmin(true);
             setInGame(true);
             setIsAdmin(false);
@@ -351,6 +397,7 @@ const MapScreen = ({navigation, route}) => {
             return;
         }
         setSessionGroup(result.Gid, result.SGid);
+        clearPendingOrgJoin();
         setSessionMode(GAME_MODE.REGULAR);
         setPendingAdmin(false);
         const freshUser = await getUser(session.currentUid);
@@ -479,7 +526,12 @@ const MapScreen = ({navigation, route}) => {
                         <ButtonTray>
                             <Button
                                 label="Back"
-                                onClick={() => { setJoinStep(null); setDeptCode(''); setJoinError(''); }}
+                                onClick={() => {
+                                    clearPendingOrgJoin();
+                                    setJoinStep(null);
+                                    setDeptCode('');
+                                    setJoinError('');
+                                }}
                                 styleButton={styles.backButton}
                                 styleLabel={styles.backLabel}
                             />
@@ -555,10 +607,20 @@ const MapScreen = ({navigation, route}) => {
                     ) : (
                         <ScrollView style={styles.availableGamesList} contentContainerStyle={styles.availableGamesContent}>
                             {availableGames.map((group) => (
-                                <Card key={group.Gid} style={styles.availableGameCard}>
-                                    <Text style={styles.availableGameName}>{group.GroupName || `Game ${group.Gid}`}</Text>
-                                    <Text style={styles.availableGameMeta}>Game ID: {group.Gid}</Text>
-                                </Card>
+                                <Pressable
+                                    key={group.Gid}
+                                    onPress={() => handleQuickJoinGame(group)}
+                                    disabled={quickJoiningCode === group.JoinCode}
+                                >
+                                    <Card style={styles.availableGameCard}>
+                                        <Text style={styles.availableGameName}>{group.GroupName || `Game ${group.Gid}`}</Text>
+                                        <Text style={styles.availableGameMeta}>Game Code: {group.JoinCode}</Text>
+                                        <Text style={styles.availableGameMeta}>Game ID: {group.Gid}</Text>
+                                        <Text style={styles.availableGameHint}>
+                                            {quickJoiningCode === group.JoinCode ? 'Joining...' : 'Tap to join instantly'}
+                                        </Text>
+                                    </Card>
+                                </Pressable>
                             ))}
                         </ScrollView>
                     )}
@@ -852,6 +914,7 @@ const styles = StyleSheet.create({
     availableGameCard: {marginBottom: 8},
     availableGameName: {color: '#cdd6f4', fontSize: 15, fontWeight: '700', marginBottom: 3},
     availableGameMeta: {color: '#bac2de', fontSize: 12},
+    availableGameHint: {color: '#bd93f9', fontSize: 12, fontWeight: '600', marginTop: 6},
     createButton: {backgroundColor: '#a6e3a1', borderColor: '#a6e3a1'},
     createLabel: {color: '#1e1e2e', fontWeight: '600'},
     bizTitle: {fontSize: 22, fontWeight: '700', color: '#cdd6f4', marginBottom: 6, textAlign: 'center'},
