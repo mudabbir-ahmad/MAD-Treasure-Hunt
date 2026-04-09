@@ -11,7 +11,8 @@ const TeamScreen = () => {
 
     const session = getSession();
     const isAdmin = session.isAcceptedAdmin;
-    const {getLobby, getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser, updateTeam, getAdminWaitlist} = useGameHook();
+    const isBusiness = Boolean(session.isBusiness);
+    const {getLobby, getSubgroup, getTeam, createTeam, joinTeamByCode, getTeamMembers, leaveTeam, getUser, updateUser, updateTeam, getAdminWaitlist} = useGameHook();
 
 //   State ----------------------
 
@@ -46,11 +47,19 @@ const TeamScreen = () => {
             if (!session.currentGid) { setLoading(false); return; }
 
             const group = await getLobby(session.currentGid);
-            if (group && !group.TeamsEnabled) {
+            let teamsAreEnabled = Boolean(group?.TeamsEnabled);
+
+            if (isBusiness && session.currentSGid) {
+                const subgroup = await getSubgroup(session.currentSGid);
+                if (subgroup) teamsAreEnabled = Boolean(subgroup.TeamsEnabled);
+            }
+
+            if (!teamsAreEnabled) {
                 setTeamsDisabled(true);
                 setLoading(false);
                 return;
             }
+            setTeamsDisabled(false);
 
             if (!activeTid) {
                 const waitlist = await getAdminWaitlist(session.currentGid, session.currentUid);
@@ -70,7 +79,11 @@ const TeamScreen = () => {
         if (!teamCode.trim()) return;
         // Force uppercase just in case a lowercase code is pasted
         const code = teamCode.trim().toUpperCase();
-        const result = await joinTeamByCode({JoinCode: code, Uid: session.currentUid});
+        const result = await joinTeamByCode({
+            JoinCode: code,
+            Uid: session.currentUid,
+            ExpectedSGid: session.currentSGid,
+        });
         if (!result) return;
 
         // If the server indicates this code matched the admin join code

@@ -35,7 +35,7 @@ const Screen = ({ children, style, showBack = false }) => {
     <View style={[styles.screen, isAuthScreen && {paddingTop: insets.top, paddingBottom: insets.bottom}]}>
       {!isAuthScreen && <TopNavbar title={pageTitle} showBack={showBack} navigation={navigation} />}
       <View style={[styles.content, style]}>{children}</View>
-      {!isAuthScreen && <BottomNavbar navigation={navigation} routeName={routeName} />}
+      {!isAuthScreen && <BottomNavbar navigation={navigation} routeName={routeName} routeParams={route.params} />}
       <StatusBar style="light" />
     </View>
   );

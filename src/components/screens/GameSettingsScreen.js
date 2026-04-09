@@ -1,5 +1,6 @@
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useState} from 'react';
 import {ActivityIndicator, Alert, ScrollView, StyleSheet, Switch, Text, TextInput, View} from 'react-native';
+import {useFocusEffect} from '@react-navigation/native';
 import Screen from '../layout/Screen';
 import Card from '../UI/Card';
 import {Button, ButtonTray} from '../UI/Button';
@@ -11,7 +12,6 @@ const GameSettingsScreen = ({navigation}) => {
 
     const session = getSession();
     const {getLobby, updateGroup, getSubgroups, createSubgroup, deleteSubgroup, resetGame, getAdminWaitlist, approveAdmin, rejectAdmin, getUser, disbandTeams} = useGameHook();
-    const isBusiness = Boolean(session.isBusiness);
 
 //   State ----------------------
 
@@ -27,15 +27,16 @@ const GameSettingsScreen = ({navigation}) => {
     const [memberJoinCode, setMemberJoinCode] = useState('');
     const [waitlist, setWaitlist] = useState([]);
     const [waitlistNames, setWaitlistNames] = useState({});
+    const [isBusinessGroup, setIsBusinessGroup] = useState(Boolean(session.isBusiness));
     // Business subgroup management
     const [subgroupList, setSubgroupList] = useState([]);
     const [newDeptName, setNewDeptName] = useState('');
 
 //   Handlers -------------------
 
-    const loadWaitlist = async () => {
-        if (!session.currentGid) return;
-        const rows = await getAdminWaitlist(session.currentGid);
+    const loadWaitlist = useCallback(async (gid) => {
+        if (!gid) return;
+        const rows = await getAdminWaitlist(gid);
         setWaitlist(rows || []);
         const names = {};
         for (const entry of (rows || [])) {
@@ -43,27 +44,28 @@ const GameSettingsScreen = ({navigation}) => {
             if (u) names[entry.Uid] = u.username;
         }
         setWaitlistNames(names);
-    };
+    }, [getAdminWaitlist, getUser]);
 
-    const loadSubgroups = async () => {
-        if (!session.currentGid) return;
-        const sgs = await getSubgroups(session.currentGid);
+    const loadSubgroups = useCallback(async (gid) => {
+        if (!gid) return;
+        const sgs = await getSubgroups(gid);
         setSubgroupList(sgs || []);
         // Set the default member join code from first non-admin subgroup
         const memberSg = (sgs || []).find((sg) => !sg.IsAdminGroup);
         if (memberSg) setMemberJoinCode(memberSg.JoinCode || '');
-    };
+    }, [getSubgroups]);
 
-    useEffect(() => {
-        const load = async () => {
-            if (!session.currentGid) {
+    const loadSettings = useCallback(async () => {
+            const activeSession = getSession();
+            if (!activeSession.currentGid) {
                 setLoading(false);
                 return;
             }
-            const group = await getLobby(session.currentGid);
+            const group = await getLobby(activeSession.currentGid);
             if (group) {
                 setGroupName(group.GroupName || '');
                 setBusinessName(group.BusinessOrSchoolName || '');
+                setIsBusinessGroup(Boolean(group.BusinessOrSchoolName || group.OrgJoinCode));
                 const serverTeams = Boolean(group.TeamsEnabled);
                 setTeamsEnabled(serverTeams);
                 setServerTeamsEnabled(serverTeams);
@@ -72,12 +74,17 @@ const GameSettingsScreen = ({navigation}) => {
                 setAdminJoinCode(group.AdminJoinCode || '');
                 setOrgJoinCode(group.OrgJoinCode || '');
             }
-            await loadSubgroups();
-            await loadWaitlist();
+            await loadSubgroups(activeSession.currentGid);
+            await loadWaitlist(activeSession.currentGid);
             setLoading(false);
-        };
-        load();
-    }, []);
+    }, [getLobby, loadSubgroups, loadWaitlist]);
+
+    useFocusEffect(
+        useCallback(() => {
+            setLoading(true);
+            loadSettings();
+        }, [loadSettings]),
+    );
 
     // --- Individual save ---
     const saveSettings = async () => {
@@ -100,7 +107,7 @@ const GameSettingsScreen = ({navigation}) => {
     const handleSave = async () => {
         if (!session.currentGid) return;
         // Business save — only save business name
-        if (isBusiness) {
+        if (isBusinessGroup) {
             setSaving(true);
             await updateGroup(session.currentGid, {
                 BusinessOrSchoolName: businessName.trim(),
@@ -180,7 +187,11 @@ const GameSettingsScreen = ({navigation}) => {
 
     // Business — navigate to department settings
     const handleEnterDepartment = (sg) => {
-        navigation.navigate('DepartmentSettingsScreen', {SGid: sg.SGid, Gid: session.currentGid});
+        navigation.navigate('DepartmentSettingsScreen', {
+            SGid: sg.SGid,
+            Gid: session.currentGid,
+            SubGroupName: sg.SubGroupName,
+        });
     };
 
 //   View -----------------------
@@ -205,7 +216,7 @@ const GameSettingsScreen = ({navigation}) => {
     const departments = subgroupList.filter((sg) => !sg.IsAdminGroup);
 
     // ===== Business Admin View =====
-    if (isBusiness) {
+    if (isBusinessGroup) {
         return (
             <Screen>
                 <ScrollView contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>

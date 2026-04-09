@@ -89,8 +89,10 @@ const useGameHook = () => {
     return response.isSuccess ? response.result : null;
   };
 
-  const getGroupMembers = async (gid) => {
-    const response = await API.get(`${subgroupMembersEndpoint}?Gid=${gid}`);
+  const getGroupMembers = async (gid, sgid = null) => {
+    let url = `${subgroupMembersEndpoint}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.get(url);
     return response.isSuccess ? response.result : [];
   };
 
@@ -100,8 +102,10 @@ const useGameHook = () => {
   };
 
   // Teams
-  const getTeams = async (gid) => {
-    const response = await API.get(`${teamsEndpoint}?Gid=${gid}`);
+  const getTeams = async (gid, sgid = null) => {
+    let url = `${teamsEndpoint}?Gid=${gid}`;
+    if (sgid !== null && sgid !== undefined) url += `&SGid=${sgid}`;
+    const response = await API.get(url);
     return response.isSuccess ? response.result : [];
   };
 
@@ -131,7 +135,15 @@ const useGameHook = () => {
   };
 
   const joinTeamByCode = async (payload) => {
-    const response = await API.post(teamMembersEndpoint, payload);
+    const data = {
+      Uid: payload.Uid,
+    };
+    if (payload.JoinCode !== undefined) data.JoinCode = payload.JoinCode;
+    if (payload.Tid !== undefined) data.Tid = payload.Tid;
+    if (payload.ExpectedSGid !== undefined && payload.ExpectedSGid !== null) {
+      data.ExpectedSGid = payload.ExpectedSGid;
+    }
+    const response = await API.post(teamMembersEndpoint, data);
     return response.isSuccess ? response.result : null;
   };
 

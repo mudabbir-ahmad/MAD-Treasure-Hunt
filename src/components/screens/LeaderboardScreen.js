@@ -13,7 +13,7 @@ const LeaderboardScreen = ({navigation, route}) => {
     const isAdmin = session.isAcceptedAdmin;
     const isBusiness = Boolean(session.isBusiness);
     const selectedDepartment = route?.params?.department || null;
-    const {getLobby, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress, resetTeamProgress, getSubgroups} = useGameHook();
+    const {getLobby, getSubgroup, getTeams, getTeamMembers, getGroupMembers, getCaches, getUser, deleteTeam, resetPlayerProgress, resetTeamProgress, getSubgroups} = useGameHook();
 
 //   State ----------------------
 
@@ -33,7 +33,16 @@ const LeaderboardScreen = ({navigation, route}) => {
         if (!session.currentGid) { setLoading(false); return; }
 
         const group = await getLobby(session.currentGid);
-        const isTeams = Boolean(group?.TeamsEnabled);
+
+        const effectiveSGid = isBusiness
+            ? ((isAdmin && selectedDepartment?.SGid) ? selectedDepartment.SGid : (isAdmin ? null : session.currentSGid))
+            : null;
+
+        let isTeams = Boolean(group?.TeamsEnabled);
+        if (effectiveSGid !== null && effectiveSGid !== undefined) {
+            const subgroup = await getSubgroup(effectiveSGid);
+            if (subgroup) isTeams = Boolean(subgroup.TeamsEnabled);
+        }
         setTeamsEnabled(isTeams);
 
         if (isBusiness && isAdmin && !selectedDepartment) {
@@ -43,24 +52,16 @@ const LeaderboardScreen = ({navigation, route}) => {
             return;
         }
 
-        const leaderboardSGid = (isBusiness && isAdmin && selectedDepartment?.SGid)
-            ? selectedDepartment.SGid
-            : null;
-
-        const caches = await getCaches(session.currentGid, leaderboardSGid);
+        const caches = await getCaches(session.currentGid, effectiveSGid ?? null);
         const total = (caches || []).length;
         setTotalCacheCount(total);
 
         if (isTeams) {
             // Build team rankings
-            const teams = await getTeams(session.currentGid);
+            const teams = await getTeams(session.currentGid, effectiveSGid ?? null);
             const teamData = [];
 
-            const scopedTeams = leaderboardSGid
-                ? (teams || []).filter((team) => !team.SGid || team.SGid === leaderboardSGid)
-                : (teams || []);
-
-            for (const team of scopedTeams) {
+            for (const team of (teams || [])) {
                 const members = await getTeamMembers(team.Tid);
                 const memberData = [];
                 for (const m of (members || [])) {
@@ -98,12 +99,9 @@ const LeaderboardScreen = ({navigation, route}) => {
             }
         } else {
             // Build player rankings (no teams)
-            const allMembers = await getGroupMembers(session.currentGid);
-            const scopedMembers = leaderboardSGid
-                ? (allMembers || []).filter((mem) => mem.SGid === leaderboardSGid)
-                : (allMembers || []);
+            const scopedMembers = await getGroupMembers(session.currentGid, effectiveSGid ?? null);
             const playerData = [];
-            for (const m of scopedMembers.filter((mem) => !mem.IsAcceptedAdmin)) {
+            for (const m of (scopedMembers || []).filter((mem) => !mem.IsAcceptedAdmin)) {
                 const user = await getUser(m.Uid);
                 const count = (caches || []).filter((c) =>
                     (c.Claims || []).some((cl) => cl.Uid === m.Uid)
@@ -119,7 +117,7 @@ const LeaderboardScreen = ({navigation, route}) => {
         }
 
         setLoading(false);
-    }, [session.currentGid, session.currentTid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid]);
+    }, [session.currentGid, session.currentTid, session.currentSGid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid]);
 
     useEffect(() => { loadData(); }, [loadData]);
 

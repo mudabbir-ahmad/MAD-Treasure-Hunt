@@ -1,27 +1,42 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import Screen from '../layout/Screen';
 import Card from '../UI/Card';
 import {Button} from '../UI/Button';
 import useGameHook from '../../hooks/useGameHook';
 import {getSession} from '../../hooks/SessionStore';
 
-const PlayersScreen = () => {
+const PlayersScreen = ({navigation, route}) => {
 //   Initialisation ------------
 
     const session = getSession();
     const {getTeams, getTeamMembers, getGroupMembers, removeMember, resetPlayerProgress, getUser, getAdminWaitlist, approveAdmin, rejectAdmin, getSubgroups} = useGameHook();
     const isBusiness = Boolean(session.isBusiness);
+    const isAdmin = Boolean(session.isAcceptedAdmin);
+    const selectedDepartment = route?.params?.department || null;
 
 //   State ----------------------
 
     const [loading, setLoading] = useState(true);
     const [players, setPlayers] = useState([]);
+    const [departmentList, setDepartmentList] = useState([]);
 
 //   Handlers -------------------
 
     const loadData = useCallback(async () => {
         if (!session.currentGid) { setLoading(false); return; }
+
+        const effectiveSGid = isBusiness
+            ? ((isAdmin && selectedDepartment?.SGid) ? selectedDepartment.SGid : (isAdmin ? null : session.currentSGid))
+            : null;
+
+        if (isBusiness && isAdmin && !selectedDepartment) {
+            const sgs = await getSubgroups(session.currentGid);
+            setDepartmentList((sgs || []).filter((sg) => !sg.IsAdminGroup));
+            setPlayers([]);
+            setLoading(false);
+            return;
+        }
 
         // Load subgroup names for department display (business accounts)
         let subgroupNameMap = {};
@@ -33,10 +48,10 @@ const PlayersScreen = () => {
         }
 
         // Get ALL members (including admins)
-        const allMembers = await getGroupMembers(session.currentGid);
+        const allMembers = await getGroupMembers(session.currentGid, effectiveSGid ?? null);
 
         // Get admin waitlist entries
-        const waitlist = await getAdminWaitlist(session.currentGid);
+        const waitlist = effectiveSGid ? [] : await getAdminWaitlist(session.currentGid);
 
         // Deduplicate allMembers by Uid — a user may have two rows if they were a
         // regular member before being approved as an admin. Prefer the admin row.
@@ -46,7 +61,7 @@ const PlayersScreen = () => {
             .filter((m) => { if (seenUids.has(m.Uid)) return false; seenUids.add(m.Uid); return true; });
 
         // Build team lookup: { Uid -> { teamCode, teamName, isLeader } }
-        const allTeams = await getTeams(session.currentGid);
+        const allTeams = await getTeams(session.currentGid, effectiveSGid ?? null);
         const teamInfoByUid = {};
         for (const team of (allTeams || [])) {
             const tms = await getTeamMembers(team.Tid);
@@ -107,7 +122,7 @@ const PlayersScreen = () => {
 
         setPlayers(playerList);
         setLoading(false);
-    }, [session.currentGid]);
+    }, [session.currentGid, session.currentUid, session.currentSGid, isBusiness, isAdmin, selectedDepartment, selectedDepartment?.SGid]);
 
     useEffect(() => { loadData(); }, [loadData]);
 
@@ -164,8 +179,34 @@ const PlayersScreen = () => {
         );
     }
 
+    if (isBusiness && isAdmin && !selectedDepartment) {
+        return (
+            <Screen style={styles.container}>
+                <Text style={styles.sectionTitle}>Departments</Text>
+                <ScrollView style={styles.listSection}>
+                    {departmentList.map((department) => (
+                        <Pressable
+                            key={department.SGid}
+                            onPress={() => navigation.navigate('PlayersScreen', {department})}
+                        >
+                            <Card>
+                                <View style={styles.playerRow}>
+                                    <Text style={styles.playerName}>{department.SubGroupName}</Text>
+                                    <Text style={styles.openLabel}>Open</Text>
+                                </View>
+                            </Card>
+                        </Pressable>
+                    ))}
+                    {departmentList.length === 0 && (
+                        <Text style={styles.emptyText}>No departments yet.</Text>
+                    )}
+                </ScrollView>
+            </Screen>
+        );
+    }
+
     return (
-        <Screen style={styles.container}>
+        <Screen style={styles.container} showBack={Boolean(selectedDepartment)}>
             <Text style={styles.sectionTitle}>Players</Text>
             <ScrollView style={styles.listSection}>
                 {players.map((player) => (
@@ -255,6 +296,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         paddingTop: 15,
     },
+    openLabel: {fontSize: 13, fontWeight: '700', color: '#2563eb'},
     listSection: {flex: 1, paddingHorizontal: 15},
     emptyText: {color: '#9ca3af', textAlign: 'center', marginTop: 30, fontSize: 14},
     playerRow: {

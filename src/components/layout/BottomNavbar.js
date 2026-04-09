@@ -3,17 +3,29 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {clearGameSession, getSession} from '../../hooks/SessionStore';
 import API, {API_BASE_URL} from '../API/API';
 
-const BottomNavbar = ({navigation, routeName}) => {
+const BottomNavbar = ({navigation, routeName, routeParams}) => {
 //   Initialisation ------------
 
     const insets = useSafeAreaInsets();
     const session = getSession();
 
+    const selectedDepartment = routeName === 'DepartmentSettingsScreen' && routeParams?.SGid
+        ? {SGid: routeParams.SGid, SubGroupName: routeParams.SubGroupName || routeParams.selectedDepartmentName || 'Department'}
+        : null;
+
     const adminTabs = [
         {label: 'Settings', route: 'GameSettingsScreen', onPress: () => navigation.navigate('GameSettingsScreen')},
         {label: 'Map', route: 'MapScreen', onPress: () => navigation.navigate('MapScreen')},
-        {label: 'Players', route: 'PlayersScreen', onPress: () => navigation.navigate('PlayersScreen')},
-        {label: 'Leaderboard', route: 'LeaderboardScreen', onPress: () => navigation.navigate('LeaderboardScreen')},
+        {
+            label: 'Players',
+            route: 'PlayersScreen',
+            onPress: () => navigation.navigate('PlayersScreen', selectedDepartment ? {department: selectedDepartment} : undefined),
+        },
+        {
+            label: 'Leaderboard',
+            route: 'LeaderboardScreen',
+            onPress: () => navigation.navigate('LeaderboardScreen', selectedDepartment ? {department: selectedDepartment} : undefined),
+        },
     ];
 
     // Only show the Leave tab when the player is actually in a game
