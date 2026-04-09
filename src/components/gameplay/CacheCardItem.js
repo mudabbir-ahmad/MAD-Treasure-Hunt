@@ -68,7 +68,7 @@ const CacheCardItem = ({cache, isAdmin, isClaimed, isSelected, onEdit, onDelete,
                         label="Select Cache"
                         onClick={() => onSelect(cache)}
                         styleButton={styles.selectBtn}
-                        styleLabel={styles.btnLabel}
+                        styleLabel={styles.selectBtnLabel}
                     />
                 )}
             </View>
@@ -127,6 +127,7 @@ const styles = StyleSheet.create({
     },
     claimedBtnLabel: {color: '#6c7086', fontWeight: '600', fontSize: 13},
     selectedBtnLabel: {color: '#cdd6f4', fontWeight: '600', fontSize: 13},
+    selectBtnLabel: {color: '#000000', fontWeight: '600', fontSize: 13},
     selectedCard: {borderColor: '#bd93f9', borderWidth: 2},
     claimedCard: {opacity: 0.5},
     disabledCard: {opacity: 0.45},
